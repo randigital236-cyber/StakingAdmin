@@ -211,7 +211,6 @@
         
         .loading-spinner { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; }
         
-        /* Password Screen */
         .password-screen {
             position: fixed;
             top: 0;
@@ -225,11 +224,7 @@
             z-index: 99999;
             padding: 20px;
         }
-        .password-screen .card-glass {
-            max-width: 420px;
-            width: 100%;
-            padding: 2.5rem;
-        }
+        .password-screen .card-glass { max-width: 420px; width: 100%; padding: 2.5rem; }
         .password-screen .logo-text { font-size: 1.8rem; font-weight: 800; color: #fff; }
         .password-screen .logo-text span { color: #2ecc71; }
         .password-screen .logo-text .admin-badge {
@@ -242,14 +237,25 @@
             margin-left: 8px;
         }
         
-        .error-shake {
-            animation: shake 0.5s ease;
-        }
+        .error-shake { animation: shake 0.5s ease; }
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             20%, 60% { transform: translateX(-10px); }
             40%, 80% { transform: translateX(10px); }
         }
+        
+        .db-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .db-status.connected { background: rgba(46,204,113,0.15); color: #2ecc71; }
+        .db-status.error { background: rgba(239,68,68,0.15); color: #f87171; }
+        .db-status.loading { background: rgba(251,191,36,0.15); color: #fbbf24; }
         
         @media (max-width: 768px) {
             .dashboard-container { padding: 15px; }
@@ -296,7 +302,7 @@
             <span class="admin-badge ms-2"><i class="bi bi-shield-lock"></i> Admin Panel</span>
         </a>
         <div class="d-flex align-items-center gap-3">
-            <span class="text-light small d-none d-sm-inline">Admin</span>
+            <span id="dbStatus" class="db-status loading"><i class="bi bi-database"></i> Connecting...</span>
             <button class="btn btn-danger-custom btn-sm" id="logoutBtn">
                 <i class="bi bi-box-arrow-right"></i> Logout
             </button>
@@ -317,15 +323,13 @@
 {
     "imports": {
         "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
         "firebase/database": "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
     }
 }
 </script>
 <script type="module">
 import { initializeApp } from "firebase/app";
-import { getAuth, signOut } from "firebase/auth";
-import { getDatabase, ref, get, update, set } from "firebase/database";
+import { getDatabase, ref, get, update, set, onValue } from "firebase/database";
 
 // 🔥 FIREBASE CONFIG
 const firebaseConfig = {
@@ -345,13 +349,13 @@ const firebaseConfig = {
 const ADMIN_PASSWORD = "123@Admin";
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getDatabase(app);
 
 let currentTab = 'deposits';
 let allUsers = {};
 let allDeposits = {};
 let allWithdrawals = {};
+let dbConnected = false;
 
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
@@ -368,6 +372,34 @@ function showToast(message, type = 'success') {
 }
 
 // ============================================================
+// 🔥 DATABASE CONNECTION CHECK
+// ============================================================
+function checkDatabaseConnection() {
+    const statusEl = document.getElementById('dbStatus');
+    statusEl.className = 'db-status loading';
+    statusEl.innerHTML = '<i class="bi bi-database"></i> Connecting...';
+    
+    const testRef = ref(db, '.info/connected');
+    onValue(testRef, (snap) => {
+        if (snap.val() === true) {
+            dbConnected = true;
+            statusEl.className = 'db-status connected';
+            statusEl.innerHTML = '<i class="bi bi-database"></i> Connected';
+            console.log('✅ Firebase Connected!');
+        } else {
+            dbConnected = false;
+            statusEl.className = 'db-status error';
+            statusEl.innerHTML = '<i class="bi bi-database"></i> Disconnected';
+            console.log('❌ Firebase Disconnected!');
+        }
+    }, (error) => {
+        console.error('Connection error:', error);
+        statusEl.className = 'db-status error';
+        statusEl.innerHTML = '<i class="bi bi-database"></i> Connection Error';
+    });
+}
+
+// ============================================================
 // 🔥 PASSWORD CHECK
 // ============================================================
 function checkPassword() {
@@ -376,6 +408,7 @@ function checkPassword() {
         document.getElementById('passwordScreen').style.display = 'none';
         document.getElementById('mainNav').style.display = 'flex';
         document.getElementById('adminContent').style.display = 'block';
+        checkDatabaseConnection();
         loadAdminPanel();
     }
 }
@@ -390,6 +423,7 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
         document.getElementById('passwordScreen').style.display = 'none';
         document.getElementById('mainNav').style.display = 'flex';
         document.getElementById('adminContent').style.display = 'block';
+        checkDatabaseConnection();
         showToast('✅ Access Granted! Welcome Admin.', 'success');
         loadAdminPanel();
     } else {
@@ -401,7 +435,6 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
     }
 });
 
-// Enter key submit
 document.getElementById('adminPasswordInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         document.getElementById('passwordForm').dispatchEvent(new Event('submit'));
@@ -421,23 +454,62 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
     showToast('🔒 Logged out successfully.', 'success');
 });
 
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const isLoggedIn = sessionStorage.getItem('admin_authenticated') === 'true';
+        if (isLoggedIn && document.getElementById('mainNav').style.display !== 'none') {
+            document.getElementById('logoutBtn').click();
+        }
+    }
+});
+
 // ============================================================
 // 🔥 FETCH ALL DATA
 // ============================================================
 async function fetchAllData() {
     try {
+        const statusEl = document.getElementById('dbStatus');
+        statusEl.className = 'db-status loading';
+        statusEl.innerHTML = '<i class="bi bi-database"></i> Loading...';
+        
         const usersSnap = await get(ref(db, 'users'));
-        if (usersSnap.exists()) allUsers = usersSnap.val();
+        if (usersSnap.exists()) {
+            allUsers = usersSnap.val();
+            console.log('✅ Users loaded:', Object.keys(allUsers).length);
+        } else {
+            allUsers = {};
+            console.log('⚠️ No users found');
+        }
 
         const depositsSnap = await get(ref(db, 'deposits'));
-        if (depositsSnap.exists()) allDeposits = depositsSnap.val();
+        if (depositsSnap.exists()) {
+            allDeposits = depositsSnap.val();
+            console.log('✅ Deposits loaded:', Object.keys(allDeposits).length);
+        } else {
+            allDeposits = {};
+            console.log('⚠️ No deposits found');
+        }
 
         const withdrawalsSnap = await get(ref(db, 'withdrawals'));
-        if (withdrawalsSnap.exists()) allWithdrawals = withdrawalsSnap.val();
+        if (withdrawalsSnap.exists()) {
+            allWithdrawals = withdrawalsSnap.val();
+            console.log('✅ Withdrawals loaded:', Object.keys(allWithdrawals).length);
+        } else {
+            allWithdrawals = {};
+            console.log('⚠️ No withdrawals found');
+        }
 
+        statusEl.className = 'db-status connected';
+        statusEl.innerHTML = '<i class="bi bi-database"></i> Connected';
+        
         return true;
     } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('❌ Error fetching data:', error);
+        const statusEl = document.getElementById('dbStatus');
+        statusEl.className = 'db-status error';
+        statusEl.innerHTML = '<i class="bi bi-database"></i> Error';
+        
+        showToast('❌ Database Error: ' + error.message, 'error');
         return false;
     }
 }
@@ -447,12 +519,43 @@ async function fetchAllData() {
 // ============================================================
 async function loadAdminPanel() {
     try {
-        await fetchAllData();
+        const success = await fetchAllData();
         
-        const rateSnap = await get(ref(db, 'settings/rate'));
-        if (rateSnap.exists()) {
-            document.getElementById('rndRate').value = rateSnap.val();
-            document.getElementById('currentRateDisplay').textContent = rateSnap.val();
+        if (!success) {
+            document.getElementById('adminContent').innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-exclamation-triangle text-danger fs-1 d-block mb-3"></i>
+                    <h4>Database Connection Error</h4>
+                    <p class="text-muted">Please check Firebase Realtime Database Rules.</p>
+                    <div class="card-glass mt-3 text-start" style="max-width:600px;margin:0 auto;">
+                        <h6 class="text-warning">🔧 How to Fix:</h6>
+                        <ol class="text-muted" style="font-size:0.9rem;line-height:2;">
+                            <li>Go to <strong>Firebase Console → Realtime Database → Rules</strong></li>
+                            <li>Set rules to: <br>
+                                <code style="background:#0b1120;display:block;padding:10px;border-radius:8px;font-size:0.75rem;color:#2ecc71;">
+                                { "rules": { ".read": true, ".write": true } }
+                                </code>
+                            </li>
+                            <li>Click <strong>Publish</strong> button</li>
+                            <li>Refresh this page</li>
+                        </ol>
+                    </div>
+                    <button class="btn btn-primary-custom mt-3" onclick="location.reload()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        try {
+            const rateSnap = await get(ref(db, 'settings/rate'));
+            if (rateSnap.exists()) {
+                document.getElementById('rndRate').value = rateSnap.val();
+                document.getElementById('currentRateDisplay').textContent = rateSnap.val();
+            }
+        } catch (e) {
+            console.log('Rate not found, using default');
         }
 
         renderDashboard();
@@ -508,7 +611,6 @@ function renderDashboard() {
                 <hr class="border-secondary">
             </div>
 
-            <!-- Stats -->
             <div class="col-12">
                 <div class="row g-3">
                     <div class="col-md-3 col-6">
@@ -542,7 +644,6 @@ function renderDashboard() {
                 </div>
             </div>
 
-            <!-- Tabs -->
             <div class="col-12">
                 <ul class="nav nav-tabs-custom" style="border-bottom:1px solid rgba(46,204,113,0.1);margin-bottom:20px;flex-wrap:wrap;">
                     <li class="nav-item">
@@ -570,7 +671,6 @@ function renderDashboard() {
                 </ul>
             </div>
 
-            <!-- Tab Content -->
             <div class="col-12">
                 ${currentTab === 'deposits' ? renderDepositsTab() : ''}
                 ${currentTab === 'withdrawals' ? renderWithdrawalsTab() : ''}
@@ -838,7 +938,6 @@ function renderSettingsTab() {
                     <h6 class="text-muted">🔐 Security</h6>
                     <div class="info-row"><span class="label">Admin Logged In</span><span class="value"><i class="bi bi-check-circle text-success"></i> Active</span></div>
                     <div class="info-row"><span class="label">Session Time</span><span class="value">${new Date().toLocaleString('hi-IN')}</span></div>
-                    <div class="info-row"><span class="label">Password</span><span class="value" style="color:#f87171;">●●●●●●●●</span></div>
                 </div>
             </div>
         </div>
@@ -908,7 +1007,7 @@ window.approveDeposit = async function(depositId) {
         await fetchAllData();
         renderDashboard();
     } catch (error) {
-        showToast('❌ Error approving deposit: ' + error.message, 'error');
+        showToast('❌ Error: ' + error.message, 'error');
     }
 };
 
@@ -920,7 +1019,7 @@ window.rejectDeposit = async function(depositId) {
         await fetchAllData();
         renderDashboard();
     } catch (error) {
-        showToast('❌ Error rejecting deposit: ' + error.message, 'error');
+        showToast('❌ Error: ' + error.message, 'error');
     }
 };
 
@@ -946,7 +1045,7 @@ window.reverseDeposit = async function(depositId) {
         await fetchAllData();
         renderDashboard();
     } catch (error) {
-        showToast('❌ Error reversing deposit: ' + error.message, 'error');
+        showToast('❌ Error: ' + error.message, 'error');
     }
 };
 
@@ -976,7 +1075,7 @@ window.approveWithdrawal = async function(withdrawalId) {
         await fetchAllData();
         renderDashboard();
     } catch (error) {
-        showToast('❌ Error approving withdrawal: ' + error.message, 'error');
+        showToast('❌ Error: ' + error.message, 'error');
     }
 };
 
@@ -988,7 +1087,7 @@ window.rejectWithdrawal = async function(withdrawalId) {
         await fetchAllData();
         renderDashboard();
     } catch (error) {
-        showToast('❌ Error rejecting withdrawal: ' + error.message, 'error');
+        showToast('❌ Error: ' + error.message, 'error');
     }
 };
 
@@ -1015,7 +1114,7 @@ window.reverseWithdrawal = async function(withdrawalId) {
         await fetchAllData();
         renderDashboard();
     } catch (error) {
-        showToast('❌ Error reversing withdrawal: ' + error.message, 'error');
+        showToast('❌ Error: ' + error.message, 'error');
     }
 };
 
@@ -1030,7 +1129,7 @@ window.banUser = async function(userId) {
         await fetchAllData();
         renderDashboard();
     } catch (error) {
-        showToast('❌ Error banning user: ' + error.message, 'error');
+        showToast('❌ Error: ' + error.message, 'error');
     }
 };
 
@@ -1042,7 +1141,7 @@ window.unbanUser = async function(userId) {
         await fetchAllData();
         renderDashboard();
     } catch (error) {
-        showToast('❌ Error unbanning user: ' + error.message, 'error');
+        showToast('❌ Error: ' + error.message, 'error');
     }
 };
 
@@ -1065,7 +1164,7 @@ async function saveSettings() {
         document.getElementById('currentRateDisplay').textContent = rate;
         showToast('✅ RND rate updated to $' + rate + ' successfully!', 'success');
     } catch (error) {
-        showToast('❌ Error updating rate: ' + error.message, 'error');
+        showToast('❌ Error: ' + error.message, 'error');
     }
     
     btn.disabled = false;
@@ -1076,18 +1175,6 @@ async function saveSettings() {
 // 🔥 CHECK PASSWORD ON LOAD
 // ============================================================
 checkPassword();
-
-// ============================================================
-// 🔥 KEYBOARD SHORTCUT - ESC to logout
-// ============================================================
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        const isLoggedIn = sessionStorage.getItem('admin_authenticated') === 'true';
-        if (isLoggedIn) {
-            document.getElementById('logoutBtn').click();
-        }
-    }
-});
 </script>
 </body>
 </html>
