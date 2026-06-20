@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Admin Login - RND Staking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: linear-gradient(135deg, #080e1a 0%, #0f1f3a 50%, #1a2a4a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-container { width: 100%; max-width: 440px; }
+        .card-glass {
+            background: rgba(19,34,55,0.9);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(46,204,113,0.15);
+            border-radius: 24px;
+            padding: 2.5rem;
+        }
+        .logo-text { font-size: 1.8rem; font-weight: 800; color: #fff; }
+        .logo-text span { color: #2ecc71; }
+        .logo-text .admin-badge {
+            font-size: 0.7rem;
+            background: rgba(239,68,68,0.15);
+            color: #f87171;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .form-control-custom {
+            background: rgba(8,14,26,0.8) !important;
+            border: 1px solid rgba(46,204,113,0.15) !important;
+            color: #f0f4ff !important;
+            padding: 12px 16px !important;
+            border-radius: 12px !important;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        .form-control-custom:focus {
+            border-color: #2ecc71 !important;
+            box-shadow: 0 0 0 3px rgba(46,204,113,0.15) !important;
+            background: rgba(8,14,26,0.9) !important;
+        }
+        .form-control-custom::placeholder { color: #556688 !important; }
+        .form-label { font-weight: 600; color: #a0b8d0; font-size: 0.9rem; margin-bottom: 6px; }
+        .btn-primary-custom {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            padding: 14px;
+            border-radius: 12px;
+            width: 100%;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+        .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(46,204,113,0.3); color: #fff; }
+        .btn-primary-custom:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+        .text-link { color: #2ecc71; text-decoration: none; font-weight: 600; }
+        .text-link:hover { text-decoration: underline; }
+        
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+        .toast-custom {
+            background: rgba(19,34,55,0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(46,204,113,0.2);
+            border-radius: 16px;
+            padding: 16px 20px;
+            color: #f0f4ff;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.4s ease;
+            margin-bottom: 10px;
+        }
+        .toast-custom.success { border-left: 4px solid #2ecc71; }
+        .toast-custom.error { border-left: 4px solid #ef4444; }
+        .toast-custom i { font-size: 1.5rem; }
+        .toast-custom .toast-msg { flex: 1; font-size: 0.9rem; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        @media (max-width: 576px) { .card-glass { padding: 1.5rem; } .logo-text { font-size: 1.5rem; } }
+    </style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="login-container">
+    <div class="card-glass">
+        <div class="text-center mb-4">
+            <div class="logo-text">
+                <i class="bi bi-currency-bitcoin me-2"></i>RND<span>Staking</span>
+                <span class="admin-badge"><i class="bi bi-shield-lock"></i> Admin</span>
+            </div>
+            <p class="text-muted small">Secure Admin Panel Access</p>
+        </div>
+
+        <form id="adminLoginForm">
+            <div class="mb-3">
+                <label class="form-label">Admin Email</label>
+                <input type="email" id="adminEmail" class="form-control form-control-custom" placeholder="admin@example.com" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input type="password" id="adminPassword" class="form-control form-control-custom" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn-primary-custom" id="adminLoginBtn">
+                <i class="bi bi-shield-lock me-2"></i>Admin Login
+            </button>
+        </form>
+
+        <p class="text-center mt-4 text-muted small">
+            <a href="#" class="text-link" onclick="window.close();"><i class="bi bi-arrow-left me-1"></i> Close</a>
+        </p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script type="importmap">
+{
+    "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+        "firebase/database": "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+    }
+}
+</script>
+<script type="module">
+import { initializeApp } from "firebase/app";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+import { getDatabase, ref, get } from "firebase/database";
+
+// 🔥 SAME FIREBASE CONFIG - ONLY CONNECTION
+const firebaseConfig = {
+    apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
+    authDomain: "rnd2-70080.firebaseapp.com",
+    databaseURL: "https://rnd2-70080-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "rnd2-70080",
+    storageBucket: "rnd2-70080.firebasestorage.app",
+    messagingSenderId: "468625887938",
+    appId: "1:468625887938:web:5cb4ddbcf31b6fc0a4615b",
+    measurementId: "G-ELVJD5NQKB"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast-custom ${type}`;
+    const icon = type === 'success' ? 'bi-check-circle-fill text-success' : 'bi-exclamation-triangle-fill text-danger';
+    toast.innerHTML = `<i class="bi ${icon}"></i><span class="toast-msg">${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Check if already logged in as admin
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        try {
+            const snapshot = await get(ref(db, 'users/' + user.uid));
+            if (snapshot.exists()) {
+                const userData = snapshot.val();
+                if (userData.role === 'admin') {
+                    window.location.href = 'admin-dashboard.html';
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error('Error checking admin status:', e);
+        }
+    }
+});
+
+document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('adminEmail').value.trim();
+    const password = document.getElementById('adminPassword').value;
+    const btn = document.getElementById('adminLoginBtn');
+
+    if (!email || !password) {
+        showToast('❌ Please enter email and password', 'error');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...';
+
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        const snapshot = await get(ref(db, 'users/' + user.uid));
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            if (userData.role === 'admin') {
+                showToast('✅ Welcome Admin! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'admin-dashboard.html';
+                }, 1000);
+            } else {
+                showToast('❌ Access Denied! You are not an admin.', 'error');
+                await signOut(auth);
+            }
+        } else {
+            showToast('❌ User data not found!', 'error');
+            await signOut(auth);
+        }
+    } catch (err) {
+        console.error('Admin login error:', err);
+        let msg = '❌ Invalid credentials. Please try again.';
+        if (err.code === 'auth/user-not-found') msg = '❌ No admin account found with this email.';
+        else if (err.code === 'auth/wrong-password') msg = '❌ Incorrect password. Please try again.';
+        else if (err.code === 'auth/too-many-requests') msg = '❌ Too many failed attempts. Please try again later.';
+        showToast(msg, 'error');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-shield-lock me-2"></i>Admin Login';
+});
+</script>
+</body>
+</html>
