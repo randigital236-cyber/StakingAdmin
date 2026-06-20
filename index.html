@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Admin Dashboard - RND Staking</title>
+    <title>Admin Panel - RND Staking</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -128,20 +128,6 @@
         }
         .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(46,204,113,0.3); color: #fff; }
         
-        .btn-outline-custom {
-            border: 2px solid rgba(46,204,113,0.3);
-            color: #a0b8d0;
-            padding: 10px 24px;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            font-weight: 500;
-            background: transparent;
-            font-size: 0.9rem;
-        }
-        .btn-outline-custom:hover { border-color: #2ecc71; color: #2ecc71; }
-        
         .badge-pending { background: rgba(251,191,36,0.15); color: #fbbf24; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         .badge-approved { background: rgba(46,204,113,0.15); color: #2ecc71; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         .badge-rejected { background: rgba(239,68,68,0.15); color: #f87171; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
@@ -224,18 +210,45 @@
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         
         .loading-spinner { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; }
-        .user-info-bar { background: rgba(8,14,26,0.4); border-radius: 12px; padding: 10px 18px; display: flex; align-items: center; gap: 12px; }
-        .user-info-bar .avatar-sm {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #f87171, #dc2626);
+        
+        /* Password Screen */
+        .password-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #080e1a 0%, #0f1f3a 50%, #1a2a4a 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 700;
-            font-size: 1rem;
-            color: #fff;
+            z-index: 99999;
+            padding: 20px;
+        }
+        .password-screen .card-glass {
+            max-width: 420px;
+            width: 100%;
+            padding: 2.5rem;
+        }
+        .password-screen .logo-text { font-size: 1.8rem; font-weight: 800; color: #fff; }
+        .password-screen .logo-text span { color: #2ecc71; }
+        .password-screen .logo-text .admin-badge {
+            font-size: 0.7rem;
+            background: rgba(239,68,68,0.15);
+            color: #f87171;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .error-shake {
+            animation: shake 0.5s ease;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
         }
         
         @media (max-width: 768px) {
@@ -251,15 +264,39 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- ====== PASSWORD SCREEN ====== -->
+<div class="password-screen" id="passwordScreen">
+    <div class="card-glass text-center">
+        <div class="logo-text mb-3">
+            <i class="bi bi-currency-bitcoin me-2"></i>RND<span>Staking</span>
+            <span class="admin-badge"><i class="bi bi-shield-lock"></i> Admin</span>
+        </div>
+        <p class="text-muted small mb-4">Enter admin password to access panel</p>
+        
+        <form id="passwordForm">
+            <div class="mb-3">
+                <input type="password" id="adminPasswordInput" class="form-control form-control-custom" 
+                       placeholder="Enter admin password" autofocus>
+            </div>
+            <button type="submit" class="btn-primary-custom" id="passwordSubmitBtn">
+                <i class="bi bi-shield-lock me-2"></i>Access Panel
+            </button>
+        </form>
+        <p class="text-muted small mt-3">
+            <i class="bi bi-info-circle me-1"></i> Contact administrator for password
+        </p>
+    </div>
+</div>
+
 <!-- ====== NAVBAR ====== -->
-<nav class="navbar navbar-custom">
+<nav class="navbar navbar-custom" id="mainNav" style="display:none;">
     <div class="container-fluid px-3">
-        <a class="navbar-brand fw-bold" href="admin-dashboard.html">
+        <a class="navbar-brand fw-bold" href="#">
             <i class="bi bi-currency-bitcoin me-2"></i>RND Staking
             <span class="admin-badge ms-2"><i class="bi bi-shield-lock"></i> Admin Panel</span>
         </a>
         <div class="d-flex align-items-center gap-3">
-            <span id="adminName" class="text-light small d-none d-sm-inline">Admin</span>
+            <span class="text-light small d-none d-sm-inline">Admin</span>
             <button class="btn btn-danger-custom btn-sm" id="logoutBtn">
                 <i class="bi bi-box-arrow-right"></i> Logout
             </button>
@@ -268,7 +305,7 @@
 </nav>
 
 <!-- ====== ADMIN CONTENT ====== -->
-<div class="dashboard-container" id="adminContent">
+<div class="dashboard-container" id="adminContent" style="display:none;">
     <div class="loading-spinner">
         <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
         <p class="text-muted mt-3">Loading admin panel...</p>
@@ -287,10 +324,10 @@
 </script>
 <script type="module">
 import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { getAuth, signOut } from "firebase/auth";
 import { getDatabase, ref, get, update, set } from "firebase/database";
 
-// 🔥 SAME FIREBASE CONFIG - ONLY CONNECTION
+// 🔥 FIREBASE CONFIG
 const firebaseConfig = {
     apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
     authDomain: "rnd2-70080.firebaseapp.com",
@@ -301,6 +338,11 @@ const firebaseConfig = {
     appId: "1:468625887938:web:5cb4ddbcf31b6fc0a4615b",
     measurementId: "G-ELVJD5NQKB"
 };
+
+// ============================================================
+// 🔥 ADMIN PASSWORD
+// ============================================================
+const ADMIN_PASSWORD = "123@Admin";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -325,10 +367,58 @@ function showToast(message, type = 'success') {
     }, 5000);
 }
 
-// LOGOUT
-document.getElementById('logoutBtn').addEventListener('click', async () => {
-    await signOut(auth);
-    window.location.href = 'admin-login.html';
+// ============================================================
+// 🔥 PASSWORD CHECK
+// ============================================================
+function checkPassword() {
+    const saved = sessionStorage.getItem('admin_authenticated');
+    if (saved === 'true') {
+        document.getElementById('passwordScreen').style.display = 'none';
+        document.getElementById('mainNav').style.display = 'flex';
+        document.getElementById('adminContent').style.display = 'block';
+        loadAdminPanel();
+    }
+}
+
+document.getElementById('passwordForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const input = document.getElementById('adminPasswordInput');
+    const btn = document.getElementById('passwordSubmitBtn');
+    
+    if (input.value === ADMIN_PASSWORD) {
+        sessionStorage.setItem('admin_authenticated', 'true');
+        document.getElementById('passwordScreen').style.display = 'none';
+        document.getElementById('mainNav').style.display = 'flex';
+        document.getElementById('adminContent').style.display = 'block';
+        showToast('✅ Access Granted! Welcome Admin.', 'success');
+        loadAdminPanel();
+    } else {
+        input.classList.add('error-shake');
+        setTimeout(() => input.classList.remove('error-shake'), 500);
+        input.value = '';
+        input.focus();
+        showToast('❌ Incorrect Password! Please try again.', 'error');
+    }
+});
+
+// Enter key submit
+document.getElementById('adminPasswordInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('passwordForm').dispatchEvent(new Event('submit'));
+    }
+});
+
+// ============================================================
+// 🔥 LOGOUT
+// ============================================================
+document.getElementById('logoutBtn').addEventListener('click', function() {
+    sessionStorage.removeItem('admin_authenticated');
+    document.getElementById('passwordScreen').style.display = 'flex';
+    document.getElementById('mainNav').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'none';
+    document.getElementById('adminPasswordInput').value = '';
+    document.getElementById('adminPasswordInput').focus();
+    showToast('🔒 Logged out successfully.', 'success');
 });
 
 // ============================================================
@@ -353,6 +443,39 @@ async function fetchAllData() {
 }
 
 // ============================================================
+// 🔥 LOAD ADMIN PANEL
+// ============================================================
+async function loadAdminPanel() {
+    try {
+        await fetchAllData();
+        
+        const rateSnap = await get(ref(db, 'settings/rate'));
+        if (rateSnap.exists()) {
+            document.getElementById('rndRate').value = rateSnap.val();
+            document.getElementById('currentRateDisplay').textContent = rateSnap.val();
+        }
+
+        renderDashboard();
+
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await saveSettings();
+        });
+
+    } catch (error) {
+        console.error('Error loading admin:', error);
+        document.getElementById('adminContent').innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-exclamation-triangle text-danger fs-1 d-block mb-3"></i>
+                <h4>Error Loading Panel</h4>
+                <p class="text-muted">${error.message || 'Please check your internet connection.'}</p>
+                <button class="btn btn-primary-custom mt-3" onclick="location.reload()">Refresh</button>
+            </div>
+        `;
+    }
+}
+
+// ============================================================
 // 🔥 RENDER DASHBOARD
 // ============================================================
 function renderDashboard() {
@@ -361,23 +484,18 @@ function renderDashboard() {
     const totalWithdrawals = Object.keys(allWithdrawals || {}).length;
     
     let pendingDeposits = 0;
-    let approvedDeposits = 0;
     let totalDepositAmount = 0;
     
     for (let key in allDeposits) {
         const d = allDeposits[key];
         if (d.status === 'pending') pendingDeposits++;
-        if (d.status === 'approved') approvedDeposits++;
         if (d.status === 'approved') totalDepositAmount += (d.amount || 0);
     }
     
     let pendingWithdrawals = 0;
-    let totalWithdrawalAmount = 0;
-    
     for (let key in allWithdrawals) {
         const w = allWithdrawals[key];
         if (w.status === 'pending') pendingWithdrawals++;
-        if (w.status === 'approved') totalWithdrawalAmount += (w.amount || 0);
     }
 
     document.getElementById('adminContent').innerHTML = `
@@ -653,7 +771,7 @@ function renderUsersTab() {
     let count = 0;
     for (let key in allUsers) {
         const u = allUsers[key];
-        if (u.role === 'admin') continue; // Hide admin from list
+        if (u.role === 'admin') continue;
         count++;
         
         html += `
@@ -720,6 +838,7 @@ function renderSettingsTab() {
                     <h6 class="text-muted">🔐 Security</h6>
                     <div class="info-row"><span class="label">Admin Logged In</span><span class="value"><i class="bi bi-check-circle text-success"></i> Active</span></div>
                     <div class="info-row"><span class="label">Session Time</span><span class="value">${new Date().toLocaleString('hi-IN')}</span></div>
+                    <div class="info-row"><span class="label">Password</span><span class="value" style="color:#f87171;">●●●●●●●●</span></div>
                 </div>
             </div>
         </div>
@@ -954,56 +1073,19 @@ async function saveSettings() {
 }
 
 // ============================================================
-// 🔥 CHECK AUTH & LOAD ADMIN
+// 🔥 CHECK PASSWORD ON LOAD
 // ============================================================
-onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-        window.location.href = 'admin-login.html';
-        return;
-    }
+checkPassword();
 
-    try {
-        const snapshot = await get(ref(db, 'users/' + user.uid));
-        if (!snapshot.exists()) {
-            showToast('❌ User data not found!', 'error');
-            setTimeout(() => { window.location.href = 'admin-login.html'; }, 1500);
-            return;
+// ============================================================
+// 🔥 KEYBOARD SHORTCUT - ESC to logout
+// ============================================================
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const isLoggedIn = sessionStorage.getItem('admin_authenticated') === 'true';
+        if (isLoggedIn) {
+            document.getElementById('logoutBtn').click();
         }
-
-        const userData = snapshot.val();
-        if (userData.role !== 'admin') {
-            showToast('❌ Access Denied! You are not an admin.', 'error');
-            setTimeout(() => { window.location.href = 'admin-login.html'; }, 1500);
-            return;
-        }
-
-        document.getElementById('adminName').textContent = userData.name || 'Admin';
-
-        await fetchAllData();
-        
-        const rateSnap = await get(ref(db, 'settings/rate'));
-        if (rateSnap.exists()) {
-            document.getElementById('rndRate').value = rateSnap.val();
-            document.getElementById('currentRateDisplay').textContent = rateSnap.val();
-        }
-
-        renderDashboard();
-
-        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await saveSettings();
-        });
-
-    } catch (error) {
-        console.error('Error loading admin:', error);
-        document.getElementById('adminContent').innerHTML = `
-            <div class="text-center py-5">
-                <i class="bi bi-exclamation-triangle text-danger fs-1 d-block mb-3"></i>
-                <h4>Error Loading Admin Panel</h4>
-                <p class="text-muted">${error.message || 'Please check your internet connection.'}</p>
-                <button class="btn btn-primary-custom mt-3" onclick="location.reload()">Refresh</button>
-            </div>
-        `;
     }
 });
 </script>
