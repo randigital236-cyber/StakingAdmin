@@ -289,7 +289,7 @@
             </button>
         </form>
         <p class="text-muted small mt-3">
-            <i class="bi bi-info-circle me-1"></i> Contact administrator for password
+            <i class="bi bi-info-circle me-1"></i> Password: 123@Admin
         </p>
     </div>
 </div>
@@ -355,7 +355,7 @@ let currentTab = 'deposits';
 let allUsers = {};
 let allDeposits = {};
 let allWithdrawals = {};
-let dbConnected = false;
+let isSettingsListenerAdded = false;
 
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
@@ -376,18 +376,17 @@ function showToast(message, type = 'success') {
 // ============================================================
 function checkDatabaseConnection() {
     const statusEl = document.getElementById('dbStatus');
+    if (!statusEl) return;
     statusEl.className = 'db-status loading';
     statusEl.innerHTML = '<i class="bi bi-database"></i> Connecting...';
     
     const testRef = ref(db, '.info/connected');
     onValue(testRef, (snap) => {
         if (snap.val() === true) {
-            dbConnected = true;
             statusEl.className = 'db-status connected';
             statusEl.innerHTML = '<i class="bi bi-database"></i> Connected';
             console.log('✅ Firebase Connected!');
         } else {
-            dbConnected = false;
             statusEl.className = 'db-status error';
             statusEl.innerHTML = '<i class="bi bi-database"></i> Disconnected';
             console.log('❌ Firebase Disconnected!');
@@ -395,7 +394,7 @@ function checkDatabaseConnection() {
     }, (error) => {
         console.error('Connection error:', error);
         statusEl.className = 'db-status error';
-        statusEl.innerHTML = '<i class="bi bi-database"></i> Connection Error';
+        statusEl.innerHTML = '<i class="bi bi-database"></i> Error';
     });
 }
 
@@ -469,8 +468,10 @@ document.addEventListener('keydown', function(e) {
 async function fetchAllData() {
     try {
         const statusEl = document.getElementById('dbStatus');
-        statusEl.className = 'db-status loading';
-        statusEl.innerHTML = '<i class="bi bi-database"></i> Loading...';
+        if (statusEl) {
+            statusEl.className = 'db-status loading';
+            statusEl.innerHTML = '<i class="bi bi-database"></i> Loading...';
+        }
         
         const usersSnap = await get(ref(db, 'users'));
         if (usersSnap.exists()) {
@@ -499,16 +500,19 @@ async function fetchAllData() {
             console.log('⚠️ No withdrawals found');
         }
 
-        statusEl.className = 'db-status connected';
-        statusEl.innerHTML = '<i class="bi bi-database"></i> Connected';
+        if (statusEl) {
+            statusEl.className = 'db-status connected';
+            statusEl.innerHTML = '<i class="bi bi-database"></i> Connected';
+        }
         
         return true;
     } catch (error) {
         console.error('❌ Error fetching data:', error);
         const statusEl = document.getElementById('dbStatus');
-        statusEl.className = 'db-status error';
-        statusEl.innerHTML = '<i class="bi bi-database"></i> Error';
-        
+        if (statusEl) {
+            statusEl.className = 'db-status error';
+            statusEl.innerHTML = '<i class="bi bi-database"></i> Error';
+        }
         showToast('❌ Database Error: ' + error.message, 'error');
         return false;
     }
@@ -550,9 +554,11 @@ async function loadAdminPanel() {
         
         try {
             const rateSnap = await get(ref(db, 'settings/rate'));
-            if (rateSnap.exists()) {
-                document.getElementById('rndRate').value = rateSnap.val();
-                document.getElementById('currentRateDisplay').textContent = rateSnap.val();
+            const rndRateInput = document.getElementById('rndRate');
+            const rateDisplay = document.getElementById('currentRateDisplay');
+            if (rateSnap.exists() && rndRateInput) {
+                rndRateInput.value = rateSnap.val();
+                if (rateDisplay) rateDisplay.textContent = rateSnap.val();
             }
         } catch (e) {
             console.log('Rate not found, using default');
@@ -560,10 +566,19 @@ async function loadAdminPanel() {
 
         renderDashboard();
 
-        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await saveSettings();
-        });
+        // 🔥 FIX: Settings form listener - SAFELY CHECK IF ELEMENT EXISTS
+        setTimeout(() => {
+            const settingsForm = document.getElementById('settingsForm');
+            if (settingsForm) {
+                settingsForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await saveSettings();
+                });
+                console.log('✅ Settings form listener added');
+            } else {
+                console.log('⚠️ Settings form not found, will try again later');
+            }
+        }, 500);
 
     } catch (error) {
         console.error('Error loading admin:', error);
@@ -679,6 +694,19 @@ function renderDashboard() {
             </div>
         </div>
     `;
+    
+    // 🔥 FIX: Re-attach settings form listener after render
+    setTimeout(() => {
+        const settingsForm = document.getElementById('settingsForm');
+        if (settingsForm && !isSettingsListenerAdded) {
+            settingsForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await saveSettings();
+            });
+            isSettingsListenerAdded = true;
+            console.log('✅ Settings form listener attached after render');
+        }
+    }, 300);
 }
 
 // ============================================================
@@ -1149,26 +1177,37 @@ window.unbanUser = async function(userId) {
 // 🔥 SETTINGS - UPDATE RATE
 // ============================================================
 async function saveSettings() {
-    const rate = parseFloat(document.getElementById('rndRate').value);
+    const rateInput = document.getElementById('rndRate');
+    if (!rateInput) {
+        showToast('❌ Settings form not found!', 'error');
+        return;
+    }
+    
+    const rate = parseFloat(rateInput.value);
     if (!rate || rate <= 0) {
         showToast('❌ Please enter a valid rate.', 'error');
         return;
     }
     
     const btn = document.getElementById('saveSettingsBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    }
     
     try {
         await set(ref(db, 'settings/rate'), rate);
-        document.getElementById('currentRateDisplay').textContent = rate;
+        const display = document.getElementById('currentRateDisplay');
+        if (display) display.textContent = rate;
         showToast('✅ RND rate updated to $' + rate + ' successfully!', 'success');
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
     }
     
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-save me-2"></i>Update Rate';
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save me-2"></i>Update Rate';
+    }
 }
 
 // ============================================================
