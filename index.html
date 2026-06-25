@@ -128,6 +128,18 @@
         }
         .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(46,204,113,0.3); color: #fff; }
         
+        .btn-copy {
+            background: rgba(46,204,113,0.1);
+            border: 1px solid rgba(46,204,113,0.15);
+            color: #2ecc71;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-copy:hover { background: rgba(46,204,113,0.2); transform: scale(1.05); }
+        
         .badge-pending { background: rgba(251,191,36,0.15); color: #fbbf24; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         .badge-approved { background: rgba(46,204,113,0.15); color: #2ecc71; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         .badge-rejected { background: rgba(239,68,68,0.15); color: #f87171; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
@@ -257,11 +269,23 @@
         .db-status.error { background: rgba(239,68,68,0.15); color: #f87171; }
         .db-status.loading { background: rgba(251,191,36,0.15); color: #fbbf24; }
         
+        .wallet-address-cell {
+            font-family: monospace;
+            font-size: 0.7rem;
+            color: #60a5fa;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+        }
+        
         @media (max-width: 768px) {
             .dashboard-container { padding: 15px; }
             .search-box { max-width: 100%; }
             .table-responsive { font-size: 0.8rem; }
             .stat-card .stat-number { font-size: 1.3rem; }
+            .wallet-address-cell { max-width: 80px; }
         }
         @media (max-width: 480px) { .card-glass { padding: 1rem; } }
     </style>
@@ -372,6 +396,28 @@ function showToast(message, type = 'success') {
 }
 
 // ============================================================
+// 🔥 COPY ADDRESS FUNCTION
+// ============================================================
+window.copyAddress = function(address, label = 'Address') {
+    if (!address || address === 'N/A') {
+        showToast('❌ No address to copy!', 'error');
+        return;
+    }
+    navigator.clipboard.writeText(address).then(() => {
+        showToast(`✅ ${label} copied to clipboard!`, 'success');
+    }).catch(() => {
+        // Fallback
+        const textArea = document.createElement('textarea');
+        textArea.value = address;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast(`✅ ${label} copied to clipboard!`, 'success');
+    });
+};
+
+// ============================================================
 // 🔥 DATABASE CONNECTION CHECK
 // ============================================================
 function checkDatabaseConnection() {
@@ -451,15 +497,6 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
     document.getElementById('adminPasswordInput').value = '';
     document.getElementById('adminPasswordInput').focus();
     showToast('🔒 Logged out successfully.', 'success');
-});
-
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        const isLoggedIn = sessionStorage.getItem('admin_authenticated') === 'true';
-        if (isLoggedIn && document.getElementById('mainNav').style.display !== 'none') {
-            document.getElementById('logoutBtn').click();
-        }
-    }
 });
 
 // ============================================================
@@ -566,7 +603,6 @@ async function loadAdminPanel() {
 
         renderDashboard();
 
-        // 🔥 FIX: Settings form listener - SAFELY CHECK IF ELEMENT EXISTS
         setTimeout(() => {
             const settingsForm = document.getElementById('settingsForm');
             if (settingsForm) {
@@ -575,8 +611,6 @@ async function loadAdminPanel() {
                     await saveSettings();
                 });
                 console.log('✅ Settings form listener added');
-            } else {
-                console.log('⚠️ Settings form not found, will try again later');
             }
         }, 500);
 
@@ -695,7 +729,6 @@ function renderDashboard() {
         </div>
     `;
     
-    // 🔥 FIX: Re-attach settings form listener after render
     setTimeout(() => {
         const settingsForm = document.getElementById('settingsForm');
         if (settingsForm && !isSettingsListenerAdded) {
@@ -762,7 +795,10 @@ function renderDepositsTab() {
                     <small style="color:#556688;">${user.username || 'N/A'}</small>
                 </td>
                 <td><strong style="color:#2ecc71;">$${d.amount || 0}</strong></td>
-                <td style="font-family:monospace;font-size:0.7rem;color:#556688;">${d.txHash ? d.txHash.substring(0,15)+'...' : 'N/A'}</td>
+                <td style="font-family:monospace;font-size:0.7rem;color:#556688;">
+                    ${d.txHash ? d.txHash.substring(0,15)+'...' : 'N/A'}
+                    ${d.txHash ? `<button class="btn-copy ms-1" onclick="copyAddress('${d.txHash}','Tx Hash')"><i class="bi bi-clipboard"></i></button>` : ''}
+                </td>
                 <td style="font-size:0.8rem;color:#8899bb;">${new Date(d.timestamp).toLocaleString('hi-IN')}</td>
                 <td><span class="${statusClass}">${statusText}</span></td>
                 <td>
@@ -810,7 +846,7 @@ function renderWithdrawalsTab() {
                             <th>#</th>
                             <th>User</th>
                             <th>Amount</th>
-                            <th>Wallet</th>
+                            <th>Wallet Address</th>
                             <th>Date</th>
                             <th>Status</th>
                             <th>Action</th>
@@ -828,6 +864,7 @@ function renderWithdrawalsTab() {
         const statusClass = w.status === 'pending' ? 'badge-pending' : w.status === 'approved' ? 'badge-approved' : 'badge-rejected';
         const statusText = w.status === 'pending' ? '⏳ Pending' : w.status === 'approved' ? '✅ Approved' : '❌ Rejected';
         const currency = w.currency || 'USDT';
+        const walletTypeLabel = w.walletType === 'referralWallet' ? '💳 Referral' : w.walletType === 'rndWallet' ? '📊 RND' : '';
         
         html += `
             <tr data-user="${(user.username || user.name || '').toLowerCase()}">
@@ -835,9 +872,13 @@ function renderWithdrawalsTab() {
                 <td>
                     <strong>${user.name || 'Unknown'}</strong><br>
                     <small style="color:#556688;">${user.username || 'N/A'}</small>
+                    ${walletTypeLabel ? `<br><small style="color:#8899bb;font-size:0.6rem;">${walletTypeLabel}</small>` : ''}
                 </td>
                 <td><strong style="color:#fbbf24;">${w.amount || 0} ${currency}</strong></td>
-                <td style="font-family:monospace;font-size:0.7rem;color:#556688;">${w.wallet ? w.wallet.substring(0,15)+'...' : 'N/A'}</td>
+                <td>
+                    <span class="wallet-address-cell">${w.wallet || 'N/A'}</span>
+                    ${w.wallet ? `<button class="btn-copy ms-1" onclick="copyAddress('${w.wallet}','Wallet Address')"><i class="bi bi-clipboard"></i></button>` : ''}
+                </td>
                 <td style="font-size:0.8rem;color:#8899bb;">${new Date(w.timestamp).toLocaleString('hi-IN')}</td>
                 <td><span class="${statusClass}">${statusText}</span></td>
                 <td>
@@ -887,7 +928,8 @@ function renderUsersTab() {
                             <th>Email</th>
                             <th>Referral Code</th>
                             <th>Deposit Wallet</th>
-                            <th>Withdrawal Wallet</th>
+                            <th>RND Wallet</th>
+                            <th>Locked RND</th>
                             <th>Referrals</th>
                             <th>Joined</th>
                             <th>Action</th>
@@ -908,11 +950,17 @@ function renderUsersTab() {
                 <td>
                     <strong>${u.name || 'Unknown'}</strong><br>
                     <small style="color:#556688;">${u.username || 'N/A'}</small>
+                    <br><small style="color:#60a5fa;font-size:0.6rem;">ID: ${key.substring(0,12)}...</small>
+                    <button class="btn-copy ms-1" onclick="copyAddress('${key}','User ID')"><i class="bi bi-clipboard"></i></button>
                 </td>
                 <td style="font-size:0.85rem;">${u.email || 'N/A'}</td>
-                <td style="font-family:monospace;font-size:0.8rem;color:#2ecc71;">${u.referralCode || 'N/A'}</td>
+                <td style="font-family:monospace;font-size:0.8rem;color:#2ecc71;">
+                    ${u.referralCode || 'N/A'}
+                    ${u.referralCode ? `<button class="btn-copy ms-1" onclick="copyAddress('${u.referralCode}','Referral Code')"><i class="bi bi-clipboard"></i></button>` : ''}
+                </td>
                 <td><strong style="color:#2ecc71;">$${u.depositWallet || 0}</strong></td>
-                <td><strong style="color:#fbbf24;">${u.withdrawalWallet || 0} RND</strong></td>
+                <td><strong style="color:#60a5fa;">${(u.rndWallet || 0).toFixed(4)}</strong></td>
+                <td><strong style="color:#a78bfa;">${(u.lockedRND || 0).toFixed(2)}</strong></td>
                 <td>${u.totalReferrals || 0}</td>
                 <td style="font-size:0.8rem;color:#8899bb;">${new Date(u.createdAt).toLocaleDateString('hi-IN')}</td>
                 <td>
