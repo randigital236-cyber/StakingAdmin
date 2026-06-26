@@ -163,6 +163,7 @@
             font-weight: 500;
             border-radius: 12px;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
         .nav-tabs-custom .nav-link:hover { color: #fff; background: rgba(46,204,113,0.05); }
         .nav-tabs-custom .nav-link.active { color: #2ecc71; background: rgba(46,204,113,0.1); }
@@ -280,6 +281,13 @@
             display: inline-block;
         }
         
+        .no-data {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .no-data i { font-size: 3rem; color: #556688; margin-bottom: 15px; }
+        .no-data p { color: #8899bb; }
+        
         @media (max-width: 768px) {
             .dashboard-container { padding: 15px; }
             .search-box { max-width: 100%; }
@@ -313,7 +321,7 @@
             </button>
         </form>
         <p class="text-muted small mt-3">
-            <i class="bi bi-info-circle me-1"></i> Password: 123@Admin
+            <i class="bi bi-info-circle me-1"></i> Password: <strong>123@Admin</strong>
         </p>
     </div>
 </div>
@@ -353,7 +361,7 @@
 </script>
 <script type="module">
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, get, update, set, onValue } from "firebase/database";
+import { getDatabase, ref, get, update, set, onValue, push, query, orderByChild, equalTo } from "firebase/database";
 
 // 🔥 FIREBASE CONFIG
 const firebaseConfig = {
@@ -367,20 +375,23 @@ const firebaseConfig = {
     measurementId: "G-ELVJD5NQKB"
 };
 
-// ============================================================
-// 🔥 ADMIN PASSWORD
-// ============================================================
-const ADMIN_PASSWORD = "123@Admin";
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-let currentTab = 'deposits';
+const ADMIN_PASSWORD = "123@Admin";
+
+let currentTab = 'dashboard';
 let allUsers = {};
 let allDeposits = {};
 let allWithdrawals = {};
-let isSettingsListenerAdded = false;
+let allPackages = {};
+let allSettings = {};
+let isDataLoaded = false;
+let listenersAttached = false;
 
+// ============================================================
+// 🔥 TOAST
+// ============================================================
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
@@ -396,7 +407,7 @@ function showToast(message, type = 'success') {
 }
 
 // ============================================================
-// 🔥 COPY ADDRESS FUNCTION
+// 🔥 COPY ADDRESS
 // ============================================================
 window.copyAddress = function(address, label = 'Address') {
     if (!address || address === 'N/A') {
@@ -406,7 +417,6 @@ window.copyAddress = function(address, label = 'Address') {
     navigator.clipboard.writeText(address).then(() => {
         showToast(`✅ ${label} copied to clipboard!`, 'success');
     }).catch(() => {
-        // Fallback
         const textArea = document.createElement('textarea');
         textArea.value = address;
         document.body.appendChild(textArea);
@@ -418,7 +428,7 @@ window.copyAddress = function(address, label = 'Address') {
 };
 
 // ============================================================
-// 🔥 DATABASE CONNECTION CHECK
+// 🔥 DATABASE CONNECTION
 // ============================================================
 function checkDatabaseConnection() {
     const statusEl = document.getElementById('dbStatus');
@@ -500,120 +510,100 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
 });
 
 // ============================================================
-// 🔥 FETCH ALL DATA
+// 🔥 FETCH ALL DATA WITH REAL-TIME LISTENERS
 // ============================================================
-async function fetchAllData() {
-    try {
-        const statusEl = document.getElementById('dbStatus');
-        if (statusEl) {
-            statusEl.className = 'db-status loading';
-            statusEl.innerHTML = '<i class="bi bi-database"></i> Loading...';
-        }
-        
-        const usersSnap = await get(ref(db, 'users'));
-        if (usersSnap.exists()) {
-            allUsers = usersSnap.val();
-            console.log('✅ Users loaded:', Object.keys(allUsers).length);
+function setupRealtimeListeners() {
+    if (listenersAttached) return;
+    listenersAttached = true;
+    
+    // Users listener
+    const usersRef = ref(db, 'users');
+    onValue(usersRef, (snapshot) => {
+        if (snapshot.exists()) {
+            allUsers = snapshot.val();
+            console.log('✅ Users updated:', Object.keys(allUsers).length);
         } else {
             allUsers = {};
-            console.log('⚠️ No users found');
         }
+        if (isDataLoaded) {
+            renderDashboard();
+        }
+    });
 
-        const depositsSnap = await get(ref(db, 'deposits'));
-        if (depositsSnap.exists()) {
-            allDeposits = depositsSnap.val();
-            console.log('✅ Deposits loaded:', Object.keys(allDeposits).length);
+    // Deposits listener
+    const depositsRef = ref(db, 'deposits');
+    onValue(depositsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            allDeposits = snapshot.val();
+            console.log('✅ Deposits updated:', Object.keys(allDeposits).length);
         } else {
             allDeposits = {};
-            console.log('⚠️ No deposits found');
         }
+        if (isDataLoaded) {
+            renderDashboard();
+        }
+    });
 
-        const withdrawalsSnap = await get(ref(db, 'withdrawals'));
-        if (withdrawalsSnap.exists()) {
-            allWithdrawals = withdrawalsSnap.val();
-            console.log('✅ Withdrawals loaded:', Object.keys(allWithdrawals).length);
+    // Withdrawals listener
+    const withdrawalsRef = ref(db, 'withdrawals');
+    onValue(withdrawalsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            allWithdrawals = snapshot.val();
+            console.log('✅ Withdrawals updated:', Object.keys(allWithdrawals).length);
         } else {
             allWithdrawals = {};
-            console.log('⚠️ No withdrawals found');
         }
+        if (isDataLoaded) {
+            renderDashboard();
+        }
+    });
 
-        if (statusEl) {
-            statusEl.className = 'db-status connected';
-            statusEl.innerHTML = '<i class="bi bi-database"></i> Connected';
+    // Settings listener
+    const settingsRef = ref(db, 'settings');
+    onValue(settingsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            allSettings = snapshot.val();
+            console.log('✅ Settings updated:', allSettings);
+        } else {
+            allSettings = {};
         }
-        
-        return true;
-    } catch (error) {
-        console.error('❌ Error fetching data:', error);
-        const statusEl = document.getElementById('dbStatus');
-        if (statusEl) {
-            statusEl.className = 'db-status error';
-            statusEl.innerHTML = '<i class="bi bi-database"></i> Error';
+        if (isDataLoaded) {
+            // Update rate display if on settings tab
+            const rateInput = document.getElementById('rndRate');
+            const rateDisplay = document.getElementById('currentRateDisplay');
+            if (rateInput && allSettings.rate) {
+                rateInput.value = allSettings.rate;
+                if (rateDisplay) rateDisplay.textContent = allSettings.rate;
+            }
+            renderDashboard();
         }
-        showToast('❌ Database Error: ' + error.message, 'error');
-        return false;
-    }
+    });
 }
 
-// ============================================================
-// 🔥 LOAD ADMIN PANEL
-// ============================================================
 async function loadAdminPanel() {
     try {
-        const success = await fetchAllData();
+        setupRealtimeListeners();
         
-        if (!success) {
-            document.getElementById('adminContent').innerHTML = `
-                <div class="text-center py-5">
-                    <i class="bi bi-exclamation-triangle text-danger fs-1 d-block mb-3"></i>
-                    <h4>Database Connection Error</h4>
-                    <p class="text-muted">Please check Firebase Realtime Database Rules.</p>
-                    <div class="card-glass mt-3 text-start" style="max-width:600px;margin:0 auto;">
-                        <h6 class="text-warning">🔧 How to Fix:</h6>
-                        <ol class="text-muted" style="font-size:0.9rem;line-height:2;">
-                            <li>Go to <strong>Firebase Console → Realtime Database → Rules</strong></li>
-                            <li>Set rules to: <br>
-                                <code style="background:#0b1120;display:block;padding:10px;border-radius:8px;font-size:0.75rem;color:#2ecc71;">
-                                { "rules": { ".read": true, ".write": true } }
-                                </code>
-                            </li>
-                            <li>Click <strong>Publish</strong> button</li>
-                            <li>Refresh this page</li>
-                        </ol>
-                    </div>
-                    <button class="btn btn-primary-custom mt-3" onclick="location.reload()">
-                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh
-                    </button>
-                </div>
-            `;
-            return;
-        }
+        // Wait for initial data to load
+        await new Promise((resolve) => {
+            const checkData = () => {
+                if (Object.keys(allUsers).length > 0 || Object.keys(allDeposits).length > 0) {
+                    isDataLoaded = true;
+                    resolve();
+                } else {
+                    setTimeout(checkData, 500);
+                }
+            };
+            // If no data after 3 seconds, still load
+            setTimeout(() => {
+                isDataLoaded = true;
+                resolve();
+            }, 3000);
+            checkData();
+        });
         
-        try {
-            const rateSnap = await get(ref(db, 'settings/rate'));
-            const rndRateInput = document.getElementById('rndRate');
-            const rateDisplay = document.getElementById('currentRateDisplay');
-            if (rateSnap.exists() && rndRateInput) {
-                rndRateInput.value = rateSnap.val();
-                if (rateDisplay) rateDisplay.textContent = rateSnap.val();
-            }
-        } catch (e) {
-            console.log('Rate not found, using default');
-        }
-
         renderDashboard();
-
-        setTimeout(() => {
-            const settingsForm = document.getElementById('settingsForm');
-            if (settingsForm) {
-                settingsForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    await saveSettings();
-                });
-                console.log('✅ Settings form listener added');
-            }
-        }, 500);
-
+        
     } catch (error) {
         console.error('Error loading admin:', error);
         document.getElementById('adminContent').innerHTML = `
@@ -637,11 +627,15 @@ function renderDashboard() {
     
     let pendingDeposits = 0;
     let totalDepositAmount = 0;
+    let approvedDeposits = 0;
     
     for (let key in allDeposits) {
         const d = allDeposits[key];
         if (d.status === 'pending') pendingDeposits++;
-        if (d.status === 'approved') totalDepositAmount += (d.amount || 0);
+        if (d.status === 'approved' || d.status === 'success' || !d.status) {
+            approvedDeposits++;
+            totalDepositAmount += (d.amount || 0);
+        }
     }
     
     let pendingWithdrawals = 0;
@@ -649,6 +643,8 @@ function renderDashboard() {
         const w = allWithdrawals[key];
         if (w.status === 'pending') pendingWithdrawals++;
     }
+
+    const currentRate = allSettings.rate || 1.00;
 
     document.getElementById('adminContent').innerHTML = `
         <div class="row g-4">
@@ -660,27 +656,28 @@ function renderDashboard() {
                 <hr class="border-secondary">
             </div>
 
+            <!-- Stats -->
             <div class="col-12">
                 <div class="row g-3">
-                    <div class="col-md-3 col-6">
+                    <div class="col-md-2 col-4">
                         <div class="stat-card">
                             <div class="stat-icon green"><i class="bi bi-people"></i></div>
                             <div class="stat-number">${totalUsers}</div>
                             <div class="stat-label">Total Users</div>
                         </div>
                     </div>
-                    <div class="col-md-3 col-6">
+                    <div class="col-md-2 col-4">
                         <div class="stat-card">
                             <div class="stat-icon blue"><i class="bi bi-arrow-down-circle"></i></div>
                             <div class="stat-number">${totalDeposits}</div>
-                            <div class="stat-label">Total Deposits</div>
+                            <div class="stat-label">Deposits</div>
                         </div>
                     </div>
-                    <div class="col-md-3 col-6">
+                    <div class="col-md-2 col-4">
                         <div class="stat-card">
                             <div class="stat-icon orange"><i class="bi bi-arrow-up-circle"></i></div>
                             <div class="stat-number">${totalWithdrawals}</div>
-                            <div class="stat-label">Total Withdrawals</div>
+                            <div class="stat-label">Withdrawals</div>
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
@@ -690,11 +687,24 @@ function renderDashboard() {
                             <div class="stat-label">Total Deposited</div>
                         </div>
                     </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;"><i class="bi bi-currency-dollar"></i></div>
+                            <div class="stat-number" style="color:#fbbf24;">$${currentRate}</div>
+                            <div class="stat-label">RND Rate</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
+            <!-- Tabs -->
             <div class="col-12">
                 <ul class="nav nav-tabs-custom" style="border-bottom:1px solid rgba(46,204,113,0.1);margin-bottom:20px;flex-wrap:wrap;">
+                    <li class="nav-item">
+                        <a class="nav-link ${currentTab === 'dashboard' ? 'active' : ''}" onclick="switchTab('dashboard')">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link ${currentTab === 'deposits' ? 'active' : ''}" onclick="switchTab('deposits')">
                             <i class="bi bi-arrow-down-circle"></i> Deposits 
@@ -720,7 +730,9 @@ function renderDashboard() {
                 </ul>
             </div>
 
+            <!-- Tab Content -->
             <div class="col-12">
+                ${currentTab === 'dashboard' ? renderDashboardTab() : ''}
                 ${currentTab === 'deposits' ? renderDepositsTab() : ''}
                 ${currentTab === 'withdrawals' ? renderWithdrawalsTab() : ''}
                 ${currentTab === 'users' ? renderUsersTab() : ''}
@@ -729,17 +741,106 @@ function renderDashboard() {
         </div>
     `;
     
+    // Attach settings form listener after render
     setTimeout(() => {
         const settingsForm = document.getElementById('settingsForm');
-        if (settingsForm && !isSettingsListenerAdded) {
+        if (settingsForm) {
             settingsForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 await saveSettings();
             });
-            isSettingsListenerAdded = true;
-            console.log('✅ Settings form listener attached after render');
         }
     }, 300);
+}
+
+// ============================================================
+// 🔥 RENDER DASHBOARD TAB
+// ============================================================
+function renderDashboardTab() {
+    let recentActivity = [];
+    
+    // Get recent deposits
+    for (let key in allDeposits) {
+        const d = allDeposits[key];
+        const user = allUsers[d.uid] || { name: 'Unknown' };
+        recentActivity.push({
+            type: 'deposit',
+            user: user.name || 'Unknown',
+            amount: d.amount || 0,
+            status: d.status || 'pending',
+            timestamp: d.timestamp || 0,
+            id: key
+        });
+    }
+    
+    // Get recent withdrawals
+    for (let key in allWithdrawals) {
+        const w = allWithdrawals[key];
+        const user = allUsers[w.uid] || { name: 'Unknown' };
+        recentActivity.push({
+            type: 'withdrawal',
+            user: user.name || 'Unknown',
+            amount: w.amount || 0,
+            status: w.status || 'pending',
+            timestamp: w.timestamp || 0,
+            id: key
+        });
+    }
+    
+    // Sort by timestamp
+    recentActivity.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    recentActivity = recentActivity.slice(0, 10);
+
+    return `
+        <div class="row g-4">
+            <div class="col-12">
+                <div class="card-glass">
+                    <div class="card-title"><i class="bi bi-clock-history text-success me-2"></i>Recent Activity</div>
+                    ${recentActivity.length === 0 ? `
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            <p>No recent activity</p>
+                        </div>
+                    ` : `
+                        <div class="table-responsive">
+                            <table class="table table-custom">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>User</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${recentActivity.map(item => `
+                                        <tr>
+                                            <td>
+                                                ${item.type === 'deposit' ? '<i class="bi bi-arrow-down-circle text-success"></i> Deposit' : '<i class="bi bi-arrow-up-circle text-warning"></i> Withdrawal'}
+                                            </td>
+                                            <td><strong>${item.user}</strong></td>
+                                            <td>
+                                                <strong style="color:${item.type === 'deposit' ? '#2ecc71' : '#fbbf24'}">
+                                                    ${item.type === 'deposit' ? '+' : '-'}$${item.amount.toFixed(2)}
+                                                </strong>
+                                            </td>
+                                            <td>
+                                                <span class="${item.status === 'pending' ? 'badge-pending' : item.status === 'approved' || item.status === 'success' ? 'badge-approved' : 'badge-rejected'}">
+                                                    ${item.status === 'pending' ? '⏳ Pending' : item.status === 'approved' || item.status === 'success' ? '✅ Done' : '❌ Rejected'}
+                                                </span>
+                                            </td>
+                                            <td style="font-size:0.8rem;color:#8899bb;">${new Date(item.timestamp).toLocaleString('hi-IN')}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 // ============================================================
@@ -749,9 +850,11 @@ function renderDepositsTab() {
     const depositList = Object.keys(allDeposits || {});
     if (depositList.length === 0) {
         return `
-            <div class="card-glass text-center py-4">
-                <i class="bi bi-inbox fs-1 d-block mb-2" style="color:#556688;"></i>
-                <p class="text-muted">No deposits found.</p>
+            <div class="card-glass">
+                <div class="no-data">
+                    <i class="bi bi-inbox"></i>
+                    <p>No deposits found.</p>
+                </div>
             </div>
         `;
     }
@@ -759,7 +862,7 @@ function renderDepositsTab() {
     let html = `
         <div class="card-glass">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-down-circle text-success me-2"></i>All Deposits</div>
+                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-down-circle text-success me-2"></i>All Deposits (${depositList.length})</div>
                 <input type="text" class="search-box" placeholder="Search by user..." oninput="filterDeposits(this.value)">
             </div>
             <div class="table-responsive">
@@ -784,8 +887,8 @@ function renderDepositsTab() {
         const d = allDeposits[key];
         count++;
         const user = allUsers[d.uid] || { name: 'Unknown', username: 'N/A' };
-        const statusClass = d.status === 'pending' ? 'badge-pending' : d.status === 'approved' ? 'badge-approved' : 'badge-rejected';
-        const statusText = d.status === 'pending' ? '⏳ Pending' : d.status === 'approved' ? '✅ Approved' : '❌ Rejected';
+        const statusClass = d.status === 'pending' ? 'badge-pending' : d.status === 'approved' || d.status === 'success' ? 'badge-approved' : 'badge-rejected';
+        const statusText = d.status === 'pending' ? '⏳ Pending' : d.status === 'approved' || d.status === 'success' ? '✅ Approved' : '❌ Rejected';
         
         html += `
             <tr data-user="${(user.username || user.name || '').toLowerCase()}">
@@ -796,7 +899,7 @@ function renderDepositsTab() {
                 </td>
                 <td><strong style="color:#2ecc71;">$${d.amount || 0}</strong></td>
                 <td style="font-family:monospace;font-size:0.7rem;color:#556688;">
-                    ${d.txHash ? d.txHash.substring(0,15)+'...' : 'N/A'}
+                    ${d.txHash ? d.txHash.substring(0, 15)+'...' : 'N/A'}
                     ${d.txHash ? `<button class="btn-copy ms-1" onclick="copyAddress('${d.txHash}','Tx Hash')"><i class="bi bi-clipboard"></i></button>` : ''}
                 </td>
                 <td style="font-size:0.8rem;color:#8899bb;">${new Date(d.timestamp).toLocaleString('hi-IN')}</td>
@@ -805,7 +908,7 @@ function renderDepositsTab() {
                     ${d.status === 'pending' ? `
                         <button class="btn btn-success-custom btn-sm me-1" onclick="approveDeposit('${key}')"><i class="bi bi-check-lg"></i></button>
                         <button class="btn btn-danger-custom btn-sm" onclick="rejectDeposit('${key}')"><i class="bi bi-x-lg"></i></button>
-                    ` : d.status === 'approved' ? `
+                    ` : d.status === 'approved' || d.status === 'success' ? `
                         <button class="btn btn-warning-custom btn-sm" onclick="reverseDeposit('${key}')"><i class="bi bi-arrow-counterclockwise"></i></button>
                     ` : `
                         <button class="btn btn-warning-custom btn-sm" onclick="reverseDeposit('${key}')"><i class="bi bi-arrow-counterclockwise"></i></button>
@@ -826,9 +929,11 @@ function renderWithdrawalsTab() {
     const withdrawalList = Object.keys(allWithdrawals || {});
     if (withdrawalList.length === 0) {
         return `
-            <div class="card-glass text-center py-4">
-                <i class="bi bi-inbox fs-1 d-block mb-2" style="color:#556688;"></i>
-                <p class="text-muted">No withdrawals found.</p>
+            <div class="card-glass">
+                <div class="no-data">
+                    <i class="bi bi-inbox"></i>
+                    <p>No withdrawals found.</p>
+                </div>
             </div>
         `;
     }
@@ -836,7 +941,7 @@ function renderWithdrawalsTab() {
     let html = `
         <div class="card-glass">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-up-circle text-success me-2"></i>All Withdrawals</div>
+                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-up-circle text-success me-2"></i>All Withdrawals (${withdrawalList.length})</div>
                 <input type="text" class="search-box" placeholder="Search by user..." oninput="filterWithdrawals(this.value)">
             </div>
             <div class="table-responsive">
@@ -846,7 +951,7 @@ function renderWithdrawalsTab() {
                             <th>#</th>
                             <th>User</th>
                             <th>Amount</th>
-                            <th>Wallet Address</th>
+                            <th>Wallet</th>
                             <th>Date</th>
                             <th>Status</th>
                             <th>Action</th>
@@ -864,7 +969,6 @@ function renderWithdrawalsTab() {
         const statusClass = w.status === 'pending' ? 'badge-pending' : w.status === 'approved' ? 'badge-approved' : 'badge-rejected';
         const statusText = w.status === 'pending' ? '⏳ Pending' : w.status === 'approved' ? '✅ Approved' : '❌ Rejected';
         const currency = w.currency || 'USDT';
-        const walletTypeLabel = w.walletType === 'referralWallet' ? '💳 Referral' : w.walletType === 'rndWallet' ? '📊 RND' : '';
         
         html += `
             <tr data-user="${(user.username || user.name || '').toLowerCase()}">
@@ -872,12 +976,11 @@ function renderWithdrawalsTab() {
                 <td>
                     <strong>${user.name || 'Unknown'}</strong><br>
                     <small style="color:#556688;">${user.username || 'N/A'}</small>
-                    ${walletTypeLabel ? `<br><small style="color:#8899bb;font-size:0.6rem;">${walletTypeLabel}</small>` : ''}
                 </td>
                 <td><strong style="color:#fbbf24;">${w.amount || 0} ${currency}</strong></td>
                 <td>
                     <span class="wallet-address-cell">${w.wallet || 'N/A'}</span>
-                    ${w.wallet ? `<button class="btn-copy ms-1" onclick="copyAddress('${w.wallet}','Wallet Address')"><i class="bi bi-clipboard"></i></button>` : ''}
+                    ${w.wallet ? `<button class="btn-copy ms-1" onclick="copyAddress('${w.wallet}','Wallet')"><i class="bi bi-clipboard"></i></button>` : ''}
                 </td>
                 <td style="font-size:0.8rem;color:#8899bb;">${new Date(w.timestamp).toLocaleString('hi-IN')}</td>
                 <td><span class="${statusClass}">${statusText}</span></td>
@@ -906,9 +1009,11 @@ function renderUsersTab() {
     const userList = Object.keys(allUsers || {});
     if (userList.length === 0) {
         return `
-            <div class="card-glass text-center py-4">
-                <i class="bi bi-inbox fs-1 d-block mb-2" style="color:#556688;"></i>
-                <p class="text-muted">No users found.</p>
+            <div class="card-glass">
+                <div class="no-data">
+                    <i class="bi bi-inbox"></i>
+                    <p>No users found.</p>
+                </div>
             </div>
         `;
     }
@@ -926,11 +1031,11 @@ function renderUsersTab() {
                             <th>#</th>
                             <th>User</th>
                             <th>Email</th>
-                            <th>Referral Code</th>
-                            <th>Deposit Wallet</th>
-                            <th>RND Wallet</th>
-                            <th>Locked RND</th>
-                            <th>Referrals</th>
+                            <th>Referral</th>
+                            <th>Deposit</th>
+                            <th>RND</th>
+                            <th>Locked</th>
+                            <th>Refs</th>
                             <th>Joined</th>
                             <th>Action</th>
                         </tr>
@@ -950,8 +1055,6 @@ function renderUsersTab() {
                 <td>
                     <strong>${u.name || 'Unknown'}</strong><br>
                     <small style="color:#556688;">${u.username || 'N/A'}</small>
-                    <br><small style="color:#60a5fa;font-size:0.6rem;">ID: ${key.substring(0,12)}...</small>
-                    <button class="btn-copy ms-1" onclick="copyAddress('${key}','User ID')"><i class="bi bi-clipboard"></i></button>
                 </td>
                 <td style="font-size:0.85rem;">${u.email || 'N/A'}</td>
                 <td style="font-family:monospace;font-size:0.8rem;color:#2ecc71;">
@@ -962,12 +1065,12 @@ function renderUsersTab() {
                 <td><strong style="color:#60a5fa;">${(u.rndWallet || 0).toFixed(4)}</strong></td>
                 <td><strong style="color:#a78bfa;">${(u.lockedRND || 0).toFixed(2)}</strong></td>
                 <td>${u.totalReferrals || 0}</td>
-                <td style="font-size:0.8rem;color:#8899bb;">${new Date(u.createdAt).toLocaleDateString('hi-IN')}</td>
+                <td style="font-size:0.8rem;color:#8899bb;">${u.createdAt ? new Date(u.createdAt).toLocaleDateString('hi-IN') : 'N/A'}</td>
                 <td>
                     ${u.banned ? `
-                        <button class="btn btn-success-custom btn-sm" onclick="unbanUser('${key}')"><i class="bi bi-person-check"></i> Unban</button>
+                        <button class="btn btn-success-custom btn-sm" onclick="unbanUser('${key}')"><i class="bi bi-person-check"></i></button>
                     ` : `
-                        <button class="btn btn-danger-custom btn-sm" onclick="banUser('${key}')"><i class="bi bi-person-slash"></i> Ban</button>
+                        <button class="btn btn-danger-custom btn-sm" onclick="banUser('${key}')"><i class="bi bi-person-slash"></i></button>
                     `}
                 </td>
             </tr>
@@ -982,6 +1085,8 @@ function renderUsersTab() {
 // 🔥 RENDER SETTINGS TAB
 // ============================================================
 function renderSettingsTab() {
+    const currentRate = allSettings.rate || 1.00;
+    
     return `
         <div class="card-glass">
             <div class="card-title"><i class="bi bi-gear text-success me-2"></i>Admin Settings</div>
@@ -990,8 +1095,8 @@ function renderSettingsTab() {
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label">RND Token Rate (USD)</label>
-                        <input type="number" id="rndRate" class="form-control form-control-custom" step="0.0001" value="0.50" required>
-                        <small class="text-muted">Current rate: 1 RND = $<span id="currentRateDisplay">0.50</span></small>
+                        <input type="number" id="rndRate" class="form-control form-control-custom" step="0.0001" value="${currentRate}" required>
+                        <small class="text-muted">Current rate: 1 RND = $<span id="currentRateDisplay">${currentRate}</span></small>
                     </div>
                     <div class="col-md-6 d-flex align-items-end">
                         <button type="submit" class="btn-primary-custom" id="saveSettingsBtn">
@@ -1009,11 +1114,13 @@ function renderSettingsTab() {
                     <div class="info-row"><span class="label">Total Users</span><span class="value">${Object.keys(allUsers || {}).length}</span></div>
                     <div class="info-row"><span class="label">Total Deposits</span><span class="value">${Object.keys(allDeposits || {}).length}</span></div>
                     <div class="info-row"><span class="label">Total Withdrawals</span><span class="value">${Object.keys(allWithdrawals || {}).length}</span></div>
+                    <div class="info-row"><span class="label">Total Deposited</span><span class="value">$${Object.values(allDeposits || {}).reduce((sum, d) => sum + (d.status === 'approved' || d.status === 'success' ? (d.amount || 0) : 0), 0).toFixed(2)}</span></div>
                 </div>
                 <div class="col-md-6">
                     <h6 class="text-muted">🔐 Security</h6>
-                    <div class="info-row"><span class="label">Admin Logged In</span><span class="value"><i class="bi bi-check-circle text-success"></i> Active</span></div>
+                    <div class="info-row"><span class="label">Admin Status</span><span class="value"><i class="bi bi-check-circle text-success"></i> Active</span></div>
                     <div class="info-row"><span class="label">Session Time</span><span class="value">${new Date().toLocaleString('hi-IN')}</span></div>
+                    <div class="info-row"><span class="label">Database</span><span class="value"><i class="bi bi-check-circle text-success"></i> Connected</span></div>
                 </div>
             </div>
         </div>
@@ -1080,8 +1187,6 @@ window.approveDeposit = async function(depositId) {
         await update(ref(db, 'deposits/' + depositId), { status: 'approved' });
         
         showToast('✅ Deposit approved! Added $' + deposit.amount + ' to user\'s wallet.', 'success');
-        await fetchAllData();
-        renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
     }
@@ -1092,8 +1197,6 @@ window.rejectDeposit = async function(depositId) {
     try {
         await update(ref(db, 'deposits/' + depositId), { status: 'rejected' });
         showToast('❌ Deposit rejected.', 'success');
-        await fetchAllData();
-        renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
     }
@@ -1118,8 +1221,6 @@ window.reverseDeposit = async function(depositId) {
         await update(ref(db, 'deposits/' + depositId), { status: 'pending' });
         
         showToast('🔄 Deposit reversed. Amount removed from user\'s wallet.', 'success');
-        await fetchAllData();
-        renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
     }
@@ -1148,8 +1249,6 @@ window.approveWithdrawal = async function(withdrawalId) {
         await update(ref(db, 'withdrawals/' + withdrawalId), { status: 'approved' });
         
         showToast('✅ Withdrawal approved! Deducted ' + withdrawal.amount + ' from user\'s wallet.', 'success');
-        await fetchAllData();
-        renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
     }
@@ -1160,8 +1259,6 @@ window.rejectWithdrawal = async function(withdrawalId) {
     try {
         await update(ref(db, 'withdrawals/' + withdrawalId), { status: 'rejected' });
         showToast('❌ Withdrawal rejected.', 'success');
-        await fetchAllData();
-        renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
     }
@@ -1187,8 +1284,6 @@ window.reverseWithdrawal = async function(withdrawalId) {
         await update(ref(db, 'withdrawals/' + withdrawalId), { status: 'pending' });
         
         showToast('🔄 Withdrawal reversed. Amount added back to user\'s wallet.', 'success');
-        await fetchAllData();
-        renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
     }
@@ -1202,8 +1297,6 @@ window.banUser = async function(userId) {
     try {
         await update(ref(db, 'users/' + userId), { banned: true });
         showToast('🚫 User banned successfully!', 'success');
-        await fetchAllData();
-        renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
     }
@@ -1214,8 +1307,6 @@ window.unbanUser = async function(userId) {
     try {
         await update(ref(db, 'users/' + userId), { banned: false });
         showToast('✅ User unbanned successfully!', 'success');
-        await fetchAllData();
-        renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
     }
