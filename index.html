@@ -115,7 +115,6 @@
         .badge-rejected { background: rgba(239,68,68,0.15); color: #f87171; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         .badge-active { background: rgba(46,204,113,0.15); color: #2ecc71; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         .badge-completed { background: rgba(59,130,246,0.15); color: #60a5fa; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
-        .badge-success { background: rgba(46,204,113,0.15); color: #2ecc71; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         
         .search-box {
             background: rgba(8,14,26,0.6);
@@ -261,17 +260,6 @@
         .no-data i { font-size: 3rem; color: #556688; margin-bottom: 15px; }
         .no-data p { color: #8899bb; }
         
-        .refresh-btn {
-            background: rgba(46,204,113,0.1);
-            border: 1px solid rgba(46,204,113,0.2);
-            color: #2ecc71;
-            padding: 8px 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .refresh-btn:hover { background: rgba(46,204,113,0.2); }
-        
         @media (max-width: 768px) {
             .dashboard-container { padding: 15px; }
             .search-box { max-width: 100%; }
@@ -293,20 +281,25 @@
             <i class="bi bi-currency-bitcoin me-2"></i>RND<span>Staking</span>
             <span class="admin-badge"><i class="bi bi-shield-lock"></i> Admin</span>
         </div>
-        <p class="text-muted small mb-4">Enter admin password to access panel</p>
+        <p class="text-muted small mb-4">Enter admin credentials to access panel</p>
         
-        <form id="passwordForm">
+        <form id="loginForm">
+            <div class="mb-3">
+                <input type="email" id="adminEmail" class="form-control form-control-custom" 
+                       placeholder="Admin Email" value="admin@rndstaking.com" required>
+            </div>
             <div class="mb-3">
                 <input type="password" id="adminPasswordInput" class="form-control form-control-custom" 
-                       placeholder="Enter admin password" autofocus>
+                       placeholder="Enter password" autofocus required>
             </div>
-            <button type="submit" class="btn-primary-custom" id="passwordSubmitBtn">
-                <i class="bi bi-shield-lock me-2"></i>Access Panel
+            <button type="submit" class="btn-primary-custom" id="loginBtn">
+                <i class="bi bi-shield-lock me-2"></i>Login
             </button>
         </form>
         <p class="text-muted small mt-3">
-            <i class="bi bi-info-circle me-1"></i> Password: <strong>123@Admin</strong>
+            <i class="bi bi-info-circle me-1"></i> Use admin credentials to login
         </p>
+        <div id="loginError" class="text-danger small mt-2" style="display:none;"></div>
     </div>
 </div>
 
@@ -319,7 +312,7 @@
         </a>
         <div class="d-flex align-items-center gap-3">
             <span id="dbStatus" class="db-status loading"><i class="bi bi-database"></i> Connecting...</span>
-            <button class="refresh-btn" onclick="refreshData()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+            <span id="userEmail" class="text-muted small"></span>
             <button class="btn btn-danger-custom btn-sm" id="logoutBtn">
                 <i class="bi bi-box-arrow-right"></i> Logout
             </button>
@@ -347,8 +340,21 @@
 </script>
 <script type="module">
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getDatabase, ref, get, update, set, onValue, remove } from "firebase/database";
+import { 
+    getAuth, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged 
+} from "firebase/auth";
+import { 
+    getDatabase, 
+    ref, 
+    get, 
+    update, 
+    set, 
+    onValue, 
+    remove 
+} from "firebase/database";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
@@ -365,7 +371,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 
-const ADMIN_PASSWORD = "123@Admin";
+// Admin credentials
+const ADMIN_EMAIL = "admin@rndstaking.com";
+const ADMIN_PASSWORD = "Admin@123";
 
 let currentTab = 'dashboard';
 let allUsers = {};
@@ -414,57 +422,88 @@ window.copyAddress = function(address, label = 'Address') {
 };
 
 // ============================================================
-// 🔥 PASSWORD
+// 🔥 AUTHENTICATION
 // ============================================================
-function checkPassword() {
-    const saved = sessionStorage.getItem('admin_authenticated');
-    if (saved === 'true') {
-        document.getElementById('passwordScreen').style.display = 'none';
-        document.getElementById('mainNav').style.display = 'flex';
-        document.getElementById('adminContent').style.display = 'block';
-        loadAdminPanel();
-    }
-}
-
-document.getElementById('passwordForm').addEventListener('submit', function(e) {
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const input = document.getElementById('adminPasswordInput');
+    const email = document.getElementById('adminEmail').value;
+    const password = document.getElementById('adminPasswordInput').value;
+    const btn = document.getElementById('loginBtn');
+    const errorDiv = document.getElementById('loginError');
     
-    if (input.value === ADMIN_PASSWORD) {
-        sessionStorage.setItem('admin_authenticated', 'true');
-        document.getElementById('passwordScreen').style.display = 'none';
-        document.getElementById('mainNav').style.display = 'flex';
-        document.getElementById('adminContent').style.display = 'block';
-        showToast('✅ Access Granted! Welcome Admin.', 'success');
-        loadAdminPanel();
-    } else {
-        input.classList.add('error-shake');
-        setTimeout(() => input.classList.remove('error-shake'), 500);
-        input.value = '';
-        input.focus();
-        showToast('❌ Incorrect Password! Please try again.', 'error');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
+    errorDiv.style.display = 'none';
+    
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        // Auth state change will handle the rest
+    } catch (error) {
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = '❌ ' + error.message;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-shield-lock me-2"></i>Login';
+        showToast('❌ Login failed: ' + error.message, 'error');
     }
 });
 
-document.getElementById('logoutBtn').addEventListener('click', function() {
-    sessionStorage.removeItem('admin_authenticated');
-    document.getElementById('passwordScreen').style.display = 'flex';
-    document.getElementById('mainNav').style.display = 'none';
-    document.getElementById('adminContent').style.display = 'none';
-    document.getElementById('adminPasswordInput').value = '';
-    document.getElementById('adminPasswordInput').focus();
-    showToast('🔒 Logged out successfully.', 'success');
+document.getElementById('logoutBtn').addEventListener('click', async function() {
+    try {
+        await signOut(auth);
+        // Auth state change will handle logout
+    } catch (error) {
+        showToast('❌ Logout error: ' + error.message, 'error');
+    }
 });
 
 // ============================================================
-// 🔥 REFRESH DATA
+// 🔥 AUTH STATE CHANGE
 // ============================================================
-window.refreshData = function() {
-    showToast('🔄 Refreshing data...', 'info');
-    extractTransactionsFromUsers();
-    renderDashboard();
-    showToast('✅ Data refreshed!', 'success');
-};
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // User is logged in
+        console.log('✅ Admin logged in:', user.email);
+        console.log('✅ User UID:', user.uid);
+        
+        // Check if user is admin (check email or custom claim)
+        // For now, we'll check if email matches admin email
+        if (user.email === ADMIN_EMAIL) {
+            document.getElementById('passwordScreen').style.display = 'none';
+            document.getElementById('mainNav').style.display = 'flex';
+            document.getElementById('adminContent').style.display = 'block';
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('dbStatus').className = 'db-status loading';
+            document.getElementById('dbStatus').innerHTML = '<i class="bi bi-database"></i> Authenticated';
+            showToast('✅ Welcome Admin!', 'success');
+            loadAdminPanel();
+        } else {
+            showToast('❌ You are not authorized as admin.', 'error');
+            signOut(auth);
+        }
+    } else {
+        // User is logged out
+        console.log('❌ Admin logged out');
+        document.getElementById('passwordScreen').style.display = 'flex';
+        document.getElementById('mainNav').style.display = 'none';
+        document.getElementById('adminContent').style.display = 'none';
+        document.getElementById('adminPasswordInput').value = '';
+        document.getElementById('adminPasswordInput').focus();
+        document.getElementById('loginBtn').disabled = false;
+        document.getElementById('loginBtn').innerHTML = '<i class="bi bi-shield-lock me-2"></i>Login';
+        
+        // Clean up listeners
+        for (let key in dataListeners) {
+            if (dataListeners[key]) {
+                dataListeners[key]();
+            }
+        }
+        dataListeners = {};
+        allUsers = {};
+        allTransactions = [];
+        allPackages = [];
+        isDataLoaded = false;
+    }
+});
 
 // ============================================================
 // 🔥 FETCH ALL DATA - READS FROM USER TRANSACTIONS
@@ -477,14 +516,12 @@ function setupRealtimeListeners() {
     }
     dataListeners = {};
     
-    // Users listener - THIS IS THE MAIN DATA SOURCE
+    // Users listener
     const usersRef = ref(db, 'users');
     dataListeners.users = onValue(usersRef, (snapshot) => {
         if (snapshot.exists()) {
             allUsers = snapshot.val();
             console.log('✅ Users loaded:', Object.keys(allUsers).length);
-            console.log('👤 Users data:', allUsers);
-            // Extract transactions and packages from users
             extractTransactionsFromUsers();
         } else {
             allUsers = {};
@@ -496,6 +533,8 @@ function setupRealtimeListeners() {
     }, (error) => {
         console.error('Users listener error:', error);
         showToast('⚠️ Error loading users: ' + error.message, 'error');
+        document.getElementById('dbStatus').className = 'db-status error';
+        document.getElementById('dbStatus').innerHTML = '<i class="bi bi-database"></i> Error: ' + error.message;
     });
 
     // Settings listener
@@ -517,6 +556,10 @@ function setupRealtimeListeners() {
             renderDashboard();
         }
     });
+    
+    // Update connection status
+    document.getElementById('dbStatus').className = 'db-status connected';
+    document.getElementById('dbStatus').innerHTML = '<i class="bi bi-database"></i> Connected';
 }
 
 // ============================================================
@@ -572,8 +615,8 @@ async function loadAdminPanel() {
             let attempts = 0;
             const checkData = () => {
                 attempts++;
-                const hasData = Object.keys(allUsers).length > 0;
-                if (hasData || attempts > 15) {
+                const hasData = Object.keys(allUsers).length > 0 || attempts > 10;
+                if (hasData) {
                     isDataLoaded = true;
                     resolve();
                 } else {
@@ -633,17 +676,16 @@ function renderDashboard() {
     
     let totalDepositAmount = 0;
     let pendingWithdrawals = 0;
-    let approvedWithdrawals = 0;
-    let rejectedWithdrawals = 0;
     
     for (let w of withdrawals) {
-        totalDepositAmount += (w.amount || 0);
         if (w.status === 'pending') pendingWithdrawals++;
-        if (w.status === 'approved') approvedWithdrawals++;
-        if (w.status === 'rejected') rejectedWithdrawals++;
     }
     
-    // Also add package amounts to total
+    // Add deposit amounts
+    for (let d of deposits) {
+        totalDepositAmount += (d.amount || 0);
+    }
+    // Add package amounts
     for (let pkg of allPackages) {
         totalDepositAmount += (pkg.usdtAmount || 0);
     }
@@ -1067,7 +1109,7 @@ function renderDepositsTab() {
 }
 
 // ============================================================
-// 🔥 RENDER WITHDRAWALS TAB - ALL WITHDRAWALS SHOW HERE
+// 🔥 RENDER WITHDRAWALS TAB
 // ============================================================
 function renderWithdrawalsTab() {
     const withdrawals = allTransactions.filter(t => t.type === 'withdrawal');
@@ -1331,16 +1373,14 @@ window.filterPackages = function(value) {
 };
 
 // ============================================================
-// 🔥 WITHDRAWAL ACTIONS - MANUAL APPROVAL
+// 🔥 WITHDRAWAL ACTIONS
 // ============================================================
 window.approveWithdrawal = async function(txId) {
     if (!confirm('✅ Approve this withdrawal?')) return;
     try {
-        // Find the transaction
         const tx = allTransactions.find(t => t.id === txId);
         if (!tx) { showToast('❌ Withdrawal not found!', 'error'); return; }
         
-        // Update in user's transactions
         const userRef = ref(db, 'users/' + tx.uid);
         const userSnap = await get(userRef);
         if (!userSnap.exists()) { showToast('❌ User not found!', 'error'); return; }
@@ -1348,7 +1388,6 @@ window.approveWithdrawal = async function(txId) {
         const userData = userSnap.val();
         const transactions = userData.transactions || {};
         
-        // Find and update the specific transaction
         for (let key in transactions) {
             if (transactions[key].type === 'withdrawal' && 
                 transactions[key].amount === tx.amount && 
@@ -1359,9 +1398,7 @@ window.approveWithdrawal = async function(txId) {
         }
         
         await update(ref(db, 'users/' + tx.uid), { transactions: transactions });
-        
         showToast('✅ Withdrawal approved!', 'success');
-        // Refresh data
         extractTransactionsFromUsers();
         renderDashboard();
     } catch (error) {
@@ -1392,7 +1429,6 @@ window.rejectWithdrawal = async function(txId) {
         }
         
         await update(ref(db, 'users/' + tx.uid), { transactions: transactions });
-        
         showToast('❌ Withdrawal rejected.', 'success');
         extractTransactionsFromUsers();
         renderDashboard();
@@ -1428,7 +1464,6 @@ window.reverseWithdrawal = async function(txId) {
             }
         }
         await update(ref(db, 'users/' + tx.uid), { transactions: transactions });
-        
         showToast('🔄 Withdrawal reversed.', 'success');
         extractTransactionsFromUsers();
         renderDashboard();
@@ -1477,7 +1512,17 @@ async function saveSettings() {
 // ============================================================
 // 🔥 INIT
 // ============================================================
-checkPassword();
+// Check if already logged in
+onAuthStateChanged(auth, (user) => {
+    // This is handled above
+});
+
+// Also check for saved admin state
+const savedAdmin = sessionStorage.getItem('admin_authenticated');
+if (savedAdmin === 'true') {
+    // Try to auto-login with stored credentials
+    // This will be handled by onAuthStateChanged
+}
 </script>
 </body>
 </html>
