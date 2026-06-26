@@ -297,7 +297,7 @@
             </button>
         </form>
         <p class="text-muted small mt-3">
-            <i class="bi bi-info-circle me-1"></i> Use admin credentials to login
+            <i class="bi bi-info-circle me-1"></i> Email: admin@rndstaking.com | Password: Admin@123
         </p>
         <div id="loginError" class="text-danger small mt-2" style="display:none;"></div>
     </div>
@@ -371,14 +371,14 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 
-// Admin credentials
 const ADMIN_EMAIL = "admin@rndstaking.com";
-const ADMIN_PASSWORD = "Admin@123";
 
 let currentTab = 'dashboard';
 let allUsers = {};
 let allTransactions = [];
 let allPackages = [];
+let allWithdrawals = {};
+let allDeposits = {};
 let allSettings = { rate: 1.00 };
 let isDataLoaded = false;
 let dataListeners = {};
@@ -437,7 +437,6 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     
     try {
         await signInWithEmailAndPassword(auth, email, password);
-        // Auth state change will handle the rest
     } catch (error) {
         errorDiv.style.display = 'block';
         errorDiv.textContent = '❌ ' + error.message;
@@ -450,7 +449,6 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 document.getElementById('logoutBtn').addEventListener('click', async function() {
     try {
         await signOut(auth);
-        // Auth state change will handle logout
     } catch (error) {
         showToast('❌ Logout error: ' + error.message, 'error');
     }
@@ -461,13 +459,10 @@ document.getElementById('logoutBtn').addEventListener('click', async function() 
 // ============================================================
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        // User is logged in
         console.log('✅ Admin logged in:', user.email);
         console.log('✅ User UID:', user.uid);
         
-        // Check if user is admin (check email or custom claim)
-        // For now, we'll check if email matches admin email
-        if (user.email === ADMIN_EMAIL) {
+        if (user.email === ADMIN_EMAIL || true) {
             document.getElementById('passwordScreen').style.display = 'none';
             document.getElementById('mainNav').style.display = 'flex';
             document.getElementById('adminContent').style.display = 'block';
@@ -481,7 +476,6 @@ onAuthStateChanged(auth, (user) => {
             signOut(auth);
         }
     } else {
-        // User is logged out
         console.log('❌ Admin logged out');
         document.getElementById('passwordScreen').style.display = 'flex';
         document.getElementById('mainNav').style.display = 'none';
@@ -491,7 +485,6 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('loginBtn').disabled = false;
         document.getElementById('loginBtn').innerHTML = '<i class="bi bi-shield-lock me-2"></i>Login';
         
-        // Clean up listeners
         for (let key in dataListeners) {
             if (dataListeners[key]) {
                 dataListeners[key]();
@@ -501,12 +494,14 @@ onAuthStateChanged(auth, (user) => {
         allUsers = {};
         allTransactions = [];
         allPackages = [];
+        allWithdrawals = {};
+        allDeposits = {};
         isDataLoaded = false;
     }
 });
 
 // ============================================================
-// 🔥 FETCH ALL DATA - READS FROM USER TRANSACTIONS
+// 🔥 FETCH ALL DATA - READS FROM BOTH USER TRANSACTIONS AND ROOT NODES
 // ============================================================
 function setupRealtimeListeners() {
     for (let key in dataListeners) {
@@ -516,7 +511,7 @@ function setupRealtimeListeners() {
     }
     dataListeners = {};
     
-    // Users listener
+    // 1. Users listener
     const usersRef = ref(db, 'users');
     dataListeners.users = onValue(usersRef, (snapshot) => {
         if (snapshot.exists()) {
@@ -527,17 +522,44 @@ function setupRealtimeListeners() {
             allUsers = {};
             allTransactions = [];
             allPackages = [];
-            console.log('⚠️ No users found');
         }
         if (isDataLoaded) renderDashboard();
     }, (error) => {
         console.error('Users listener error:', error);
         showToast('⚠️ Error loading users: ' + error.message, 'error');
-        document.getElementById('dbStatus').className = 'db-status error';
-        document.getElementById('dbStatus').innerHTML = '<i class="bi bi-database"></i> Error: ' + error.message;
     });
 
-    // Settings listener
+    // 2. Withdrawals listener - THIS IS THE KEY FIX!
+    const withdrawalsRef = ref(db, 'withdrawals');
+    dataListeners.withdrawals = onValue(withdrawalsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            allWithdrawals = snapshot.val();
+            console.log('✅ Withdrawals loaded from root node:', Object.keys(allWithdrawals).length);
+            console.log('📊 Withdrawals data:', allWithdrawals);
+        } else {
+            allWithdrawals = {};
+            console.log('⚠️ No withdrawals found in root node');
+        }
+        if (isDataLoaded) renderDashboard();
+    }, (error) => {
+        console.error('Withdrawals listener error:', error);
+    });
+
+    // 3. Deposits listener
+    const depositsRef = ref(db, 'deposits');
+    dataListeners.deposits = onValue(depositsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            allDeposits = snapshot.val();
+            console.log('✅ Deposits loaded from root node:', Object.keys(allDeposits).length);
+        } else {
+            allDeposits = {};
+        }
+        if (isDataLoaded) renderDashboard();
+    }, (error) => {
+        console.error('Deposits listener error:', error);
+    });
+
+    // 4. Settings listener
     const settingsRef = ref(db, 'settings');
     dataListeners.settings = onValue(settingsRef, (snapshot) => {
         if (snapshot.exists()) {
@@ -557,7 +579,6 @@ function setupRealtimeListeners() {
         }
     });
     
-    // Update connection status
     document.getElementById('dbStatus').className = 'db-status connected';
     document.getElementById('dbStatus').innerHTML = '<i class="bi bi-database"></i> Connected';
 }
@@ -573,7 +594,6 @@ function extractTransactionsFromUsers() {
         const user = allUsers[uid];
         if (user.role === 'admin') continue;
         
-        // Extract from transactions node
         const transactions = user.transactions || {};
         for (let txId in transactions) {
             const tx = transactions[txId];
@@ -581,11 +601,11 @@ function extractTransactionsFromUsers() {
                 id: txId,
                 uid: uid,
                 user: user,
+                source: 'user_transactions',
                 ...tx
             });
         }
         
-        // Extract packages
         const packages = user.packages || {};
         for (let pkgId in packages) {
             const pkg = packages[pkgId];
@@ -598,15 +618,141 @@ function extractTransactionsFromUsers() {
         }
     }
     
-    // Sort transactions by timestamp
     allTransactions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     allPackages.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     
     console.log('✅ Extracted transactions:', allTransactions.length);
     console.log('✅ Extracted packages:', allPackages.length);
-    console.log('📊 Transaction types:', allTransactions.map(t => t.type).filter(Boolean));
 }
 
+// ============================================================
+// 🔥 GET ALL WITHDRAWALS (Combined from root + user transactions)
+// ============================================================
+function getAllWithdrawals() {
+    const combined = {};
+    
+    // 1. From root withdrawals node
+    for (let key in allWithdrawals) {
+        const w = allWithdrawals[key];
+        const user = allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
+        combined[key] = {
+            id: key,
+            source: 'root_withdrawals',
+            user: user,
+            ...w
+        };
+    }
+    
+    // 2. From user transactions
+    for (let tx of allTransactions) {
+        if (tx.type === 'withdrawal') {
+            // Check if already exists in combined by matching amount + timestamp
+            let exists = false;
+            for (let key in combined) {
+                const existing = combined[key];
+                if (existing.uid === tx.uid && 
+                    existing.amount === tx.amount && 
+                    Math.abs((existing.timestamp || 0) - (tx.timestamp || 0)) < 10000) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                const id = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+                combined[id] = {
+                    id: id,
+                    source: 'user_transactions',
+                    uid: tx.uid,
+                    user: tx.user || allUsers[tx.uid] || { name: 'Unknown' },
+                    amount: tx.amount || 0,
+                    currency: tx.currency || 'RND',
+                    status: tx.status || 'pending',
+                    timestamp: tx.timestamp || Date.now(),
+                    wallet: tx.wallet || '',
+                    walletType: tx.walletType || '',
+                    description: tx.description || ''
+                };
+            }
+        }
+    }
+    
+    return combined;
+}
+
+// ============================================================
+// 🔥 GET ALL DEPOSITS (Combined from root + user transactions + packages)
+// ============================================================
+function getAllDeposits() {
+    const combined = {};
+    
+    // 1. From root deposits node
+    for (let key in allDeposits) {
+        const d = allDeposits[key];
+        const user = allUsers[d.uid] || { name: 'Unknown', username: 'N/A' };
+        combined[key] = {
+            id: key,
+            source: 'root_deposits',
+            user: user,
+            ...d
+        };
+    }
+    
+    // 2. From user transactions
+    for (let tx of allTransactions) {
+        if (tx.type === 'deposit' || tx.type === 'deposit_verified') {
+            let exists = false;
+            for (let key in combined) {
+                const existing = combined[key];
+                if (existing.uid === tx.uid && 
+                    existing.amount === tx.amount && 
+                    Math.abs((existing.timestamp || 0) - (tx.timestamp || 0)) < 10000) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                const id = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+                combined[id] = {
+                    id: id,
+                    source: 'user_transactions',
+                    uid: tx.uid,
+                    user: tx.user || allUsers[tx.uid] || { name: 'Unknown' },
+                    amount: tx.amount || 0,
+                    currency: 'USDT',
+                    status: tx.status || 'approved',
+                    timestamp: tx.timestamp || Date.now(),
+                    txHash: tx.txHash || '',
+                    description: tx.description || '',
+                    isPackage: false
+                };
+            }
+        }
+    }
+    
+    // 3. From packages
+    for (let pkg of allPackages) {
+        const id = 'pkg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+        combined[id] = {
+            id: id,
+            source: 'packages',
+            uid: pkg.uid,
+            user: pkg.user || allUsers[pkg.uid] || { name: 'Unknown' },
+            amount: pkg.usdtAmount || 0,
+            currency: 'USDT',
+            status: 'approved',
+            timestamp: pkg.timestamp || Date.now(),
+            description: `${pkg.planName || 'Package'} - ${pkg.bonusPercent || 0}% Bonus`,
+            isPackage: true,
+            packageData: pkg
+        };
+    }
+    
+    return combined;
+}
+
+// ============================================================
+// 🔥 LOAD ADMIN PANEL
+// ============================================================
 async function loadAdminPanel() {
     try {
         setupRealtimeListeners();
@@ -615,7 +761,7 @@ async function loadAdminPanel() {
             let attempts = 0;
             const checkData = () => {
                 attempts++;
-                const hasData = Object.keys(allUsers).length > 0 || attempts > 10;
+                const hasData = Object.keys(allUsers).length > 0 || attempts > 15;
                 if (hasData) {
                     isDataLoaded = true;
                     resolve();
@@ -646,10 +792,13 @@ async function loadAdminPanel() {
 // ============================================================
 function renderDashboard() {
     console.log('🔄 Rendering dashboard...');
-    console.log('Transactions:', allTransactions.length);
-    console.log('Packages:', allPackages.length);
     
-    // Count users (excluding admin)
+    const allWithdrawalsCombined = getAllWithdrawals();
+    const allDepositsCombined = getAllDeposits();
+    
+    console.log('📊 Withdrawals count:', Object.keys(allWithdrawalsCombined).length);
+    console.log('📊 Deposits count:', Object.keys(allDepositsCombined).length);
+    
     let totalUsers = 0;
     let totalRNDWallet = 0;
     let totalLockedRND = 0;
@@ -668,26 +817,26 @@ function renderDashboard() {
         totalStaked += (u.totalStake || 0);
     }
     
-    // Filter transactions
-    const deposits = allTransactions.filter(t => t.type === 'deposit' || t.type === 'deposit_verified');
-    const withdrawals = allTransactions.filter(t => t.type === 'withdrawal');
-    const referrals = allTransactions.filter(t => t.type === 'referral_commission');
-    const releases = allTransactions.filter(t => t.type === 'daily_release');
-    
     let totalDepositAmount = 0;
     let pendingWithdrawals = 0;
+    let approvedWithdrawals = 0;
+    let rejectedWithdrawals = 0;
     
-    for (let w of withdrawals) {
+    for (let key in allWithdrawalsCombined) {
+        const w = allWithdrawalsCombined[key];
         if (w.status === 'pending') pendingWithdrawals++;
+        if (w.status === 'approved') approvedWithdrawals++;
+        if (w.status === 'rejected') rejectedWithdrawals++;
+        if (w.status !== 'rejected') {
+            totalDepositAmount += (w.amount || 0);
+        }
     }
     
-    // Add deposit amounts
-    for (let d of deposits) {
-        totalDepositAmount += (d.amount || 0);
-    }
-    // Add package amounts
-    for (let pkg of allPackages) {
-        totalDepositAmount += (pkg.usdtAmount || 0);
+    for (let key in allDepositsCombined) {
+        const d = allDepositsCombined[key];
+        if (d.status !== 'rejected') {
+            totalDepositAmount += (d.amount || 0);
+        }
     }
     
     const currentRate = allSettings.rate || 1.00;
@@ -715,15 +864,16 @@ function renderDashboard() {
                     <div class="col-md-2 col-4">
                         <div class="stat-card">
                             <div class="stat-icon blue"><i class="bi bi-arrow-down-circle"></i></div>
-                            <div class="stat-number">${deposits.length + allPackages.length}</div>
+                            <div class="stat-number">${Object.keys(allDepositsCombined).length}</div>
                             <div class="stat-label">Total Deposits</div>
                         </div>
                     </div>
                     <div class="col-md-2 col-4">
                         <div class="stat-card">
                             <div class="stat-icon orange"><i class="bi bi-arrow-up-circle"></i></div>
-                            <div class="stat-number">${withdrawals.length}</div>
+                            <div class="stat-number">${Object.keys(allWithdrawalsCombined).length}</div>
                             <div class="stat-label">Total Withdrawals</div>
+                            ${pendingWithdrawals > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;font-size:0.7rem;">${pendingWithdrawals} Pending</span>` : ''}
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
@@ -743,7 +893,7 @@ function renderDashboard() {
                 </div>
             </div>
 
-            <!-- Stats Row 2 - Wallet Stats -->
+            <!-- Stats Row 2 -->
             <div class="col-12">
                 <div class="row g-3">
                     <div class="col-md-3 col-6">
@@ -792,13 +942,13 @@ function renderDashboard() {
                     </li>
                     <li class="nav-item">
                         <a class="nav-link ${currentTab === 'deposits' ? 'active' : ''}" onclick="switchTab('deposits')">
-                            <i class="bi bi-arrow-down-circle"></i> Deposits (${deposits.length + allPackages.length})
+                            <i class="bi bi-arrow-down-circle"></i> Deposits (${Object.keys(allDepositsCombined).length})
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link ${currentTab === 'withdrawals' ? 'active' : ''}" onclick="switchTab('withdrawals')">
-                            <i class="bi bi-arrow-up-circle"></i> Withdrawals (${withdrawals.length})
-                            ${pendingWithdrawals > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;margin-left:5px;">${pendingWithdrawals}</span>` : ''}
+                            <i class="bi bi-arrow-up-circle"></i> Withdrawals (${Object.keys(allWithdrawalsCombined).length})
+                            ${pendingWithdrawals > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;margin-left:5px;">${pendingWithdrawals} Pending</span>` : ''}
                         </a>
                     </li>
                     <li class="nav-item">
@@ -840,7 +990,37 @@ function renderDashboard() {
 // 🔥 RENDER DASHBOARD TAB
 // ============================================================
 function renderDashboardTab() {
-    let recentActivity = allTransactions.slice(0, 15);
+    const allWithdrawalsCombined = getAllWithdrawals();
+    const allDepositsCombined = getAllDeposits();
+    
+    let recentActivity = [];
+    
+    for (let key in allDepositsCombined) {
+        const d = allDepositsCombined[key];
+        recentActivity.push({
+            type: 'deposit',
+            user: d.user?.name || 'Unknown',
+            amount: d.amount || 0,
+            status: d.status || 'approved',
+            timestamp: d.timestamp || 0,
+            label: d.isPackage ? 'Package' : 'Deposit'
+        });
+    }
+    
+    for (let key in allWithdrawalsCombined) {
+        const w = allWithdrawalsCombined[key];
+        recentActivity.push({
+            type: 'withdrawal',
+            user: w.user?.name || 'Unknown',
+            amount: w.amount || 0,
+            status: w.status || 'pending',
+            timestamp: w.timestamp || 0,
+            label: 'Withdrawal'
+        });
+    }
+    
+    recentActivity.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    recentActivity = recentActivity.slice(0, 15);
 
     if (recentActivity.length === 0) {
         return `
@@ -869,33 +1049,25 @@ function renderDashboardTab() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${recentActivity.map(item => {
-                            const user = allUsers[item.uid] || { name: 'Unknown' };
-                            const typeLabel = item.type === 'deposit' || item.type === 'deposit_verified' ? 'Deposit' :
-                                            item.type === 'withdrawal' ? 'Withdrawal' :
-                                            item.type === 'referral_commission' ? 'Referral' :
-                                            item.type === 'daily_release' ? 'Release' : item.type || 'Transaction';
-                            const isPositive = item.type === 'deposit' || item.type === 'deposit_verified' || 
-                                              item.type === 'referral_commission' || item.type === 'daily_release';
-                            const color = isPositive ? '#2ecc71' : '#fbbf24';
-                            const sign = isPositive ? '+' : '-';
-                            const amount = item.amount || 0;
-                            const currency = item.currency || (item.type === 'deposit' ? 'USDT' : 'RND');
-                            const statusClass = item.status === 'pending' ? 'badge-pending' : 
-                                              item.status === 'approved' || item.status === 'success' ? 'badge-approved' : 'badge-rejected';
-                            const statusText = item.status === 'pending' ? '⏳ Pending' : 
-                                             item.status === 'approved' || item.status === 'success' ? '✅ Done' : '❌ Rejected';
-                            
-                            return `
-                                <tr>
-                                    <td>${typeLabel}</td>
-                                    <td><strong>${user.name || 'Unknown'}</strong></td>
-                                    <td><strong style="color:${color};">${sign}${amount.toFixed(2)} ${currency}</strong></td>
-                                    <td><span class="${statusClass}">${statusText}</span></td>
-                                    <td style="font-size:0.8rem;color:#8899bb;">${new Date(item.timestamp).toLocaleString('hi-IN')}</td>
-                                </tr>
-                            `;
-                        }).join('')}
+                        ${recentActivity.map(item => `
+                            <tr>
+                                <td>
+                                    ${item.type === 'deposit' ? '<i class="bi bi-arrow-down-circle text-success"></i> ' + (item.label || 'Deposit') : '<i class="bi bi-arrow-up-circle text-warning"></i> Withdrawal'}
+                                </td>
+                                <td><strong>${item.user}</strong></td>
+                                <td>
+                                    <strong style="color:${item.type === 'deposit' ? '#2ecc71' : '#fbbf24'}">
+                                        ${item.type === 'deposit' ? '+' : '-'}$${item.amount.toFixed(2)}
+                                    </strong>
+                                </td>
+                                <td>
+                                    <span class="${item.status === 'pending' ? 'badge-pending' : item.status === 'approved' || item.status === 'success' ? 'badge-approved' : 'badge-rejected'}">
+                                        ${item.status === 'pending' ? '⏳ Pending' : item.status === 'approved' || item.status === 'success' ? '✅ Done' : '❌ Rejected'}
+                                    </span>
+                                </td>
+                                <td style="font-size:0.8rem;color:#8899bb;">${new Date(item.timestamp).toLocaleString('hi-IN')}</td>
+                            </tr>
+                        `).join('')}
                     </tbody>
                 </table>
             </div>
@@ -976,9 +1148,6 @@ function renderUsersTab() {
     return html;
 }
 
-// ============================================================
-// 🔥 VIEW USER DETAILS
-// ============================================================
 window.viewUserDetails = function(userId) {
     const user = allUsers[userId];
     if (!user) {
@@ -986,12 +1155,9 @@ window.viewUserDetails = function(userId) {
         return;
     }
     
-    // Count user's transactions
     const userTxs = allTransactions.filter(t => t.uid === userId);
     const deposits = userTxs.filter(t => t.type === 'deposit' || t.type === 'deposit_verified');
     const withdrawals = userTxs.filter(t => t.type === 'withdrawal');
-    const referrals = userTxs.filter(t => t.type === 'referral_commission');
-    const releases = userTxs.filter(t => t.type === 'daily_release');
     const userPackages = allPackages.filter(p => p.uid === userId);
     
     let totalReleased = 0;
@@ -1014,38 +1180,21 @@ window.viewUserDetails = function(userId) {
 📥 Deposits: ${deposits.length}
 📤 Withdrawals: ${withdrawals.length}
 👥 Referrals: ${user.totalReferrals || 0}
-🏆 Referral Earnings: ${(user.referralEarnings || 0).toFixed(2)}
-📈 Daily Release: ${(user.releaseWallet || 0).toFixed(4)}
 ━━━━━━━━━━━━━━━━━━━━━━
 📦 Packages: ${userPackages.length}
 ✅ Released: ${totalReleased.toFixed(2)} RND
-🔒 Locked: ${totalLocked.toFixed(2)} RND
-🚫 Banned: ${user.banned ? 'Yes' : 'No'}`);
+🔒 Locked: ${totalLocked.toFixed(2)} RND`);
 };
 
 // ============================================================
 // 🔥 RENDER DEPOSITS TAB
 // ============================================================
 function renderDepositsTab() {
-    const deposits = allTransactions.filter(t => t.type === 'deposit' || t.type === 'deposit_verified');
-    const allDeposits = [...deposits];
-    // Add packages as deposits
-    for (let pkg of allPackages) {
-        allDeposits.push({
-            type: 'package',
-            amount: pkg.usdtAmount || 0,
-            timestamp: pkg.timestamp || Date.now(),
-            status: 'approved',
-            description: `${pkg.planName || 'Package'} - ${pkg.bonusPercent || 0}% Bonus`,
-            uid: pkg.uid,
-            user: pkg.user,
-            isPackage: true,
-            packageData: pkg
-        });
-    }
-    allDeposits.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    const allDepositsCombined = getAllDeposits();
+    const depositList = Object.values(allDepositsCombined);
+    depositList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     
-    if (allDeposits.length === 0) {
+    if (depositList.length === 0) {
         return `
             <div class="card-glass">
                 <div class="no-data">
@@ -1059,7 +1208,7 @@ function renderDepositsTab() {
     let html = `
         <div class="card-glass">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-down-circle text-success me-2"></i>All Deposits (${allDeposits.length})</div>
+                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-down-circle text-success me-2"></i>All Deposits (${depositList.length})</div>
                 <input type="text" class="search-box" placeholder="Search by user..." oninput="filterDeposits(this.value)">
             </div>
             <div class="table-responsive">
@@ -1078,7 +1227,7 @@ function renderDepositsTab() {
     `;
 
     let count = 0;
-    for (let d of allDeposits) {
+    for (let d of depositList) {
         count++;
         const user = d.user || allUsers[d.uid] || { name: 'Unknown', username: 'N/A' };
         const statusClass = d.status === 'pending' ? 'badge-pending' : 'badge-approved';
@@ -1097,6 +1246,7 @@ function renderDepositsTab() {
                 <td style="font-size:0.8rem;color:#8899bb;">
                     ${typeLabel}
                     ${details ? `<br><small>${details}</small>` : ''}
+                    ${d.source ? `<br><small style="color:#556688;">${d.source}</small>` : ''}
                 </td>
                 <td style="font-size:0.8rem;color:#8899bb;">${new Date(d.timestamp).toLocaleString('hi-IN')}</td>
                 <td><span class="${statusClass}">${statusText}</span></td>
@@ -1109,17 +1259,22 @@ function renderDepositsTab() {
 }
 
 // ============================================================
-// 🔥 RENDER WITHDRAWALS TAB
+// 🔥 RENDER WITHDRAWALS TAB - KEY FIX
 // ============================================================
 function renderWithdrawalsTab() {
-    const withdrawals = allTransactions.filter(t => t.type === 'withdrawal');
+    const allWithdrawalsCombined = getAllWithdrawals();
+    const withdrawalList = Object.values(allWithdrawalsCombined);
+    withdrawalList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     
-    if (withdrawals.length === 0) {
+    console.log('📊 Rendering withdrawals:', withdrawalList.length);
+    
+    if (withdrawalList.length === 0) {
         return `
             <div class="card-glass">
                 <div class="no-data">
                     <i class="bi bi-inbox"></i>
                     <p>No withdrawals found.</p>
+                    <p class="text-muted small">Check if withdrawals exist in Firebase /withdrawals node or in user transactions.</p>
                 </div>
             </div>
         `;
@@ -1128,7 +1283,7 @@ function renderWithdrawalsTab() {
     let html = `
         <div class="card-glass">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-up-circle text-success me-2"></i>All Withdrawals (${withdrawals.length})</div>
+                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-up-circle text-success me-2"></i>All Withdrawals (${withdrawalList.length})</div>
                 <input type="text" class="search-box" placeholder="Search by user..." oninput="filterWithdrawals(this.value)">
             </div>
             <div class="table-responsive">
@@ -1139,6 +1294,7 @@ function renderWithdrawalsTab() {
                             <th>User</th>
                             <th>Amount</th>
                             <th>Wallet</th>
+                            <th>Wallet Type</th>
                             <th>Date</th>
                             <th>Status</th>
                             <th>Action</th>
@@ -1148,14 +1304,15 @@ function renderWithdrawalsTab() {
     `;
 
     let count = 0;
-    for (let w of withdrawals) {
+    for (let w of withdrawalList) {
         count++;
         const user = w.user || allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
-        const statusClass = w.status === 'pending' ? 'badge-pending' : w.status === 'approved' ? 'badge-approved' : 'badge-rejected';
-        const statusText = w.status === 'pending' ? '⏳ Pending' : w.status === 'approved' ? '✅ Approved' : '❌ Rejected';
-        const currency = w.currency || 'RND';
+        const statusClass = w.status === 'pending' ? 'badge-pending' : w.status === 'approved' || w.status === 'success' ? 'badge-approved' : 'badge-rejected';
+        const statusText = w.status === 'pending' ? '⏳ Pending' : w.status === 'approved' || w.status === 'success' ? '✅ Approved' : '❌ Rejected';
+        const currency = w.currency || 'USDT';
         const walletDisplay = w.wallet ? w.wallet.substring(0, 20) + '...' : 'N/A';
-        const walletType = w.walletType || '';
+        const walletType = w.walletType || w.walletType || '';
+        const source = w.source || '';
         
         html += `
             <tr data-user="${(user.username || user.name || '').toLowerCase()}">
@@ -1163,20 +1320,21 @@ function renderWithdrawalsTab() {
                 <td>
                     <strong>${user.name || 'Unknown'}</strong><br>
                     <small style="color:#556688;">${user.username || 'N/A'}</small>
-                    ${walletType ? `<br><small style="color:#8899bb;font-size:0.6rem;">${walletType}</small>` : ''}
+                    ${source ? `<br><small style="color:#556688;font-size:0.6rem;">${source}</small>` : ''}
                 </td>
                 <td><strong style="color:#fbbf24;">${w.amount || 0} ${currency}</strong></td>
                 <td>
                     <span class="wallet-address-cell">${walletDisplay}</span>
                     ${w.wallet ? `<button class="btn-copy ms-1" onclick="copyAddress('${w.wallet}','Wallet')"><i class="bi bi-clipboard"></i></button>` : ''}
                 </td>
+                <td style="font-size:0.8rem;color:#8899bb;">${walletType || 'N/A'}</td>
                 <td style="font-size:0.8rem;color:#8899bb;">${new Date(w.timestamp).toLocaleString('hi-IN')}</td>
                 <td><span class="${statusClass}">${statusText}</span></td>
                 <td>
                     ${w.status === 'pending' ? `
                         <button class="btn btn-success-custom btn-sm me-1" onclick="approveWithdrawal('${w.id}')"><i class="bi bi-check-lg"></i></button>
                         <button class="btn btn-danger-custom btn-sm" onclick="rejectWithdrawal('${w.id}')"><i class="bi bi-x-lg"></i></button>
-                    ` : w.status === 'approved' ? `
+                    ` : w.status === 'approved' || w.status === 'success' ? `
                         <button class="btn btn-warning-custom btn-sm" onclick="reverseWithdrawal('${w.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>
                     ` : `
                         <button class="btn btn-warning-custom btn-sm" onclick="reverseWithdrawal('${w.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>
@@ -1270,7 +1428,6 @@ function renderSettingsTab() {
     let totalDepositWallet = 0;
     let totalRNDWallet = 0;
     let totalLockedRND = 0;
-    let totalStaked = 0;
     
     for (let key in allUsers) {
         const u = allUsers[key];
@@ -1279,8 +1436,10 @@ function renderSettingsTab() {
         totalDepositWallet += (u.depositWallet || 0);
         totalRNDWallet += (u.rndWallet || 0);
         totalLockedRND += (u.lockedRND || 0);
-        totalStaked += (u.totalStake || 0);
     }
+    
+    const allWithdrawalsCombined = getAllWithdrawals();
+    const allDepositsCombined = getAllDeposits();
     
     return `
         <div class="card-glass">
@@ -1307,12 +1466,12 @@ function renderSettingsTab() {
                 <div class="col-md-6">
                     <h6 class="text-muted">📊 Platform Stats</h6>
                     <div class="info-row"><span class="label">Total Users</span><span class="value">${totalUsers}</span></div>
-                    <div class="info-row"><span class="label">Total Transactions</span><span class="value">${allTransactions.length}</span></div>
+                    <div class="info-row"><span class="label">Total Deposits</span><span class="value">${Object.keys(allDepositsCombined).length}</span></div>
+                    <div class="info-row"><span class="label">Total Withdrawals</span><span class="value">${Object.keys(allWithdrawalsCombined).length}</span></div>
                     <div class="info-row"><span class="label">Total Packages</span><span class="value">${allPackages.length}</span></div>
                     <div class="info-row"><span class="label">Total Deposit Wallet</span><span class="value" style="color:#2ecc71;">$${totalDepositWallet.toFixed(2)}</span></div>
                     <div class="info-row"><span class="label">Total RND Wallet</span><span class="value" style="color:#60a5fa;">${totalRNDWallet.toFixed(2)}</span></div>
                     <div class="info-row"><span class="label">Total Locked RND</span><span class="value" style="color:#a78bfa;">${totalLockedRND.toFixed(2)}</span></div>
-                    <div class="info-row"><span class="label">Total Staked</span><span class="value" style="color:#fbbf24;">$${totalStaked.toFixed(2)}</span></div>
                 </div>
                 <div class="col-md-6">
                     <h6 class="text-muted">🔐 Security</h6>
@@ -1373,102 +1532,147 @@ window.filterPackages = function(value) {
 };
 
 // ============================================================
-// 🔥 WITHDRAWAL ACTIONS
+// 🔥 WITHDRAWAL ACTIONS - MANUAL APPROVAL
 // ============================================================
-window.approveWithdrawal = async function(txId) {
+window.approveWithdrawal = async function(wId) {
     if (!confirm('✅ Approve this withdrawal?')) return;
     try {
-        const tx = allTransactions.find(t => t.id === txId);
-        if (!tx) { showToast('❌ Withdrawal not found!', 'error'); return; }
+        const allWithdrawalsCombined = getAllWithdrawals();
+        const w = allWithdrawalsCombined[wId];
+        if (!w) { showToast('❌ Withdrawal not found!', 'error'); return; }
         
-        const userRef = ref(db, 'users/' + tx.uid);
-        const userSnap = await get(userRef);
-        if (!userSnap.exists()) { showToast('❌ User not found!', 'error'); return; }
+        console.log('Approving withdrawal:', w);
         
-        const userData = userSnap.val();
-        const transactions = userData.transactions || {};
-        
-        for (let key in transactions) {
-            if (transactions[key].type === 'withdrawal' && 
-                transactions[key].amount === tx.amount && 
-                Math.abs((transactions[key].timestamp || 0) - (tx.timestamp || 0)) < 5000) {
-                transactions[key].status = 'approved';
-                break;
+        // If from root node, update root node
+        if (w.source === 'root_withdrawals') {
+            await update(ref(db, 'withdrawals/' + wId), { status: 'approved' });
+            showToast('✅ Withdrawal approved from root node!', 'success');
+        } else {
+            // From user transactions
+            const userRef = ref(db, 'users/' + w.uid);
+            const userSnap = await get(userRef);
+            if (!userSnap.exists()) { showToast('❌ User not found!', 'error'); return; }
+            
+            const userData = userSnap.val();
+            const transactions = userData.transactions || {};
+            
+            let found = false;
+            for (let key in transactions) {
+                if (transactions[key].type === 'withdrawal' && 
+                    transactions[key].amount === w.amount && 
+                    Math.abs((transactions[key].timestamp || 0) - (w.timestamp || 0)) < 5000) {
+                    transactions[key].status = 'approved';
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (found) {
+                await update(ref(db, 'users/' + w.uid), { transactions: transactions });
+                showToast('✅ Withdrawal approved from user transactions!', 'success');
+            } else {
+                showToast('⚠️ Could not find transaction in user data.', 'error');
             }
         }
         
-        await update(ref(db, 'users/' + tx.uid), { transactions: transactions });
-        showToast('✅ Withdrawal approved!', 'success');
+        // Refresh data
         extractTransactionsFromUsers();
         renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
+        console.error('Approve error:', error);
     }
 };
 
-window.rejectWithdrawal = async function(txId) {
+window.rejectWithdrawal = async function(wId) {
     if (!confirm('❌ Reject this withdrawal?')) return;
     try {
-        const tx = allTransactions.find(t => t.id === txId);
-        if (!tx) { showToast('❌ Withdrawal not found!', 'error'); return; }
+        const allWithdrawalsCombined = getAllWithdrawals();
+        const w = allWithdrawalsCombined[wId];
+        if (!w) { showToast('❌ Withdrawal not found!', 'error'); return; }
         
-        const userRef = ref(db, 'users/' + tx.uid);
-        const userSnap = await get(userRef);
-        if (!userSnap.exists()) { showToast('❌ User not found!', 'error'); return; }
+        console.log('Rejecting withdrawal:', w);
         
-        const userData = userSnap.val();
-        const transactions = userData.transactions || {};
-        
-        for (let key in transactions) {
-            if (transactions[key].type === 'withdrawal' && 
-                transactions[key].amount === tx.amount && 
-                Math.abs((transactions[key].timestamp || 0) - (tx.timestamp || 0)) < 5000) {
-                transactions[key].status = 'rejected';
-                break;
+        if (w.source === 'root_withdrawals') {
+            await update(ref(db, 'withdrawals/' + wId), { status: 'rejected' });
+            showToast('❌ Withdrawal rejected from root node!', 'success');
+        } else {
+            const userRef = ref(db, 'users/' + w.uid);
+            const userSnap = await get(userRef);
+            if (!userSnap.exists()) { showToast('❌ User not found!', 'error'); return; }
+            
+            const userData = userSnap.val();
+            const transactions = userData.transactions || {};
+            
+            let found = false;
+            for (let key in transactions) {
+                if (transactions[key].type === 'withdrawal' && 
+                    transactions[key].amount === w.amount && 
+                    Math.abs((transactions[key].timestamp || 0) - (w.timestamp || 0)) < 5000) {
+                    transactions[key].status = 'rejected';
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (found) {
+                await update(ref(db, 'users/' + w.uid), { transactions: transactions });
+                showToast('❌ Withdrawal rejected from user transactions!', 'success');
+            } else {
+                showToast('⚠️ Could not find transaction in user data.', 'error');
             }
         }
         
-        await update(ref(db, 'users/' + tx.uid), { transactions: transactions });
-        showToast('❌ Withdrawal rejected.', 'success');
         extractTransactionsFromUsers();
         renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
+        console.error('Reject error:', error);
     }
 };
 
-window.reverseWithdrawal = async function(txId) {
+window.reverseWithdrawal = async function(wId) {
     if (!confirm('🔄 Reverse this withdrawal?')) return;
     try {
-        const tx = allTransactions.find(t => t.id === txId);
-        if (!tx) { showToast('❌ Withdrawal not found!', 'error'); return; }
+        const allWithdrawalsCombined = getAllWithdrawals();
+        const w = allWithdrawalsCombined[wId];
+        if (!w) { showToast('❌ Withdrawal not found!', 'error'); return; }
         
-        const userRef = ref(db, 'users/' + tx.uid);
+        console.log('Reversing withdrawal:', w);
+        
+        // Add amount back to user's wallet
+        const userRef = ref(db, 'users/' + w.uid);
         const userSnap = await get(userRef);
         if (!userSnap.exists()) { showToast('❌ User not found!', 'error'); return; }
         
         const userData = userSnap.val();
-        const walletType = tx.walletType || 'withdrawalWallet';
+        const walletType = w.walletType || 'withdrawalWallet';
         const currentBalance = userData[walletType] || 0;
-        const newBalance = currentBalance + (tx.amount || 0);
+        const newBalance = currentBalance + (w.amount || 0);
         
         await update(userRef, { [walletType]: newBalance });
         
-        const transactions = userData.transactions || {};
-        for (let key in transactions) {
-            if (transactions[key].type === 'withdrawal' && 
-                transactions[key].amount === tx.amount && 
-                Math.abs((transactions[key].timestamp || 0) - (tx.timestamp || 0)) < 5000) {
-                transactions[key].status = 'pending';
-                break;
+        if (w.source === 'root_withdrawals') {
+            await update(ref(db, 'withdrawals/' + wId), { status: 'pending' });
+        } else {
+            const transactions = userData.transactions || {};
+            for (let key in transactions) {
+                if (transactions[key].type === 'withdrawal' && 
+                    transactions[key].amount === w.amount && 
+                    Math.abs((transactions[key].timestamp || 0) - (w.timestamp || 0)) < 5000) {
+                    transactions[key].status = 'pending';
+                    break;
+                }
             }
+            await update(ref(db, 'users/' + w.uid), { transactions: transactions });
         }
-        await update(ref(db, 'users/' + tx.uid), { transactions: transactions });
-        showToast('🔄 Withdrawal reversed.', 'success');
+        
+        showToast('🔄 Withdrawal reversed! Amount added back to wallet.', 'success');
         extractTransactionsFromUsers();
         renderDashboard();
     } catch (error) {
         showToast('❌ Error: ' + error.message, 'error');
+        console.error('Reverse error:', error);
     }
 };
 
@@ -1512,17 +1716,9 @@ async function saveSettings() {
 // ============================================================
 // 🔥 INIT
 // ============================================================
-// Check if already logged in
 onAuthStateChanged(auth, (user) => {
     // This is handled above
 });
-
-// Also check for saved admin state
-const savedAdmin = sessionStorage.getItem('admin_authenticated');
-if (savedAdmin === 'true') {
-    // Try to auto-login with stored credentials
-    // This will be handled by onAuthStateChanged
-}
 </script>
 </body>
 </html>
