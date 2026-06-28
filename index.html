@@ -260,6 +260,20 @@
         .no-data i { font-size: 3rem; color: #556688; margin-bottom: 15px; }
         .no-data p { color: #8899bb; }
         
+        .modal-content-custom {
+            background: rgba(19,34,55,0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(46,204,113,0.15);
+            border-radius: 20px;
+            color: #f0f4ff;
+        }
+        .modal-header-custom {
+            border-bottom: 1px solid rgba(46,204,113,0.1);
+        }
+        .modal-footer-custom {
+            border-top: 1px solid rgba(46,204,113,0.1);
+        }
+        
         @media (max-width: 768px) {
             .dashboard-container { padding: 15px; }
             .search-box { max-width: 100%; }
@@ -353,7 +367,9 @@ import {
     update, 
     set, 
     onValue, 
-    remove 
+    remove,
+    runTransaction,
+    push
 } from "firebase/database";
 
 const firebaseConfig = {
@@ -382,6 +398,8 @@ let allDeposits = {};
 let allSettings = { rate: 1.00 };
 let isDataLoaded = false;
 let dataListeners = {};
+let pendingWithdrawals = [];
+let pendingDeposits = [];
 
 // ============================================================
 // 🔥 TOAST
@@ -455,12 +473,194 @@ document.getElementById('logoutBtn').addEventListener('click', async function() 
 });
 
 // ============================================================
+// 🔥 ATOMIC TRANSACTION SAVE FUNCTION
+// ============================================================
+async function saveTransaction(uid, transactionData) {
+    try {
+        const userRef = ref(db, 'users/' + uid);
+        
+        const result = await runTransaction(userRef, (currentData) => {
+            if (!currentData) {
+                return { ...currentData };
+            }
+            
+            const transactions = currentData.transactions || {};
+            
+            // Duplicate check based on type + id
+            if (transactionData.withdrawalId) {
+                for (let key in transactions) {
+                    const tx = transactions[key];
+                    if (tx.type === 'withdrawal' && tx.withdrawalId === transactionData.withdrawalId) {
+                        return { ...currentData };
+                    }
+                }
+            }
+            
+            if (transactionData.packageId) {
+                for (let key in transactions) {
+                    const tx = transactions[key];
+                    if (tx.type === 'package' && tx.packageId === transactionData.packageId) {
+                        return { ...currentData };
+                    }
+                }
+            }
+            
+            // Generate unique ID
+            const txId = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+            transactions[txId] = transactionData;
+            
+            return {
+                ...currentData,
+                transactions: transactions
+            };
+        });
+        
+        if (result.committed) {
+            console.log('✅ Transaction saved atomically:', transactionData.type);
+            return true;
+        } else {
+            console.log('⚠️ Transaction not committed (duplicate or no change)');
+            return false;
+        }
+    } catch (error) {
+        console.error('Error saving transaction:', error);
+        return false;
+    }
+}
+
+// ============================================================
+// 🔥 ATOMIC UPDATE WITHDRAWAL STATUS
+// ============================================================
+async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark = '') {
+    const userRef = ref(db, 'users/' + uid);
+    
+    const result = await runTransaction(userRef, (currentData) => {
+        if (!currentData) return { ...currentData };
+        
+        const transactions = currentData.transactions || {};
+        let found = false;
+        
+        for (let key in transactions) {
+            const tx = transactions[key];
+            if (tx.type === 'withdrawal' && tx.withdrawalId === withdrawalId) {
+                transactions[key].status = newStatus;
+                transactions[key].updatedAt = Date.now();
+                if (remark) transactions[key].remark = remark;
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) return { ...currentData };
+        
+        return {
+            ...currentData,
+            transactions: transactions
+        };
+    });
+    
+    if (result.committed) {
+        console.log('✅ Withdrawal status updated:', withdrawalId, newStatus);
+        return { success: true };
+    } else {
+        console.log('⚠️ Withdrawal not found or update failed');
+        return { success: false, error: 'Withdrawal not found' };
+    }
+}
+
+// ============================================================
+// 🔥 ATOMIC UPDATE DEPOSIT STATUS
+// ============================================================
+async function updateDepositStatusAtomic(uid, depositId, newStatus, remark = '') {
+    const userRef = ref(db, 'users/' + uid);
+    
+    const result = await runTransaction(userRef, (currentData) => {
+        if (!currentData) return { ...currentData };
+        
+        const transactions = currentData.transactions || {};
+        let found = false;
+        
+        for (let key in transactions) {
+            const tx = transactions[key];
+            if (tx.type === 'deposit' && tx.depositId === depositId) {
+                transactions[key].status = newStatus;
+                transactions[key].updatedAt = Date.now();
+                if (remark) transactions[key].remark = remark;
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) return { ...currentData };
+        
+        return {
+            ...currentData,
+            transactions: transactions
+        };
+    });
+    
+    if (result.committed) {
+        console.log('✅ Deposit status updated:', depositId, newStatus);
+        return { success: true };
+    } else {
+        console.log('⚠️ Deposit not found or update failed');
+        return { success: false, error: 'Deposit not found' };
+    }
+}
+
+// ============================================================
+// 🔥 ATOMIC ADMIN CREDIT / DEBIT
+// ============================================================
+async function processAdminAdjustment(uid, walletType, amount, type, description, remark = '') {
+    const userRef = ref(db, 'users/' + uid);
+    
+    const result = await runTransaction(userRef, (currentData) => {
+        if (!currentData) return { ...currentData };
+        
+        const currentBalance = currentData[walletType] || 0;
+        const newBalance = type === 'credit' ? currentBalance + amount : currentBalance - amount;
+        
+        if (newBalance < 0) {
+            return { ...currentData };
+        }
+        
+        // Create transaction
+        const transactions = currentData.transactions || {};
+        const txId = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+        transactions[txId] = {
+            type: type === 'credit' ? 'admin_credit' : 'admin_debit',
+            amount: amount,
+            currency: 'USDT',
+            walletType: walletType,
+            timestamp: Date.now(),
+            date: new Date().toDateString(),
+            status: 'completed',
+            description: description || `${type === 'credit' ? 'Admin Credit' : 'Admin Debit'}`,
+            remark: remark
+        };
+        
+        return {
+            ...currentData,
+            [walletType]: newBalance,
+            transactions: transactions
+        };
+    });
+    
+    if (result.committed) {
+        console.log('✅ Admin adjustment completed:', type, amount);
+        return { success: true };
+    } else {
+        console.log('⚠️ Admin adjustment failed (insufficient balance or error)');
+        return { success: false, error: 'Insufficient balance or transaction failed' };
+    }
+}
+
+// ============================================================
 // 🔥 AUTH STATE CHANGE
 // ============================================================
 onAuthStateChanged(auth, (user) => {
     if (user) {
         console.log('✅ Admin logged in:', user.email);
-        console.log('✅ User UID:', user.uid);
         
         if (user.email === ADMIN_EMAIL || true) {
             document.getElementById('passwordScreen').style.display = 'none';
@@ -496,12 +696,14 @@ onAuthStateChanged(auth, (user) => {
         allPackages = [];
         allWithdrawals = {};
         allDeposits = {};
+        pendingWithdrawals = [];
+        pendingDeposits = [];
         isDataLoaded = false;
     }
 });
 
 // ============================================================
-// 🔥 FETCH ALL DATA - READS FROM BOTH USER TRANSACTIONS AND ROOT NODES
+// 🔥 SETUP REALTIME LISTENERS
 // ============================================================
 function setupRealtimeListeners() {
     for (let key in dataListeners) {
@@ -529,16 +731,14 @@ function setupRealtimeListeners() {
         showToast('⚠️ Error loading users: ' + error.message, 'error');
     });
 
-    // 2. Withdrawals listener - THIS IS THE KEY FIX!
+    // 2. Withdrawals listener
     const withdrawalsRef = ref(db, 'withdrawals');
     dataListeners.withdrawals = onValue(withdrawalsRef, (snapshot) => {
         if (snapshot.exists()) {
             allWithdrawals = snapshot.val();
-            console.log('✅ Withdrawals loaded from root node:', Object.keys(allWithdrawals).length);
-            console.log('📊 Withdrawals data:', allWithdrawals);
+            console.log('✅ Withdrawals loaded:', Object.keys(allWithdrawals).length);
         } else {
             allWithdrawals = {};
-            console.log('⚠️ No withdrawals found in root node');
         }
         if (isDataLoaded) renderDashboard();
     }, (error) => {
@@ -550,7 +750,7 @@ function setupRealtimeListeners() {
     dataListeners.deposits = onValue(depositsRef, (snapshot) => {
         if (snapshot.exists()) {
             allDeposits = snapshot.val();
-            console.log('✅ Deposits loaded from root node:', Object.keys(allDeposits).length);
+            console.log('✅ Deposits loaded:', Object.keys(allDeposits).length);
         } else {
             allDeposits = {};
         }
@@ -589,6 +789,8 @@ function setupRealtimeListeners() {
 function extractTransactionsFromUsers() {
     allTransactions = [];
     allPackages = [];
+    pendingWithdrawals = [];
+    pendingDeposits = [];
     
     for (let uid in allUsers) {
         const user = allUsers[uid];
@@ -604,6 +806,26 @@ function extractTransactionsFromUsers() {
                 source: 'user_transactions',
                 ...tx
             });
+            
+            // Track pending withdrawals
+            if (tx.type === 'withdrawal' && tx.status === 'pending') {
+                pendingWithdrawals.push({
+                    id: txId,
+                    uid: uid,
+                    user: user,
+                    ...tx
+                });
+            }
+            
+            // Track pending deposits
+            if (tx.type === 'deposit' && tx.status === 'pending') {
+                pendingDeposits.push({
+                    id: txId,
+                    uid: uid,
+                    user: user,
+                    ...tx
+                });
+            }
         }
         
         const packages = user.packages || {};
@@ -618,136 +840,31 @@ function extractTransactionsFromUsers() {
         }
     }
     
+    // Also check root withdrawals node
+    for (let key in allWithdrawals) {
+        const w = allWithdrawals[key];
+        if (w.status === 'pending') {
+            // Check if already in pendingWithdrawals
+            const exists = pendingWithdrawals.some(p => p.withdrawalId === w.withdrawalId || p.id === key);
+            if (!exists) {
+                const user = allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
+                pendingWithdrawals.push({
+                    id: key,
+                    uid: w.uid,
+                    user: user,
+                    ...w
+                });
+            }
+        }
+    }
+    
     allTransactions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     allPackages.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     
     console.log('✅ Extracted transactions:', allTransactions.length);
     console.log('✅ Extracted packages:', allPackages.length);
-}
-
-// ============================================================
-// 🔥 GET ALL WITHDRAWALS (Combined from root + user transactions)
-// ============================================================
-function getAllWithdrawals() {
-    const combined = {};
-    
-    // 1. From root withdrawals node
-    for (let key in allWithdrawals) {
-        const w = allWithdrawals[key];
-        const user = allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
-        combined[key] = {
-            id: key,
-            source: 'root_withdrawals',
-            user: user,
-            ...w
-        };
-    }
-    
-    // 2. From user transactions
-    for (let tx of allTransactions) {
-        if (tx.type === 'withdrawal') {
-            // Check if already exists in combined by matching amount + timestamp
-            let exists = false;
-            for (let key in combined) {
-                const existing = combined[key];
-                if (existing.uid === tx.uid && 
-                    existing.amount === tx.amount && 
-                    Math.abs((existing.timestamp || 0) - (tx.timestamp || 0)) < 10000) {
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) {
-                const id = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-                combined[id] = {
-                    id: id,
-                    source: 'user_transactions',
-                    uid: tx.uid,
-                    user: tx.user || allUsers[tx.uid] || { name: 'Unknown' },
-                    amount: tx.amount || 0,
-                    currency: tx.currency || 'RND',
-                    status: tx.status || 'pending',
-                    timestamp: tx.timestamp || Date.now(),
-                    wallet: tx.wallet || '',
-                    walletType: tx.walletType || '',
-                    description: tx.description || ''
-                };
-            }
-        }
-    }
-    
-    return combined;
-}
-
-// ============================================================
-// 🔥 GET ALL DEPOSITS (Combined from root + user transactions + packages)
-// ============================================================
-function getAllDeposits() {
-    const combined = {};
-    
-    // 1. From root deposits node
-    for (let key in allDeposits) {
-        const d = allDeposits[key];
-        const user = allUsers[d.uid] || { name: 'Unknown', username: 'N/A' };
-        combined[key] = {
-            id: key,
-            source: 'root_deposits',
-            user: user,
-            ...d
-        };
-    }
-    
-    // 2. From user transactions
-    for (let tx of allTransactions) {
-        if (tx.type === 'deposit' || tx.type === 'deposit_verified') {
-            let exists = false;
-            for (let key in combined) {
-                const existing = combined[key];
-                if (existing.uid === tx.uid && 
-                    existing.amount === tx.amount && 
-                    Math.abs((existing.timestamp || 0) - (tx.timestamp || 0)) < 10000) {
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) {
-                const id = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-                combined[id] = {
-                    id: id,
-                    source: 'user_transactions',
-                    uid: tx.uid,
-                    user: tx.user || allUsers[tx.uid] || { name: 'Unknown' },
-                    amount: tx.amount || 0,
-                    currency: 'USDT',
-                    status: tx.status || 'approved',
-                    timestamp: tx.timestamp || Date.now(),
-                    txHash: tx.txHash || '',
-                    description: tx.description || '',
-                    isPackage: false
-                };
-            }
-        }
-    }
-    
-    // 3. From packages
-    for (let pkg of allPackages) {
-        const id = 'pkg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-        combined[id] = {
-            id: id,
-            source: 'packages',
-            uid: pkg.uid,
-            user: pkg.user || allUsers[pkg.uid] || { name: 'Unknown' },
-            amount: pkg.usdtAmount || 0,
-            currency: 'USDT',
-            status: 'approved',
-            timestamp: pkg.timestamp || Date.now(),
-            description: `${pkg.planName || 'Package'} - ${pkg.bonusPercent || 0}% Bonus`,
-            isPackage: true,
-            packageData: pkg
-        };
-    }
-    
-    return combined;
+    console.log('✅ Pending withdrawals:', pendingWithdrawals.length);
+    console.log('✅ Pending deposits:', pendingDeposits.length);
 }
 
 // ============================================================
@@ -793,12 +910,6 @@ async function loadAdminPanel() {
 function renderDashboard() {
     console.log('🔄 Rendering dashboard...');
     
-    const allWithdrawalsCombined = getAllWithdrawals();
-    const allDepositsCombined = getAllDeposits();
-    
-    console.log('📊 Withdrawals count:', Object.keys(allWithdrawalsCombined).length);
-    console.log('📊 Deposits count:', Object.keys(allDepositsCombined).length);
-    
     let totalUsers = 0;
     let totalRNDWallet = 0;
     let totalLockedRND = 0;
@@ -815,28 +926,6 @@ function renderDashboard() {
         totalDepositWallet += (u.depositWallet || 0);
         totalReferrals += (u.totalReferrals || 0);
         totalStaked += (u.totalStake || 0);
-    }
-    
-    let totalDepositAmount = 0;
-    let pendingWithdrawals = 0;
-    let approvedWithdrawals = 0;
-    let rejectedWithdrawals = 0;
-    
-    for (let key in allWithdrawalsCombined) {
-        const w = allWithdrawalsCombined[key];
-        if (w.status === 'pending') pendingWithdrawals++;
-        if (w.status === 'approved') approvedWithdrawals++;
-        if (w.status === 'rejected') rejectedWithdrawals++;
-        if (w.status !== 'rejected') {
-            totalDepositAmount += (w.amount || 0);
-        }
-    }
-    
-    for (let key in allDepositsCombined) {
-        const d = allDepositsCombined[key];
-        if (d.status !== 'rejected') {
-            totalDepositAmount += (d.amount || 0);
-        }
     }
     
     const currentRate = allSettings.rate || 1.00;
@@ -864,22 +953,22 @@ function renderDashboard() {
                     <div class="col-md-2 col-4">
                         <div class="stat-card">
                             <div class="stat-icon blue"><i class="bi bi-arrow-down-circle"></i></div>
-                            <div class="stat-number">${Object.keys(allDepositsCombined).length}</div>
+                            <div class="stat-number">${allTransactions.filter(t => t.type === 'deposit').length}</div>
                             <div class="stat-label">Total Deposits</div>
                         </div>
                     </div>
                     <div class="col-md-2 col-4">
                         <div class="stat-card">
                             <div class="stat-icon orange"><i class="bi bi-arrow-up-circle"></i></div>
-                            <div class="stat-number">${Object.keys(allWithdrawalsCombined).length}</div>
+                            <div class="stat-number">${allTransactions.filter(t => t.type === 'withdrawal').length}</div>
                             <div class="stat-label">Total Withdrawals</div>
-                            ${pendingWithdrawals > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;font-size:0.7rem;">${pendingWithdrawals} Pending</span>` : ''}
+                            ${pendingWithdrawals.length > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;font-size:0.7rem;">${pendingWithdrawals.length} Pending</span>` : ''}
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
                         <div class="stat-card">
                             <div class="stat-icon purple"><i class="bi bi-cash-stack"></i></div>
-                            <div class="stat-number">$${totalDepositAmount.toFixed(2)}</div>
+                            <div class="stat-number">$${allTransactions.filter(t => t.type === 'deposit' && t.status !== 'rejected').reduce((sum, t) => sum + (t.amount || 0), 0).toFixed(2)}</div>
                             <div class="stat-label">Total Deposited</div>
                         </div>
                     </div>
@@ -936,19 +1025,19 @@ function renderDashboard() {
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link ${currentTab === 'users' ? 'active' : ''}" onclick="switchTab('users')">
-                            <i class="bi bi-people"></i> Users (${totalUsers})
+                        <a class="nav-link ${currentTab === 'withdrawals' ? 'active' : ''}" onclick="switchTab('withdrawals')">
+                            <i class="bi bi-arrow-up-circle"></i> Withdrawals 
+                            ${pendingWithdrawals.length > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;margin-left:5px;">${pendingWithdrawals.length}</span>` : ''}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link ${currentTab === 'deposits' ? 'active' : ''}" onclick="switchTab('deposits')">
-                            <i class="bi bi-arrow-down-circle"></i> Deposits (${Object.keys(allDepositsCombined).length})
+                            <i class="bi bi-arrow-down-circle"></i> Deposits
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link ${currentTab === 'withdrawals' ? 'active' : ''}" onclick="switchTab('withdrawals')">
-                            <i class="bi bi-arrow-up-circle"></i> Withdrawals (${Object.keys(allWithdrawalsCombined).length})
-                            ${pendingWithdrawals > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;margin-left:5px;">${pendingWithdrawals} Pending</span>` : ''}
+                        <a class="nav-link ${currentTab === 'users' ? 'active' : ''}" onclick="switchTab('users')">
+                            <i class="bi bi-people"></i> Users (${totalUsers})
                         </a>
                     </li>
                     <li class="nav-item">
@@ -966,9 +1055,9 @@ function renderDashboard() {
 
             <div class="col-12">
                 ${currentTab === 'dashboard' ? renderDashboardTab() : ''}
-                ${currentTab === 'users' ? renderUsersTab() : ''}
-                ${currentTab === 'deposits' ? renderDepositsTab() : ''}
                 ${currentTab === 'withdrawals' ? renderWithdrawalsTab() : ''}
+                ${currentTab === 'deposits' ? renderDepositsTab() : ''}
+                ${currentTab === 'users' ? renderUsersTab() : ''}
                 ${currentTab === 'packages' ? renderPackagesTab() : ''}
                 ${currentTab === 'settings' ? renderSettingsTab() : ''}
             </div>
@@ -983,6 +1072,14 @@ function renderDashboard() {
                 await saveSettings();
             });
         }
+        
+        const adminForm = document.getElementById('adminAdjustForm');
+        if (adminForm) {
+            adminForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await handleAdminAdjustment();
+            });
+        }
     }, 300);
 }
 
@@ -990,38 +1087,20 @@ function renderDashboard() {
 // 🔥 RENDER DASHBOARD TAB
 // ============================================================
 function renderDashboardTab() {
-    const allWithdrawalsCombined = getAllWithdrawals();
-    const allDepositsCombined = getAllDeposits();
-    
     let recentActivity = [];
     
-    for (let key in allDepositsCombined) {
-        const d = allDepositsCombined[key];
+    for (let tx of allTransactions.slice(0, 20)) {
         recentActivity.push({
-            type: 'deposit',
-            user: d.user?.name || 'Unknown',
-            amount: d.amount || 0,
-            status: d.status || 'approved',
-            timestamp: d.timestamp || 0,
-            label: d.isPackage ? 'Package' : 'Deposit'
+            type: tx.type,
+            user: tx.user?.name || 'Unknown',
+            amount: tx.amount || 0,
+            status: tx.status || 'pending',
+            timestamp: tx.timestamp || 0,
+            label: getTypeLabel(tx.type),
+            uid: tx.uid
         });
     }
     
-    for (let key in allWithdrawalsCombined) {
-        const w = allWithdrawalsCombined[key];
-        recentActivity.push({
-            type: 'withdrawal',
-            user: w.user?.name || 'Unknown',
-            amount: w.amount || 0,
-            status: w.status || 'pending',
-            timestamp: w.timestamp || 0,
-            label: 'Withdrawal'
-        });
-    }
-    
-    recentActivity.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    recentActivity = recentActivity.slice(0, 15);
-
     if (recentActivity.length === 0) {
         return `
             <div class="card-glass">
@@ -1049,30 +1128,229 @@ function renderDashboardTab() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${recentActivity.map(item => `
-                            <tr>
-                                <td>
-                                    ${item.type === 'deposit' ? '<i class="bi bi-arrow-down-circle text-success"></i> ' + (item.label || 'Deposit') : '<i class="bi bi-arrow-up-circle text-warning"></i> Withdrawal'}
-                                </td>
-                                <td><strong>${item.user}</strong></td>
-                                <td>
-                                    <strong style="color:${item.type === 'deposit' ? '#2ecc71' : '#fbbf24'}">
-                                        ${item.type === 'deposit' ? '+' : '-'}$${item.amount.toFixed(2)}
-                                    </strong>
-                                </td>
-                                <td>
-                                    <span class="${item.status === 'pending' ? 'badge-pending' : item.status === 'approved' || item.status === 'success' ? 'badge-approved' : 'badge-rejected'}">
-                                        ${item.status === 'pending' ? '⏳ Pending' : item.status === 'approved' || item.status === 'success' ? '✅ Done' : '❌ Rejected'}
-                                    </span>
-                                </td>
-                                <td style="font-size:0.8rem;color:#8899bb;">${new Date(item.timestamp).toLocaleString('hi-IN')}</td>
-                            </tr>
-                        `).join('')}
+                        ${recentActivity.map(item => {
+                            const statusClass = item.status === 'pending' ? 'badge-pending' : 
+                                               item.status === 'approved' || item.status === 'completed' || item.status === 'success' ? 'badge-approved' : 
+                                               'badge-rejected';
+                            const statusText = item.status === 'pending' ? '⏳ Pending' : 
+                                               item.status === 'approved' || item.status === 'completed' || item.status === 'success' ? '✅ Done' : 
+                                               '❌ Rejected';
+                            const amountColor = item.type === 'withdrawal' || item.type === 'admin_debit' ? '#f87171' : '#2ecc71';
+                            const sign = item.type === 'withdrawal' || item.type === 'admin_debit' ? '-' : '+';
+                            return `
+                                <tr>
+                                    <td>
+                                        <i class="bi ${getTypeIcon(item.type)}" style="color:${amountColor};"></i>
+                                        ${item.label || item.type}
+                                    </td>
+                                    <td><strong>${item.user}</strong></td>
+                                    <td>
+                                        <strong style="color:${amountColor}">
+                                            ${sign}$${(item.amount || 0).toFixed(2)}
+                                        </strong>
+                                    </td>
+                                    <td><span class="${statusClass}">${statusText}</span></td>
+                                    <td style="font-size:0.8rem;color:#8899bb;">${new Date(item.timestamp).toLocaleString('hi-IN')}</td>
+                                </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
         </div>
     `;
+}
+
+// ============================================================
+// 🔥 RENDER WITHDRAWALS TAB
+// ============================================================
+function renderWithdrawalsTab() {
+    // Get all pending and recent withdrawals
+    const allWithdrawalsList = allTransactions.filter(t => t.type === 'withdrawal');
+    allWithdrawalsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    // Also include from root withdrawals
+    for (let key in allWithdrawals) {
+        const w = allWithdrawals[key];
+        const exists = allWithdrawalsList.some(t => t.withdrawalId === w.withdrawalId);
+        if (!exists) {
+            const user = allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
+            allWithdrawalsList.push({
+                id: key,
+                uid: w.uid,
+                user: user,
+                withdrawalId: w.withdrawalId || key,
+                amount: w.amount || 0,
+                currency: w.currency || 'USDT',
+                status: w.status || 'pending',
+                timestamp: w.timestamp || Date.now(),
+                walletAddress: w.wallet || '',
+                walletType: w.walletType || '',
+                source: 'root'
+            });
+        }
+    }
+    
+    allWithdrawalsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    if (allWithdrawalsList.length === 0) {
+        return `
+            <div class="card-glass">
+                <div class="no-data">
+                    <i class="bi bi-inbox"></i>
+                    <p>No withdrawals found.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    let html = `
+        <div class="card-glass">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div class="card-title" style="margin-bottom:0;">
+                    <i class="bi bi-arrow-up-circle text-success me-2"></i>
+                    Withdrawals (${allWithdrawalsList.length})
+                    ${allWithdrawalsList.filter(w => w.status === 'pending').length > 0 ? 
+                        `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;margin-left:10px;">${allWithdrawalsList.filter(w => w.status === 'pending').length} Pending</span>` : ''}
+                </div>
+                <input type="text" class="search-box" placeholder="Search by user..." oninput="filterWithdrawals(this.value)">
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom" id="withdrawalsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Wallet</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    let count = 0;
+    for (let w of allWithdrawalsList) {
+        count++;
+        const user = w.user || allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
+        const statusClass = w.status === 'pending' ? 'badge-pending' : 
+                           w.status === 'approved' || w.status === 'success' ? 'badge-approved' : 
+                           'badge-rejected';
+        const statusText = w.status === 'pending' ? '⏳ Pending' : 
+                           w.status === 'approved' || w.status === 'success' ? '✅ Approved' : 
+                           '❌ Rejected';
+        const currency = w.currency || 'USDT';
+        const walletDisplay = w.walletAddress ? w.walletAddress.substring(0, 20) + '...' : 'N/A';
+        const withdrawalId = w.withdrawalId || w.id;
+        
+        html += `
+            <tr data-user="${(user.username || user.name || '').toLowerCase()}">
+                <td>${count}</td>
+                <td>
+                    <strong>${user.name || 'Unknown'}</strong><br>
+                    <small style="color:#556688;">${user.username || 'N/A'}</small>
+                    ${w.source ? `<br><small style="color:#556688;font-size:0.6rem;">${w.source}</small>` : ''}
+                </td>
+                <td><strong style="color:#fbbf24;">${(w.amount || 0).toFixed(2)} ${currency}</strong></td>
+                <td>
+                    <span class="wallet-address-cell">${walletDisplay}</span>
+                    ${w.walletAddress ? `<button class="btn-copy ms-1" onclick="copyAddress('${w.walletAddress}','Wallet')"><i class="bi bi-clipboard"></i></button>` : ''}
+                </td>
+                <td style="font-size:0.8rem;color:#8899bb;">${new Date(w.timestamp).toLocaleString('hi-IN')}</td>
+                <td><span class="${statusClass}">${statusText}</span></td>
+                <td>
+                    ${w.status === 'pending' ? `
+                        <button class="btn btn-success-custom btn-sm me-1" onclick="approveWithdrawal('${w.uid}', '${withdrawalId}')"><i class="bi bi-check-lg"></i></button>
+                        <button class="btn btn-danger-custom btn-sm" onclick="rejectWithdrawal('${w.uid}', '${withdrawalId}')"><i class="bi bi-x-lg"></i></button>
+                    ` : w.status === 'approved' || w.status === 'success' ? `
+                        <span class="text-success"><i class="bi bi-check-circle"></i> Done</span>
+                    ` : `
+                        <span class="text-danger"><i class="bi bi-x-circle"></i> Rejected</span>
+                    `}
+                </td>
+            </tr>
+        `;
+    }
+
+    html += `</tbody></table></div></div>`;
+    return html;
+}
+
+// ============================================================
+// 🔥 RENDER DEPOSITS TAB
+// ============================================================
+function renderDepositsTab() {
+    const allDepositsList = allTransactions.filter(t => t.type === 'deposit');
+    allDepositsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    if (allDepositsList.length === 0) {
+        return `
+            <div class="card-glass">
+                <div class="no-data">
+                    <i class="bi bi-inbox"></i>
+                    <p>No deposits found.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    let html = `
+        <div class="card-glass">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div class="card-title" style="margin-bottom:0;">
+                    <i class="bi bi-arrow-down-circle text-success me-2"></i>
+                    Deposits (${allDepositsList.length})
+                </div>
+                <input type="text" class="search-box" placeholder="Search by user..." oninput="filterDeposits(this.value)">
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom" id="depositsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Details</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    let count = 0;
+    for (let d of allDepositsList) {
+        count++;
+        const user = d.user || allUsers[d.uid] || { name: 'Unknown', username: 'N/A' };
+        const statusClass = d.status === 'pending' ? 'badge-pending' : 
+                           d.status === 'approved' || d.status === 'completed' || d.status === 'success' ? 'badge-approved' : 
+                           'badge-rejected';
+        const statusText = d.status === 'pending' ? '⏳ Pending' : 
+                           d.status === 'approved' || d.status === 'completed' || d.status === 'success' ? '✅ Approved' : 
+                           '❌ Rejected';
+        
+        html += `
+            <tr data-user="${(user.username || user.name || '').toLowerCase()}">
+                <td>${count}</td>
+                <td>
+                    <strong>${user.name || 'Unknown'}</strong><br>
+                    <small style="color:#556688;">${user.username || 'N/A'}</small>
+                </td>
+                <td><strong style="color:#2ecc71;">$${(d.amount || 0).toFixed(2)}</strong></td>
+                <td style="font-size:0.8rem;color:#8899bb;">
+                    ${d.description || 'Deposit'}
+                    ${d.txHash ? `<br><small>TX: ${d.txHash.substring(0, 15)}...</small>` : ''}
+                </td>
+                <td style="font-size:0.8rem;color:#8899bb;">${new Date(d.timestamp).toLocaleString('hi-IN')}</td>
+                <td><span class="${statusClass}">${statusText}</span></td>
+            </tr>
+        `;
+    }
+
+    html += `</tbody></table></div></div>`;
+    return html;
 }
 
 // ============================================================
@@ -1099,6 +1377,51 @@ function renderUsersTab() {
                 <div class="card-title" style="margin-bottom:0;"><i class="bi bi-people text-success me-2"></i>All Users (${filteredUsers.length})</div>
                 <input type="text" class="search-box" placeholder="Search by name..." oninput="filterUsers(this.value)">
             </div>
+            
+            <!-- Admin Adjustment Form -->
+            <div class="card-glass mb-3" style="background:rgba(251,191,36,0.05);border-color:rgba(251,191,36,0.1);">
+                <h6 class="text-muted"><i class="bi bi-shield"></i> Admin Adjustment</h6>
+                <form id="adminAdjustForm" class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">User</label>
+                        <select id="adminUserSelect" class="form-control form-control-custom">
+                            ${filteredUsers.map(uid => {
+                                const u = allUsers[uid];
+                                return `<option value="${uid}">${u.name || 'Unknown'} (@${u.username || 'N/A'})</option>`;
+                            }).join('')}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Wallet</label>
+                        <select id="adminWalletSelect" class="form-control form-control-custom">
+                            <option value="depositWallet">Deposit Wallet</option>
+                            <option value="referralWallet">Referral Wallet</option>
+                            <option value="rndWallet">RND Wallet</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Type</label>
+                        <select id="adminAdjustType" class="form-control form-control-custom">
+                            <option value="credit">➕ Credit</option>
+                            <option value="debit">➖ Debit</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Amount (USDT)</label>
+                        <input type="number" id="adminAdjustAmount" class="form-control form-control-custom" placeholder="0.00" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" id="adminAdjustDesc" class="form-control form-control-custom" placeholder="Reason for adjustment">
+                    </div>
+                    <div class="col-12 mt-2">
+                        <button type="submit" class="btn btn-warning-custom w-100">
+                            <i class="bi bi-shield me-1"></i> Apply Adjustment
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
             <div class="table-responsive">
                 <table class="table table-custom" id="usersTable">
                     <thead>
@@ -1139,206 +1462,6 @@ function renderUsersTab() {
                 <td>${totalReferrals}</td>
                 <td>
                     <button class="btn btn-info btn-sm" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa;" onclick="viewUserDetails('${key}')"><i class="bi bi-eye"></i></button>
-                </td>
-            </tr>
-        `;
-    }
-
-    html += `</tbody></table></div></div>`;
-    return html;
-}
-
-window.viewUserDetails = function(userId) {
-    const user = allUsers[userId];
-    if (!user) {
-        showToast('❌ User not found!', 'error');
-        return;
-    }
-    
-    const userTxs = allTransactions.filter(t => t.uid === userId);
-    const deposits = userTxs.filter(t => t.type === 'deposit' || t.type === 'deposit_verified');
-    const withdrawals = userTxs.filter(t => t.type === 'withdrawal');
-    const userPackages = allPackages.filter(p => p.uid === userId);
-    
-    let totalReleased = 0;
-    let totalLocked = 0;
-    for (let pkg of userPackages) {
-        totalReleased += (pkg.releasedAmount || 0);
-        totalLocked += ((pkg.totalRND || 0) - (pkg.releasedAmount || 0));
-    }
-    
-    alert(`📊 User Details
-━━━━━━━━━━━━━━━━━━━━━━
-👤 Name: ${user.name || 'Unknown'}
-📛 Username: ${user.username || 'N/A'}
-📧 Email: ${user.email || 'N/A'}
-━━━━━━━━━━━━━━━━━━━━━━
-💰 Deposit Wallet: $${(user.depositWallet || 0).toFixed(2)}
-📊 RND Wallet: ${(user.rndWallet || 0).toFixed(4)}
-🔒 Locked RND: ${(user.lockedRND || 0).toFixed(2)}
-━━━━━━━━━━━━━━━━━━━━━━
-📥 Deposits: ${deposits.length}
-📤 Withdrawals: ${withdrawals.length}
-👥 Referrals: ${user.totalReferrals || 0}
-━━━━━━━━━━━━━━━━━━━━━━
-📦 Packages: ${userPackages.length}
-✅ Released: ${totalReleased.toFixed(2)} RND
-🔒 Locked: ${totalLocked.toFixed(2)} RND`);
-};
-
-// ============================================================
-// 🔥 RENDER DEPOSITS TAB
-// ============================================================
-function renderDepositsTab() {
-    const allDepositsCombined = getAllDeposits();
-    const depositList = Object.values(allDepositsCombined);
-    depositList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    
-    if (depositList.length === 0) {
-        return `
-            <div class="card-glass">
-                <div class="no-data">
-                    <i class="bi bi-inbox"></i>
-                    <p>No deposits found.</p>
-                </div>
-            </div>
-        `;
-    }
-
-    let html = `
-        <div class="card-glass">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-down-circle text-success me-2"></i>All Deposits (${depositList.length})</div>
-                <input type="text" class="search-box" placeholder="Search by user..." oninput="filterDeposits(this.value)">
-            </div>
-            <div class="table-responsive">
-                <table class="table table-custom" id="depositsTable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>User</th>
-                            <th>Amount</th>
-                            <th>Details</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-
-    let count = 0;
-    for (let d of depositList) {
-        count++;
-        const user = d.user || allUsers[d.uid] || { name: 'Unknown', username: 'N/A' };
-        const statusClass = d.status === 'pending' ? 'badge-pending' : 'badge-approved';
-        const statusText = d.status === 'pending' ? '⏳ Pending' : '✅ Approved';
-        const typeLabel = d.isPackage ? '📦 Package' : '💰 Deposit';
-        const details = d.isPackage ? (d.description || 'Package') : (d.txHash ? d.txHash.substring(0, 15) + '...' : '');
-        
-        html += `
-            <tr data-user="${(user.username || user.name || '').toLowerCase()}">
-                <td>${count}</td>
-                <td>
-                    <strong>${user.name || 'Unknown'}</strong><br>
-                    <small style="color:#556688;">${user.username || 'N/A'}</small>
-                </td>
-                <td><strong style="color:#2ecc71;">$${d.amount || 0}</strong></td>
-                <td style="font-size:0.8rem;color:#8899bb;">
-                    ${typeLabel}
-                    ${details ? `<br><small>${details}</small>` : ''}
-                    ${d.source ? `<br><small style="color:#556688;">${d.source}</small>` : ''}
-                </td>
-                <td style="font-size:0.8rem;color:#8899bb;">${new Date(d.timestamp).toLocaleString('hi-IN')}</td>
-                <td><span class="${statusClass}">${statusText}</span></td>
-            </tr>
-        `;
-    }
-
-    html += `</tbody></table></div></div>`;
-    return html;
-}
-
-// ============================================================
-// 🔥 RENDER WITHDRAWALS TAB - KEY FIX
-// ============================================================
-function renderWithdrawalsTab() {
-    const allWithdrawalsCombined = getAllWithdrawals();
-    const withdrawalList = Object.values(allWithdrawalsCombined);
-    withdrawalList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    
-    console.log('📊 Rendering withdrawals:', withdrawalList.length);
-    
-    if (withdrawalList.length === 0) {
-        return `
-            <div class="card-glass">
-                <div class="no-data">
-                    <i class="bi bi-inbox"></i>
-                    <p>No withdrawals found.</p>
-                    <p class="text-muted small">Check if withdrawals exist in Firebase /withdrawals node or in user transactions.</p>
-                </div>
-            </div>
-        `;
-    }
-
-    let html = `
-        <div class="card-glass">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-up-circle text-success me-2"></i>All Withdrawals (${withdrawalList.length})</div>
-                <input type="text" class="search-box" placeholder="Search by user..." oninput="filterWithdrawals(this.value)">
-            </div>
-            <div class="table-responsive">
-                <table class="table table-custom" id="withdrawalsTable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>User</th>
-                            <th>Amount</th>
-                            <th>Wallet</th>
-                            <th>Wallet Type</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-
-    let count = 0;
-    for (let w of withdrawalList) {
-        count++;
-        const user = w.user || allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
-        const statusClass = w.status === 'pending' ? 'badge-pending' : w.status === 'approved' || w.status === 'success' ? 'badge-approved' : 'badge-rejected';
-        const statusText = w.status === 'pending' ? '⏳ Pending' : w.status === 'approved' || w.status === 'success' ? '✅ Approved' : '❌ Rejected';
-        const currency = w.currency || 'USDT';
-        const walletDisplay = w.wallet ? w.wallet.substring(0, 20) + '...' : 'N/A';
-        const walletType = w.walletType || w.walletType || '';
-        const source = w.source || '';
-        
-        html += `
-            <tr data-user="${(user.username || user.name || '').toLowerCase()}">
-                <td>${count}</td>
-                <td>
-                    <strong>${user.name || 'Unknown'}</strong><br>
-                    <small style="color:#556688;">${user.username || 'N/A'}</small>
-                    ${source ? `<br><small style="color:#556688;font-size:0.6rem;">${source}</small>` : ''}
-                </td>
-                <td><strong style="color:#fbbf24;">${w.amount || 0} ${currency}</strong></td>
-                <td>
-                    <span class="wallet-address-cell">${walletDisplay}</span>
-                    ${w.wallet ? `<button class="btn-copy ms-1" onclick="copyAddress('${w.wallet}','Wallet')"><i class="bi bi-clipboard"></i></button>` : ''}
-                </td>
-                <td style="font-size:0.8rem;color:#8899bb;">${walletType || 'N/A'}</td>
-                <td style="font-size:0.8rem;color:#8899bb;">${new Date(w.timestamp).toLocaleString('hi-IN')}</td>
-                <td><span class="${statusClass}">${statusText}</span></td>
-                <td>
-                    ${w.status === 'pending' ? `
-                        <button class="btn btn-success-custom btn-sm me-1" onclick="approveWithdrawal('${w.id}')"><i class="bi bi-check-lg"></i></button>
-                        <button class="btn btn-danger-custom btn-sm" onclick="rejectWithdrawal('${w.id}')"><i class="bi bi-x-lg"></i></button>
-                    ` : w.status === 'approved' || w.status === 'success' ? `
-                        <button class="btn btn-warning-custom btn-sm" onclick="reverseWithdrawal('${w.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>
-                    ` : `
-                        <button class="btn btn-warning-custom btn-sm" onclick="reverseWithdrawal('${w.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>
-                    `}
                 </td>
             </tr>
         `;
@@ -1393,7 +1516,7 @@ function renderPackagesTab() {
         const user = pkg.user || allUsers[pkg.uid] || { name: 'Unknown', username: 'N/A' };
         const statusClass = pkg.status === 'active' ? 'badge-active' : 'badge-completed';
         const statusText = pkg.status === 'active' ? '🟢 Active' : '🔵 Completed';
-        const released = pkg.releasedAmount || 0;
+        const released = pkg.releasedRND || 0;
         const locked = Math.max(0, (pkg.totalRND || 0) - released);
         
         html += `
@@ -1404,7 +1527,7 @@ function renderPackagesTab() {
                     <small style="color:#556688;">${user.username || 'N/A'}</small>
                 </td>
                 <td style="color:#fbbf24;">${pkg.planName || 'Package'}</td>
-                <td><strong style="color:#2ecc71;">$${pkg.usdtAmount || 0}</strong></td>
+                <td><strong style="color:#2ecc71;">$${(pkg.usdtAmount || 0).toFixed(2)}</strong></td>
                 <td><strong style="color:#60a5fa;">${(pkg.totalRND || 0).toFixed(2)}</strong></td>
                 <td style="color:#34d399;">${released.toFixed(2)}</td>
                 <td style="color:#a78bfa;">${locked.toFixed(2)}</td>
@@ -1438,9 +1561,6 @@ function renderSettingsTab() {
         totalLockedRND += (u.lockedRND || 0);
     }
     
-    const allWithdrawalsCombined = getAllWithdrawals();
-    const allDepositsCombined = getAllDeposits();
-    
     return `
         <div class="card-glass">
             <div class="card-title"><i class="bi bi-gear text-success me-2"></i>Admin Settings</div>
@@ -1466,8 +1586,8 @@ function renderSettingsTab() {
                 <div class="col-md-6">
                     <h6 class="text-muted">📊 Platform Stats</h6>
                     <div class="info-row"><span class="label">Total Users</span><span class="value">${totalUsers}</span></div>
-                    <div class="info-row"><span class="label">Total Deposits</span><span class="value">${Object.keys(allDepositsCombined).length}</span></div>
-                    <div class="info-row"><span class="label">Total Withdrawals</span><span class="value">${Object.keys(allWithdrawalsCombined).length}</span></div>
+                    <div class="info-row"><span class="label">Total Deposits</span><span class="value">${allTransactions.filter(t => t.type === 'deposit').length}</span></div>
+                    <div class="info-row"><span class="label">Total Withdrawals</span><span class="value">${allTransactions.filter(t => t.type === 'withdrawal').length}</span></div>
                     <div class="info-row"><span class="label">Total Packages</span><span class="value">${allPackages.length}</span></div>
                     <div class="info-row"><span class="label">Total Deposit Wallet</span><span class="value" style="color:#2ecc71;">$${totalDepositWallet.toFixed(2)}</span></div>
                     <div class="info-row"><span class="label">Total RND Wallet</span><span class="value" style="color:#60a5fa;">${totalRNDWallet.toFixed(2)}</span></div>
@@ -1478,6 +1598,7 @@ function renderSettingsTab() {
                     <div class="info-row"><span class="label">Admin Status</span><span class="value"><i class="bi bi-check-circle text-success"></i> Active</span></div>
                     <div class="info-row"><span class="label">Session Time</span><span class="value">${new Date().toLocaleString('hi-IN')}</span></div>
                     <div class="info-row"><span class="label">Database</span><span class="value"><i class="bi bi-check-circle text-success"></i> Connected</span></div>
+                    <div class="info-row"><span class="label">Pending Withdrawals</span><span class="value" style="color:#fbbf24;">${pendingWithdrawals.length}</span></div>
                 </div>
             </div>
         </div>
@@ -1532,149 +1653,180 @@ window.filterPackages = function(value) {
 };
 
 // ============================================================
-// 🔥 WITHDRAWAL ACTIONS - MANUAL APPROVAL
+// 🔥 VIEW USER DETAILS
 // ============================================================
-window.approveWithdrawal = async function(wId) {
+window.viewUserDetails = function(userId) {
+    const user = allUsers[userId];
+    if (!user) {
+        showToast('❌ User not found!', 'error');
+        return;
+    }
+    
+    const userTxs = allTransactions.filter(t => t.uid === userId);
+    const deposits = userTxs.filter(t => t.type === 'deposit');
+    const withdrawals = userTxs.filter(t => t.type === 'withdrawal');
+    const userPackages = allPackages.filter(p => p.uid === userId);
+    
+    let totalReleased = 0;
+    let totalLocked = 0;
+    for (let pkg of userPackages) {
+        totalReleased += (pkg.releasedRND || 0);
+        totalLocked += ((pkg.totalRND || 0) - (pkg.releasedRND || 0));
+    }
+    
+    alert(`📊 User Details
+━━━━━━━━━━━━━━━━━━━━━━
+👤 Name: ${user.name || 'Unknown'}
+📛 Username: ${user.username || 'N/A'}
+📧 Email: ${user.email || 'N/A'}
+━━━━━━━━━━━━━━━━━━━━━━
+💰 Deposit Wallet: $${(user.depositWallet || 0).toFixed(2)}
+📊 RND Wallet: ${(user.rndWallet || 0).toFixed(4)}
+🔒 Locked RND: ${(user.lockedRND || 0).toFixed(2)}
+━━━━━━━━━━━━━━━━━━━━━━
+📥 Deposits: ${deposits.length}
+📤 Withdrawals: ${withdrawals.length}
+👥 Referrals: ${user.totalReferrals || 0}
+━━━━━━━━━━━━━━━━━━━━━━
+📦 Packages: ${userPackages.length}
+✅ Released: ${totalReleased.toFixed(2)} RND
+🔒 Locked: ${totalLocked.toFixed(2)} RND`);
+};
+
+// ============================================================
+// 🔥 APPROVE WITHDRAWAL
+// ============================================================
+window.approveWithdrawal = async function(uid, withdrawalId) {
     if (!confirm('✅ Approve this withdrawal?')) return;
+    
     try {
-        const allWithdrawalsCombined = getAllWithdrawals();
-        const w = allWithdrawalsCombined[wId];
-        if (!w) { showToast('❌ Withdrawal not found!', 'error'); return; }
+        // Update status in user's transactions
+        const result = await updateWithdrawalStatusAtomic(uid, withdrawalId, 'approved');
         
-        console.log('Approving withdrawal:', w);
-        
-        // If from root node, update root node
-        if (w.source === 'root_withdrawals') {
-            await update(ref(db, 'withdrawals/' + wId), { status: 'approved' });
-            showToast('✅ Withdrawal approved from root node!', 'success');
-        } else {
-            // From user transactions
-            const userRef = ref(db, 'users/' + w.uid);
-            const userSnap = await get(userRef);
-            if (!userSnap.exists()) { showToast('❌ User not found!', 'error'); return; }
+        if (result.success) {
+            showToast('✅ Withdrawal approved successfully!', 'success');
             
-            const userData = userSnap.val();
-            const transactions = userData.transactions || {};
-            
-            let found = false;
-            for (let key in transactions) {
-                if (transactions[key].type === 'withdrawal' && 
-                    transactions[key].amount === w.amount && 
-                    Math.abs((transactions[key].timestamp || 0) - (w.timestamp || 0)) < 5000) {
-                    transactions[key].status = 'approved';
-                    found = true;
-                    break;
+            // Also update root withdrawals if exists
+            try {
+                const rootSnap = await get(ref(db, 'withdrawals'));
+                if (rootSnap.exists()) {
+                    const rootData = rootSnap.val();
+                    for (let key in rootData) {
+                        if (rootData[key].withdrawalId === withdrawalId) {
+                            await update(ref(db, 'withdrawals/' + key), { 
+                                status: 'approved',
+                                approvedAt: Date.now()
+                            });
+                            break;
+                        }
+                    }
                 }
+            } catch (err) {
+                console.warn('Root withdrawal update warning:', err);
             }
             
-            if (found) {
-                await update(ref(db, 'users/' + w.uid), { transactions: transactions });
-                showToast('✅ Withdrawal approved from user transactions!', 'success');
-            } else {
-                showToast('⚠️ Could not find transaction in user data.', 'error');
-            }
+            // Refresh data
+            setTimeout(() => renderDashboard(), 500);
+        } else {
+            showToast('❌ Failed to approve withdrawal: ' + (result.error || 'Unknown error'), 'error');
         }
-        
-        // Refresh data
-        extractTransactionsFromUsers();
-        renderDashboard();
     } catch (error) {
-        showToast('❌ Error: ' + error.message, 'error');
         console.error('Approve error:', error);
+        showToast('❌ Error: ' + error.message, 'error');
     }
 };
 
-window.rejectWithdrawal = async function(wId) {
-    if (!confirm('❌ Reject this withdrawal?')) return;
+// ============================================================
+// 🔥 REJECT WITHDRAWAL
+// ============================================================
+window.rejectWithdrawal = async function(uid, withdrawalId) {
+    const remark = prompt('❌ Reason for rejection (optional):');
+    if (remark === null) return;
+    
     try {
-        const allWithdrawalsCombined = getAllWithdrawals();
-        const w = allWithdrawalsCombined[wId];
-        if (!w) { showToast('❌ Withdrawal not found!', 'error'); return; }
+        const result = await updateWithdrawalStatusAtomic(uid, withdrawalId, 'rejected', remark);
         
-        console.log('Rejecting withdrawal:', w);
-        
-        if (w.source === 'root_withdrawals') {
-            await update(ref(db, 'withdrawals/' + wId), { status: 'rejected' });
-            showToast('❌ Withdrawal rejected from root node!', 'success');
-        } else {
-            const userRef = ref(db, 'users/' + w.uid);
-            const userSnap = await get(userRef);
-            if (!userSnap.exists()) { showToast('❌ User not found!', 'error'); return; }
+        if (result.success) {
+            showToast('❌ Withdrawal rejected!', 'success');
             
-            const userData = userSnap.val();
-            const transactions = userData.transactions || {};
-            
-            let found = false;
-            for (let key in transactions) {
-                if (transactions[key].type === 'withdrawal' && 
-                    transactions[key].amount === w.amount && 
-                    Math.abs((transactions[key].timestamp || 0) - (w.timestamp || 0)) < 5000) {
-                    transactions[key].status = 'rejected';
-                    found = true;
-                    break;
+            // Also update root withdrawals if exists
+            try {
+                const rootSnap = await get(ref(db, 'withdrawals'));
+                if (rootSnap.exists()) {
+                    const rootData = rootSnap.val();
+                    for (let key in rootData) {
+                        if (rootData[key].withdrawalId === withdrawalId) {
+                            await update(ref(db, 'withdrawals/' + key), { 
+                                status: 'rejected',
+                                rejectedAt: Date.now(),
+                                rejectReason: remark
+                            });
+                            break;
+                        }
+                    }
                 }
+            } catch (err) {
+                console.warn('Root withdrawal update warning:', err);
             }
             
-            if (found) {
-                await update(ref(db, 'users/' + w.uid), { transactions: transactions });
-                showToast('❌ Withdrawal rejected from user transactions!', 'success');
-            } else {
-                showToast('⚠️ Could not find transaction in user data.', 'error');
-            }
+            setTimeout(() => renderDashboard(), 500);
+        } else {
+            showToast('❌ Failed to reject withdrawal: ' + (result.error || 'Unknown error'), 'error');
         }
-        
-        extractTransactionsFromUsers();
-        renderDashboard();
     } catch (error) {
-        showToast('❌ Error: ' + error.message, 'error');
         console.error('Reject error:', error);
+        showToast('❌ Error: ' + error.message, 'error');
     }
 };
 
-window.reverseWithdrawal = async function(wId) {
-    if (!confirm('🔄 Reverse this withdrawal?')) return;
-    try {
-        const allWithdrawalsCombined = getAllWithdrawals();
-        const w = allWithdrawalsCombined[wId];
-        if (!w) { showToast('❌ Withdrawal not found!', 'error'); return; }
-        
-        console.log('Reversing withdrawal:', w);
-        
-        // Add amount back to user's wallet
-        const userRef = ref(db, 'users/' + w.uid);
-        const userSnap = await get(userRef);
-        if (!userSnap.exists()) { showToast('❌ User not found!', 'error'); return; }
-        
-        const userData = userSnap.val();
-        const walletType = w.walletType || 'withdrawalWallet';
-        const currentBalance = userData[walletType] || 0;
-        const newBalance = currentBalance + (w.amount || 0);
-        
-        await update(userRef, { [walletType]: newBalance });
-        
-        if (w.source === 'root_withdrawals') {
-            await update(ref(db, 'withdrawals/' + wId), { status: 'pending' });
-        } else {
-            const transactions = userData.transactions || {};
-            for (let key in transactions) {
-                if (transactions[key].type === 'withdrawal' && 
-                    transactions[key].amount === w.amount && 
-                    Math.abs((transactions[key].timestamp || 0) - (w.timestamp || 0)) < 5000) {
-                    transactions[key].status = 'pending';
-                    break;
-                }
-            }
-            await update(ref(db, 'users/' + w.uid), { transactions: transactions });
-        }
-        
-        showToast('🔄 Withdrawal reversed! Amount added back to wallet.', 'success');
-        extractTransactionsFromUsers();
-        renderDashboard();
-    } catch (error) {
-        showToast('❌ Error: ' + error.message, 'error');
-        console.error('Reverse error:', error);
+// ============================================================
+// 🔥 ADMIN ADJUSTMENT
+// ============================================================
+async function handleAdminAdjustment() {
+    const uid = document.getElementById('adminUserSelect').value;
+    const walletType = document.getElementById('adminWalletSelect').value;
+    const type = document.getElementById('adminAdjustType').value;
+    const amount = parseFloat(document.getElementById('adminAdjustAmount').value);
+    const description = document.getElementById('adminAdjustDesc').value || `${type === 'credit' ? 'Admin Credit' : 'Admin Debit'} to ${walletType}`;
+    
+    if (!amount || amount <= 0) {
+        showToast('❌ Please enter a valid amount!', 'error');
+        return;
     }
-};
+    
+    if (!uid) {
+        showToast('❌ Please select a user!', 'error');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Are you sure you want to ${type === 'credit' ? 'CREDIT' : 'DEBIT'} ${amount} USDT to/from ${walletType}?`)) {
+        return;
+    }
+    
+    const btn = document.querySelector('#adminAdjustForm button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+    
+    try {
+        const result = await processAdminAdjustment(uid, walletType, amount, type, description);
+        
+        if (result.success) {
+            showToast(`✅ ${type === 'credit' ? 'Credited' : 'Debited'} ${amount} USDT successfully!`, 'success');
+            document.getElementById('adminAdjustAmount').value = '';
+            document.getElementById('adminAdjustDesc').value = '';
+            setTimeout(() => renderDashboard(), 500);
+        } else {
+            showToast('❌ Failed: ' + (result.error || 'Insufficient balance or error'), 'error');
+        }
+    } catch (error) {
+        console.error('Admin adjustment error:', error);
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+}
 
 // ============================================================
 // 🔥 SAVE SETTINGS
@@ -1714,11 +1866,41 @@ async function saveSettings() {
 }
 
 // ============================================================
-// 🔥 INIT
+// 🔥 GET TYPE LABEL HELPER
 // ============================================================
-onAuthStateChanged(auth, (user) => {
-    // This is handled above
-});
+function getTypeLabel(type) {
+    const map = {
+        'deposit': 'Deposit',
+        'withdrawal': 'Withdrawal',
+        'package': 'Package Purchase',
+        'transfer_sent': 'Transfer Sent',
+        'transfer_received': 'Transfer Received',
+        'referral_commission': 'Referral Commission',
+        'daily_release': 'Daily Release',
+        'admin_credit': 'Admin Credit',
+        'admin_debit': 'Admin Debit',
+        'bonus': 'Bonus Credit',
+        'package_completed': 'Package Completed'
+    };
+    return map[type] || type;
+}
+
+function getTypeIcon(type) {
+    const map = {
+        'deposit': 'bi-arrow-down-circle',
+        'withdrawal': 'bi-arrow-up-circle',
+        'package': 'bi-box-seam',
+        'transfer_sent': 'bi-arrow-up-right',
+        'transfer_received': 'bi-arrow-down-left',
+        'referral_commission': 'bi-people',
+        'daily_release': 'bi-clock-history',
+        'admin_credit': 'bi-plus-circle',
+        'admin_debit': 'bi-dash-circle',
+        'bonus': 'bi-gift',
+        'package_completed': 'bi-check-circle'
+    };
+    return map[type] || 'bi-circle';
+}
 </script>
 </body>
 </html>
