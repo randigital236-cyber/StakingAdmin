@@ -792,12 +792,20 @@ function extractTransactionsFromUsers() {
     pendingWithdrawals = [];
     pendingDeposits = [];
     
+    // Use a Set to track unique transaction IDs to avoid duplicates
+    const uniqueTxIds = new Set();
+    const uniquePackageIds = new Set();
+    
     for (let uid in allUsers) {
         const user = allUsers[uid];
         if (user.role === 'admin') continue;
         
         const transactions = user.transactions || {};
         for (let txId in transactions) {
+            // Skip if we've already processed this transaction ID
+            if (uniqueTxIds.has(txId)) continue;
+            uniqueTxIds.add(txId);
+            
             const tx = transactions[txId];
             allTransactions.push({
                 id: txId,
@@ -830,6 +838,10 @@ function extractTransactionsFromUsers() {
         
         const packages = user.packages || {};
         for (let pkgId in packages) {
+            // Skip if we've already processed this package ID
+            if (uniquePackageIds.has(pkgId)) continue;
+            uniquePackageIds.add(pkgId);
+            
             const pkg = packages[pkgId];
             allPackages.push({
                 id: pkgId,
@@ -840,13 +852,17 @@ function extractTransactionsFromUsers() {
         }
     }
     
-    // Also check root withdrawals node
+    // Also check root withdrawals node - avoid duplicates by tracking withdrawalId
+    const processedWithdrawalIds = new Set();
+    pendingWithdrawals.forEach(w => {
+        if (w.withdrawalId) processedWithdrawalIds.add(w.withdrawalId);
+    });
+    
     for (let key in allWithdrawals) {
         const w = allWithdrawals[key];
         if (w.status === 'pending') {
-            // Check if already in pendingWithdrawals
-            const exists = pendingWithdrawals.some(p => p.withdrawalId === w.withdrawalId || p.id === key);
-            if (!exists) {
+            // Check if already in pendingWithdrawals by withdrawalId
+            if (!processedWithdrawalIds.has(w.withdrawalId)) {
                 const user = allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
                 pendingWithdrawals.push({
                     id: key,
@@ -854,6 +870,7 @@ function extractTransactionsFromUsers() {
                     user: user,
                     ...w
                 });
+                processedWithdrawalIds.add(w.withdrawalId);
             }
         }
     }
@@ -910,22 +927,54 @@ async function loadAdminPanel() {
 function renderDashboard() {
     console.log('🔄 Rendering dashboard...');
     
+    // Calculate all statistics from live data
     let totalUsers = 0;
     let totalRNDWallet = 0;
     let totalLockedRND = 0;
     let totalDepositWallet = 0;
+    let totalReferralWallet = 0;
     let totalReferrals = 0;
     let totalStaked = 0;
+    let totalDepositsCount = 0;
+    let totalWithdrawalsCount = 0;
+    let totalDepositedAmount = 0;
     
+    // Track processed users and transactions to avoid double counting
+    const processedUsers = new Set();
+    const processedTxIds = new Set();
+    
+    // First pass: calculate user-level statistics
     for (let key in allUsers) {
         const u = allUsers[key];
         if (u.role === 'admin') continue;
+        if (processedUsers.has(key)) continue;
+        processedUsers.add(key);
+        
         totalUsers++;
         totalRNDWallet += (u.rndWallet || 0);
         totalLockedRND += (u.lockedRND || 0);
         totalDepositWallet += (u.depositWallet || 0);
+        totalReferralWallet += (u.referralWallet || 0);
         totalReferrals += (u.totalReferrals || 0);
         totalStaked += (u.totalStake || 0);
+    }
+    
+    // Second pass: calculate transaction-level statistics
+    for (let tx of allTransactions) {
+        // Skip if already processed
+        if (processedTxIds.has(tx.id)) continue;
+        processedTxIds.add(tx.id);
+        
+        // Count deposits and withdrawals
+        if (tx.type === 'deposit') {
+            totalDepositsCount++;
+            // Only count approved/completed deposits for total deposited amount
+            if (tx.status !== 'rejected' && tx.status !== 'pending') {
+                totalDepositedAmount += (tx.amount || 0);
+            }
+        } else if (tx.type === 'withdrawal') {
+            totalWithdrawalsCount++;
+        }
     }
     
     const currentRate = allSettings.rate || 1.00;
@@ -953,14 +1002,14 @@ function renderDashboard() {
                     <div class="col-md-2 col-4">
                         <div class="stat-card">
                             <div class="stat-icon blue"><i class="bi bi-arrow-down-circle"></i></div>
-                            <div class="stat-number">${allTransactions.filter(t => t.type === 'deposit').length}</div>
+                            <div class="stat-number">${totalDepositsCount}</div>
                             <div class="stat-label">Total Deposits</div>
                         </div>
                     </div>
                     <div class="col-md-2 col-4">
                         <div class="stat-card">
                             <div class="stat-icon orange"><i class="bi bi-arrow-up-circle"></i></div>
-                            <div class="stat-number">${allTransactions.filter(t => t.type === 'withdrawal').length}</div>
+                            <div class="stat-number">${totalWithdrawalsCount}</div>
                             <div class="stat-label">Total Withdrawals</div>
                             ${pendingWithdrawals.length > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;font-size:0.7rem;">${pendingWithdrawals.length} Pending</span>` : ''}
                         </div>
@@ -968,7 +1017,7 @@ function renderDashboard() {
                     <div class="col-md-3 col-6">
                         <div class="stat-card">
                             <div class="stat-icon purple"><i class="bi bi-cash-stack"></i></div>
-                            <div class="stat-number">$${allTransactions.filter(t => t.type === 'deposit' && t.status !== 'rejected').reduce((sum, t) => sum + (t.amount || 0), 0).toFixed(2)}</div>
+                            <div class="stat-number">$${totalDepositedAmount.toFixed(2)}</div>
                             <div class="stat-label">Total Deposited</div>
                         </div>
                     </div>
@@ -995,14 +1044,14 @@ function renderDashboard() {
                     <div class="col-md-3 col-6">
                         <div class="stat-card">
                             <div class="stat-icon" style="background:rgba(96,165,250,0.12);color:#60a5fa;"><i class="bi bi-coin"></i></div>
-                            <div class="stat-number" style="color:#60a5fa;">${totalRNDWallet.toFixed(2)}</div>
+                            <div class="stat-number" style="color:#60a5fa;">${totalRNDWallet.toFixed(4)}</div>
                             <div class="stat-label">Total RND Wallet</div>
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
                         <div class="stat-card">
                             <div class="stat-icon" style="background:rgba(167,139,250,0.12);color:#a78bfa;"><i class="bi bi-lock"></i></div>
-                            <div class="stat-number" style="color:#a78bfa;">${totalLockedRND.toFixed(2)}</div>
+                            <div class="stat-number" style="color:#a78bfa;">${totalLockedRND.toFixed(4)}</div>
                             <div class="stat-label">Total Locked RND</div>
                         </div>
                     </div>
@@ -1088,8 +1137,13 @@ function renderDashboard() {
 // ============================================================
 function renderDashboardTab() {
     let recentActivity = [];
+    let processedIds = new Set();
     
-    for (let tx of allTransactions.slice(0, 20)) {
+    for (let tx of allTransactions) {
+        if (processedIds.has(tx.id)) continue;
+        processedIds.add(tx.id);
+        if (recentActivity.length >= 20) break;
+        
         recentActivity.push({
             type: tx.type,
             user: tx.user?.name || 'Unknown',
@@ -1165,15 +1219,27 @@ function renderDashboardTab() {
 // 🔥 RENDER WITHDRAWALS TAB
 // ============================================================
 function renderWithdrawalsTab() {
-    // Get all pending and recent withdrawals
-    const allWithdrawalsList = allTransactions.filter(t => t.type === 'withdrawal');
-    allWithdrawalsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    // Get all pending and recent withdrawals - avoid duplicates
+    const allWithdrawalsList = [];
+    const processedWithdrawalIds = new Set();
     
-    // Also include from root withdrawals
+    // First, get from transactions
+    for (let tx of allTransactions) {
+        if (tx.type === 'withdrawal') {
+            const id = tx.withdrawalId || tx.id;
+            if (!processedWithdrawalIds.has(id)) {
+                processedWithdrawalIds.add(id);
+                allWithdrawalsList.push(tx);
+            }
+        }
+    }
+    
+    // Then, include from root withdrawals if not already included
     for (let key in allWithdrawals) {
         const w = allWithdrawals[key];
-        const exists = allWithdrawalsList.some(t => t.withdrawalId === w.withdrawalId);
-        if (!exists) {
+        const id = w.withdrawalId || key;
+        if (!processedWithdrawalIds.has(id)) {
+            processedWithdrawalIds.add(id);
             const user = allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
             allWithdrawalsList.push({
                 id: key,
@@ -1282,7 +1348,19 @@ function renderWithdrawalsTab() {
 // 🔥 RENDER DEPOSITS TAB
 // ============================================================
 function renderDepositsTab() {
-    const allDepositsList = allTransactions.filter(t => t.type === 'deposit');
+    const allDepositsList = [];
+    const processedDepositIds = new Set();
+    
+    for (let tx of allTransactions) {
+        if (tx.type === 'deposit') {
+            const id = tx.depositId || tx.id;
+            if (!processedDepositIds.has(id)) {
+                processedDepositIds.add(id);
+                allDepositsList.push(tx);
+            }
+        }
+    }
+    
     allDepositsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     
     if (allDepositsList.length === 0) {
@@ -1458,7 +1536,7 @@ function renderUsersTab() {
                 <td style="font-size:0.85rem;">${u.email || 'N/A'}</td>
                 <td><strong style="color:#2ecc71;">$${depositWallet.toFixed(2)}</strong></td>
                 <td><strong style="color:#60a5fa;">${rndWallet.toFixed(4)}</strong></td>
-                <td><strong style="color:#a78bfa;">${lockedRND.toFixed(2)}</strong></td>
+                <td><strong style="color:#a78bfa;">${lockedRND.toFixed(4)}</strong></td>
                 <td>${totalReferrals}</td>
                 <td>
                     <button class="btn btn-info btn-sm" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa;" onclick="viewUserDetails('${key}')"><i class="bi bi-eye"></i></button>
@@ -1528,9 +1606,9 @@ function renderPackagesTab() {
                 </td>
                 <td style="color:#fbbf24;">${pkg.planName || 'Package'}</td>
                 <td><strong style="color:#2ecc71;">$${(pkg.usdtAmount || 0).toFixed(2)}</strong></td>
-                <td><strong style="color:#60a5fa;">${(pkg.totalRND || 0).toFixed(2)}</strong></td>
-                <td style="color:#34d399;">${released.toFixed(2)}</td>
-                <td style="color:#a78bfa;">${locked.toFixed(2)}</td>
+                <td><strong style="color:#60a5fa;">${(pkg.totalRND || 0).toFixed(4)}</strong></td>
+                <td style="color:#34d399;">${released.toFixed(4)}</td>
+                <td style="color:#a78bfa;">${locked.toFixed(4)}</td>
                 <td style="color:#fbbf24;">${(pkg.dailyRelease || 0).toFixed(4)}</td>
                 <td><span class="${statusClass}">${statusText}</span></td>
             </tr>
@@ -1551,6 +1629,7 @@ function renderSettingsTab() {
     let totalDepositWallet = 0;
     let totalRNDWallet = 0;
     let totalLockedRND = 0;
+    let totalReferralWallet = 0;
     
     for (let key in allUsers) {
         const u = allUsers[key];
@@ -1559,6 +1638,7 @@ function renderSettingsTab() {
         totalDepositWallet += (u.depositWallet || 0);
         totalRNDWallet += (u.rndWallet || 0);
         totalLockedRND += (u.lockedRND || 0);
+        totalReferralWallet += (u.referralWallet || 0);
     }
     
     return `
@@ -1590,8 +1670,9 @@ function renderSettingsTab() {
                     <div class="info-row"><span class="label">Total Withdrawals</span><span class="value">${allTransactions.filter(t => t.type === 'withdrawal').length}</span></div>
                     <div class="info-row"><span class="label">Total Packages</span><span class="value">${allPackages.length}</span></div>
                     <div class="info-row"><span class="label">Total Deposit Wallet</span><span class="value" style="color:#2ecc71;">$${totalDepositWallet.toFixed(2)}</span></div>
-                    <div class="info-row"><span class="label">Total RND Wallet</span><span class="value" style="color:#60a5fa;">${totalRNDWallet.toFixed(2)}</span></div>
-                    <div class="info-row"><span class="label">Total Locked RND</span><span class="value" style="color:#a78bfa;">${totalLockedRND.toFixed(2)}</span></div>
+                    <div class="info-row"><span class="label">Total Referral Wallet</span><span class="value" style="color:#fbbf24;">$${totalReferralWallet.toFixed(2)}</span></div>
+                    <div class="info-row"><span class="label">Total RND Wallet</span><span class="value" style="color:#60a5fa;">${totalRNDWallet.toFixed(4)}</span></div>
+                    <div class="info-row"><span class="label">Total Locked RND</span><span class="value" style="color:#a78bfa;">${totalLockedRND.toFixed(4)}</span></div>
                 </div>
                 <div class="col-md-6">
                     <h6 class="text-muted">🔐 Security</h6>
@@ -1682,15 +1763,15 @@ window.viewUserDetails = function(userId) {
 ━━━━━━━━━━━━━━━━━━━━━━
 💰 Deposit Wallet: $${(user.depositWallet || 0).toFixed(2)}
 📊 RND Wallet: ${(user.rndWallet || 0).toFixed(4)}
-🔒 Locked RND: ${(user.lockedRND || 0).toFixed(2)}
+🔒 Locked RND: ${(user.lockedRND || 0).toFixed(4)}
 ━━━━━━━━━━━━━━━━━━━━━━
 📥 Deposits: ${deposits.length}
 📤 Withdrawals: ${withdrawals.length}
 👥 Referrals: ${user.totalReferrals || 0}
 ━━━━━━━━━━━━━━━━━━━━━━
 📦 Packages: ${userPackages.length}
-✅ Released: ${totalReleased.toFixed(2)} RND
-🔒 Locked: ${totalLocked.toFixed(2)} RND`);
+✅ Released: ${totalReleased.toFixed(4)} RND
+🔒 Locked: ${totalLocked.toFixed(4)} RND`);
 };
 
 // ============================================================
