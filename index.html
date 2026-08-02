@@ -97,6 +97,7 @@
             font-size: 0.9rem;
         }
         .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(46,204,113,0.3); color: #fff; }
+        .btn-primary-custom:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
         
         .btn-copy {
             background: rgba(46,204,113,0.1);
@@ -115,6 +116,7 @@
         .badge-rejected { background: rgba(239,68,68,0.15); color: #f87171; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         .badge-active { background: rgba(46,204,113,0.15); color: #2ecc71; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         .badge-completed { background: rgba(59,130,246,0.15); color: #60a5fa; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
+        .badge-inactive { background: rgba(239,68,68,0.15); color: #f87171; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         
         .search-box {
             background: rgba(8,14,26,0.6);
@@ -161,11 +163,15 @@
         .info-row {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(46,204,113,0.06);
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(46,204,113,0.05);
         }
         .info-row .label { color: #8899bb; font-size: 0.85rem; }
         .info-row .value { color: #f0f4ff; font-weight: 500; font-size: 0.95rem; }
+        .info-row .value.highlight { color: #2ecc71; }
+        .info-row .value.rnd-color { color: #60a5fa; }
+        .info-row .value.locked-color { color: #a78bfa; }
+        .info-row .value.gold { color: #fbbf24; }
         
         .toast-container {
             position: fixed;
@@ -274,12 +280,95 @@
             border-top: 1px solid rgba(46,204,113,0.1);
         }
         
+        /* User Profile Card */
+        .profile-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .profile-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+        .profile-badge.active { background: rgba(46,204,113,0.15); color: #2ecc71; }
+        .profile-badge.inactive { background: rgba(239,68,68,0.15); color: #f87171; }
+        
+        .wallet-summary-card {
+            background: rgba(8,14,26,0.4);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(46,204,113,0.05);
+        }
+        .wallet-summary-card .wallet-label {
+            color: #8899bb;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .wallet-summary-card .wallet-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .wallet-summary-card .wallet-value.usd { color: #2ecc71; }
+        .wallet-summary-card .wallet-value.rnd { color: #60a5fa; }
+        .wallet-summary-card .wallet-value.locked { color: #a78bfa; }
+        .wallet-summary-card .wallet-value.gold { color: #fbbf24; }
+        
+        .user-search-result {
+            cursor: pointer;
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(46,204,113,0.05);
+        }
+        .user-search-result:hover {
+            background: rgba(46,204,113,0.05);
+        }
+        .user-search-result:last-child { border-bottom: none; }
+        .user-search-result .result-name { font-weight: 600; color: #fff; }
+        .user-search-result .result-id { color: #8899bb; font-size: 0.8rem; }
+        .user-search-result .result-wallet { color: #2ecc71; font-size: 0.8rem; }
+        
+        .search-results-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(19,34,55,0.95);
+            border-radius: 12px;
+            border: 1px solid rgba(46,204,113,0.1);
+            margin-top: 5px;
+            display: none;
+        }
+        .search-results-container.show { display: block; }
+        .search-results-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .search-results-container::-webkit-scrollbar-track {
+            background: rgba(8,14,26,0.3);
+            border-radius: 4px;
+        }
+        .search-results-container::-webkit-scrollbar-thumb {
+            background: #2ecc71;
+            border-radius: 4px;
+        }
+        
         @media (max-width: 768px) {
             .dashboard-container { padding: 15px; }
             .search-box { max-width: 100%; }
             .table-responsive { font-size: 0.8rem; }
             .stat-card .stat-number { font-size: 1.3rem; }
             .wallet-address-cell { max-width: 80px; }
+            .profile-avatar { width: 48px; height: 48px; font-size: 1.2rem; }
         }
         @media (max-width: 480px) { .card-glass { padding: 1rem; } }
     </style>
@@ -389,7 +478,7 @@ const db = getDatabase(app);
 
 const ADMIN_EMAIL = "admin@rndstaking.com";
 
-let currentTab = 'dashboard';
+let currentTab = 'users';
 let allUsers = {};
 let allTransactions = [];
 let allPackages = [];
@@ -400,6 +489,8 @@ let isDataLoaded = false;
 let dataListeners = {};
 let pendingWithdrawals = [];
 let pendingDeposits = [];
+let selectedUser = null;
+let searchTimeout = null;
 
 // ============================================================
 // 🔥 TOAST
@@ -486,7 +577,6 @@ async function saveTransaction(uid, transactionData) {
             
             const transactions = currentData.transactions || {};
             
-            // Duplicate check based on type + id
             if (transactionData.withdrawalId) {
                 for (let key in transactions) {
                     const tx = transactions[key];
@@ -505,7 +595,6 @@ async function saveTransaction(uid, transactionData) {
                 }
             }
             
-            // Generate unique ID
             const txId = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
             transactions[txId] = transactionData;
             
@@ -624,7 +713,6 @@ async function processAdminAdjustment(uid, walletType, amount, type, description
             return { ...currentData };
         }
         
-        // Create transaction
         const transactions = currentData.transactions || {};
         const txId = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
         transactions[txId] = {
@@ -713,7 +801,6 @@ function setupRealtimeListeners() {
     }
     dataListeners = {};
     
-    // 1. Users listener
     const usersRef = ref(db, 'users');
     dataListeners.users = onValue(usersRef, (snapshot) => {
         if (snapshot.exists()) {
@@ -731,7 +818,6 @@ function setupRealtimeListeners() {
         showToast('⚠️ Error loading users: ' + error.message, 'error');
     });
 
-    // 2. Withdrawals listener
     const withdrawalsRef = ref(db, 'withdrawals');
     dataListeners.withdrawals = onValue(withdrawalsRef, (snapshot) => {
         if (snapshot.exists()) {
@@ -745,7 +831,6 @@ function setupRealtimeListeners() {
         console.error('Withdrawals listener error:', error);
     });
 
-    // 3. Deposits listener
     const depositsRef = ref(db, 'deposits');
     dataListeners.deposits = onValue(depositsRef, (snapshot) => {
         if (snapshot.exists()) {
@@ -759,7 +844,6 @@ function setupRealtimeListeners() {
         console.error('Deposits listener error:', error);
     });
 
-    // 4. Settings listener
     const settingsRef = ref(db, 'settings');
     dataListeners.settings = onValue(settingsRef, (snapshot) => {
         if (snapshot.exists()) {
@@ -807,7 +891,6 @@ function extractTransactionsFromUsers() {
                 ...tx
             });
             
-            // Track pending withdrawals
             if (tx.type === 'withdrawal' && tx.status === 'pending') {
                 pendingWithdrawals.push({
                     id: txId,
@@ -817,7 +900,6 @@ function extractTransactionsFromUsers() {
                 });
             }
             
-            // Track pending deposits
             if (tx.type === 'deposit' && tx.status === 'pending') {
                 pendingDeposits.push({
                     id: txId,
@@ -840,11 +922,9 @@ function extractTransactionsFromUsers() {
         }
     }
     
-    // Also check root withdrawals node
     for (let key in allWithdrawals) {
         const w = allWithdrawals[key];
         if (w.status === 'pending') {
-            // Check if already in pendingWithdrawals
             const exists = pendingWithdrawals.some(p => p.withdrawalId === w.withdrawalId || p.id === key);
             if (!exists) {
                 const user = allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
@@ -940,7 +1020,7 @@ function renderDashboard() {
                 <hr class="border-secondary">
             </div>
 
-            <!-- Stats Row 1 -->
+            <!-- Stats Row -->
             <div class="col-12">
                 <div class="row g-3">
                     <div class="col-md-2 col-4">
@@ -982,46 +1062,12 @@ function renderDashboard() {
                 </div>
             </div>
 
-            <!-- Stats Row 2 -->
-            <div class="col-12">
-                <div class="row g-3">
-                    <div class="col-md-3 col-6">
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background:rgba(46,204,113,0.12);color:#2ecc71;"><i class="bi bi-wallet2"></i></div>
-                            <div class="stat-number" style="color:#2ecc71;">$${totalDepositWallet.toFixed(2)}</div>
-                            <div class="stat-label">Total Deposit Wallet</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-6">
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background:rgba(96,165,250,0.12);color:#60a5fa;"><i class="bi bi-coin"></i></div>
-                            <div class="stat-number" style="color:#60a5fa;">${totalRNDWallet.toFixed(2)}</div>
-                            <div class="stat-label">Total RND Wallet</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-6">
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background:rgba(167,139,250,0.12);color:#a78bfa;"><i class="bi bi-lock"></i></div>
-                            <div class="stat-number" style="color:#a78bfa;">${totalLockedRND.toFixed(2)}</div>
-                            <div class="stat-label">Total Locked RND</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-6">
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;"><i class="bi bi-people"></i></div>
-                            <div class="stat-number" style="color:#fbbf24;">${totalReferrals}</div>
-                            <div class="stat-label">Total Referrals</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Tabs -->
             <div class="col-12">
                 <ul class="nav nav-tabs-custom" style="border-bottom:1px solid rgba(46,204,113,0.1);margin-bottom:20px;flex-wrap:wrap;">
                     <li class="nav-item">
-                        <a class="nav-link ${currentTab === 'dashboard' ? 'active' : ''}" onclick="switchTab('dashboard')">
-                            <i class="bi bi-speedometer2"></i> Dashboard
+                        <a class="nav-link ${currentTab === 'users' ? 'active' : ''}" onclick="switchTab('users')">
+                            <i class="bi bi-people"></i> Users (${totalUsers})
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1033,11 +1079,6 @@ function renderDashboard() {
                     <li class="nav-item">
                         <a class="nav-link ${currentTab === 'deposits' ? 'active' : ''}" onclick="switchTab('deposits')">
                             <i class="bi bi-arrow-down-circle"></i> Deposits
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link ${currentTab === 'users' ? 'active' : ''}" onclick="switchTab('users')">
-                            <i class="bi bi-people"></i> Users (${totalUsers})
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1054,10 +1095,9 @@ function renderDashboard() {
             </div>
 
             <div class="col-12">
-                ${currentTab === 'dashboard' ? renderDashboardTab() : ''}
+                ${currentTab === 'users' ? renderUsersTab() : ''}
                 ${currentTab === 'withdrawals' ? renderWithdrawalsTab() : ''}
                 ${currentTab === 'deposits' ? renderDepositsTab() : ''}
-                ${currentTab === 'users' ? renderUsersTab() : ''}
                 ${currentTab === 'packages' ? renderPackagesTab() : ''}
                 ${currentTab === 'settings' ? renderSettingsTab() : ''}
             </div>
@@ -1065,6 +1105,7 @@ function renderDashboard() {
     `;
     
     setTimeout(() => {
+        // Settings form
         const settingsForm = document.getElementById('settingsForm');
         if (settingsForm) {
             settingsForm.addEventListener('submit', async (e) => {
@@ -1073,6 +1114,7 @@ function renderDashboard() {
             });
         }
         
+        // Admin adjustment form
         const adminForm = document.getElementById('adminAdjustForm');
         if (adminForm) {
             adminForm.addEventListener('submit', async (e) => {
@@ -1080,82 +1122,456 @@ function renderDashboard() {
                 await handleAdminAdjustment();
             });
         }
+        
+        // Search input
+        const searchInput = document.getElementById('userSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const query = this.value.trim();
+                const resultsContainer = document.getElementById('searchResults');
+                
+                if (query.length === 0) {
+                    resultsContainer.classList.remove('show');
+                    resultsContainer.innerHTML = '';
+                    return;
+                }
+                
+                searchTimeout = setTimeout(() => {
+                    performUserSearch(query);
+                }, 300);
+            });
+            
+            // Close results on outside click
+            document.addEventListener('click', function(e) {
+                const container = document.getElementById('userSearchContainer');
+                if (container && !container.contains(e.target)) {
+                    document.getElementById('searchResults').classList.remove('show');
+                }
+            });
+        }
+        
+        // Load default user profile if none selected
+        if (!selectedUser) {
+            const sortedUsers = getSortedUsers();
+            if (sortedUsers.length > 0) {
+                selectedUser = sortedUsers[0];
+                renderUserProfile(selectedUser);
+            }
+        } else {
+            renderUserProfile(selectedUser);
+        }
     }, 300);
 }
 
 // ============================================================
-// 🔥 RENDER DASHBOARD TAB
+// 🔥 GET SORTED USERS (Newest first)
 // ============================================================
-function renderDashboardTab() {
-    let recentActivity = [];
+function getSortedUsers() {
+    return Object.entries(allUsers)
+        .filter(([id, user]) => user.role !== 'admin')
+        .sort((a, b) => (b[1].createdAt || b[1].registrationDate || 0) - (a[1].createdAt || a[1].registrationDate || 0))
+        .map(([id, user]) => ({ id, ...user }));
+}
+
+// ============================================================
+// 🔥 PERFORM USER SEARCH
+// ============================================================
+function performUserSearch(query) {
+    const resultsContainer = document.getElementById('searchResults');
+    const lowerQuery = query.toLowerCase();
     
-    for (let tx of allTransactions.slice(0, 20)) {
-        recentActivity.push({
-            type: tx.type,
-            user: tx.user?.name || 'Unknown',
-            amount: tx.amount || 0,
-            status: tx.status || 'pending',
-            timestamp: tx.timestamp || 0,
-            label: getTypeLabel(tx.type),
-            uid: tx.uid
-        });
-    }
+    const results = getSortedUsers().filter(user => {
+        const id = (user.id || '').toLowerCase();
+        const name = (user.name || '').toLowerCase();
+        const username = (user.username || '').toLowerCase();
+        const email = (user.email || '').toLowerCase();
+        const phone = (user.phone || user.mobile || '').toLowerCase();
+        
+        return id.includes(lowerQuery) || 
+               name.includes(lowerQuery) || 
+               username.includes(lowerQuery) || 
+               email.includes(lowerQuery) || 
+               phone.includes(lowerQuery);
+    });
     
-    if (recentActivity.length === 0) {
-        return `
-            <div class="card-glass">
-                <div class="card-title"><i class="bi bi-clock-history text-success me-2"></i>Recent Activity</div>
-                <div class="no-data">
-                    <i class="bi bi-inbox"></i>
-                    <p>No recent activity</p>
-                </div>
+    if (results.length === 0) {
+        resultsContainer.innerHTML = `
+            <div class="p-3 text-center text-muted">
+                <i class="bi bi-search"></i> No users found
             </div>
         `;
+        resultsContainer.classList.add('show');
+        return;
     }
+    
+    resultsContainer.innerHTML = results.slice(0, 15).map(user => `
+        <div class="user-search-result" onclick="selectUser('${user.id}')">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="result-name">${user.name || 'Unknown'}</span>
+                    <span class="result-id ms-2">${user.username || user.id || 'N/A'}</span>
+                </div>
+                <span class="result-wallet">$${(user.depositWallet || 0).toFixed(2)}</span>
+            </div>
+            <div class="d-flex gap-3 mt-1">
+                <span style="font-size:0.7rem;color:#556688;">${user.id || 'N/A'}</span>
+                ${user.email ? `<span style="font-size:0.7rem;color:#556688;">${user.email}</span>` : ''}
+                ${user.mobile || user.phone ? `<span style="font-size:0.7rem;color:#556688;">${user.mobile || user.phone}</span>` : ''}
+            </div>
+        </div>
+    `).join('');
+    
+    resultsContainer.classList.add('show');
+}
 
-    return `
-        <div class="card-glass">
-            <div class="card-title"><i class="bi bi-clock-history text-success me-2"></i>Recent Activity</div>
-            <div class="table-responsive">
-                <table class="table table-custom">
-                    <thead>
-                        <tr>
-                            <th>Type</th>
-                            <th>User</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${recentActivity.map(item => {
-                            const statusClass = item.status === 'pending' ? 'badge-pending' : 
-                                               item.status === 'approved' || item.status === 'completed' || item.status === 'success' ? 'badge-approved' : 
-                                               'badge-rejected';
-                            const statusText = item.status === 'pending' ? '⏳ Pending' : 
-                                               item.status === 'approved' || item.status === 'completed' || item.status === 'success' ? '✅ Done' : 
-                                               '❌ Rejected';
-                            const amountColor = item.type === 'withdrawal' || item.type === 'admin_debit' ? '#f87171' : '#2ecc71';
-                            const sign = item.type === 'withdrawal' || item.type === 'admin_debit' ? '-' : '+';
-                            return `
+// ============================================================
+// 🔥 SELECT USER
+// ============================================================
+window.selectUser = function(userId) {
+    const user = allUsers[userId];
+    if (!user) return;
+    
+    selectedUser = { id: userId, ...user };
+    document.getElementById('searchResults').classList.remove('show');
+    document.getElementById('userSearchInput').value = user.name || user.username || userId;
+    renderUserProfile(selectedUser);
+};
+
+// ============================================================
+// 🔥 RENDER USER PROFILE
+// ============================================================
+function renderUserProfile(user) {
+    const container = document.getElementById('userProfileContainer');
+    if (!container) return;
+    
+    if (!user) {
+        container.innerHTML = `
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-person fs-1 d-block mb-3"></i>
+                <p>Select a user to view details</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Calculate user stats
+    const userTxs = allTransactions.filter(t => t.uid === user.id);
+    const deposits = userTxs.filter(t => t.type === 'deposit');
+    const withdrawals = userTxs.filter(t => t.type === 'withdrawal');
+    const pendingWithdrawals = withdrawals.filter(t => t.status === 'pending');
+    const approvedDeposits = deposits.filter(t => t.status === 'approved' || t.status === 'completed' || t.status === 'success');
+    
+    const totalDeposit = deposits.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalWithdrawal = withdrawals.filter(t => t.status === 'approved' || t.status === 'success').reduce((sum, t) => sum + (t.amount || 0), 0);
+    const pendingWithdrawalAmount = pendingWithdrawals.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalReferralIncome = userTxs.filter(t => t.type === 'referral_commission').reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalAdminCredits = userTxs.filter(t => t.type === 'admin_credit').reduce((sum, t) => sum + (t.amount || 0), 0);
+    
+    // Active packages
+    const activePackages = allPackages.filter(p => p.uid === user.id && p.status === 'active');
+    const completedPackages = allPackages.filter(p => p.uid === user.id && p.status === 'completed' || p.status === 'finished');
+    
+    let totalReleased = 0;
+    let totalLockedRND = 0;
+    let totalStake = 0;
+    for (let pkg of allPackages.filter(p => p.uid === user.id)) {
+        const released = pkg.releasedRND || 0;
+        const totalRND = pkg.totalRND || 0;
+        totalReleased += released;
+        totalLockedRND += Math.max(0, totalRND - released);
+        totalStake += (pkg.usdtAmount || 0);
+    }
+    
+    // Today's income (last 24 hours)
+    const today = Date.now() - 24 * 60 * 60 * 1000;
+    const todayIncome = userTxs.filter(t => 
+        (t.type === 'daily_release' || t.type === 'referral_commission' || t.type === 'bonus') && 
+        (t.timestamp || 0) > today
+    ).reduce((sum, t) => sum + (t.amount || 0), 0);
+    
+    // Total income
+    const totalIncome = userTxs.filter(t => 
+        t.type === 'daily_release' || t.type === 'referral_commission' || t.type === 'bonus'
+    ).reduce((sum, t) => sum + (t.amount || 0), 0) + totalAdminCredits;
+    
+    // Blockchain deposits (if any)
+    const blockchainDeposits = userTxs.filter(t => 
+        t.type === 'deposit' && t.source === 'blockchain'
+    );
+    const blockchainTotal = blockchainDeposits.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const blockchainPending = blockchainDeposits.filter(t => t.status === 'pending').reduce((sum, t) => sum + (t.amount || 0), 0);
+    const blockchainApproved = blockchainDeposits.filter(t => t.status === 'approved' || t.status === 'completed').reduce((sum, t) => sum + (t.amount || 0), 0);
+    
+    const userStatus = user.status || 'active';
+    const statusBadge = userStatus === 'active' ? 'active' : 'inactive';
+    const avatarLetter = (user.name || 'U').charAt(0).toUpperCase();
+    const registrationDate = user.createdAt || user.registrationDate || Date.now();
+    
+    container.innerHTML = `
+        <div class="row g-3">
+            <!-- User Info Card -->
+            <div class="col-lg-4 col-md-5">
+                <div class="card-glass">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="profile-avatar">${avatarLetter}</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2">
+                                <h5 class="fw-bold mb-0">${user.name || 'Unknown'}</h5>
+                                <span class="profile-badge ${statusBadge}">${userStatus.toUpperCase()}</span>
+                            </div>
+                            <div style="font-size:0.85rem;color:#8899bb;">${user.username || 'N/A'}</div>
+                            <div style="font-size:0.7rem;color:#556688;font-family:monospace;">${user.id || 'N/A'}</div>
+                        </div>
+                        <button class="btn-copy" onclick="copyAddress('${user.id || ''}', 'User ID')"><i class="bi bi-clipboard"></i></button>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="label"><i class="bi bi-envelope me-1"></i> Email</span>
+                        <span class="value">${user.email || 'N/A'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label"><i class="bi bi-phone me-1"></i> Mobile</span>
+                        <span class="value">${user.mobile || user.phone || 'N/A'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label"><i class="bi bi-people me-1"></i> Sponsor</span>
+                        <span class="value">${user.sponsorName || user.sponsor || 'N/A'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label"><i class="bi bi-link-45deg me-1"></i> Referral ID</span>
+                        <span class="value" style="font-family:monospace;">${user.referralId || user.username || 'N/A'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label"><i class="bi bi-calendar3 me-1"></i> Registration</span>
+                        <span class="value">${new Date(registrationDate).toLocaleString('hi-IN')}</span>
+                    </div>
+                    <div class="info-row" style="border-bottom:none;">
+                        <span class="label"><i class="bi bi-clock me-1"></i> Last Login</span>
+                        <span class="value">${user.lastLogin ? new Date(user.lastLogin).toLocaleString('hi-IN') : 'N/A'}</span>
+                    </div>
+                    
+                    <div class="mt-3 pt-3 border-top border-secondary">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="wallet-summary-card">
+                                    <div class="wallet-label">Deposit Wallet</div>
+                                    <div class="wallet-value usd">$${(user.depositWallet || 0).toFixed(2)}</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="wallet-summary-card">
+                                    <div class="wallet-label">RND Wallet</div>
+                                    <div class="wallet-value rnd">${(user.rndWallet || 0).toFixed(4)}</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="wallet-summary-card">
+                                    <div class="wallet-label">Locked RND</div>
+                                    <div class="wallet-value locked">${(user.lockedRND || 0).toFixed(2)}</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="wallet-summary-card">
+                                    <div class="wallet-label">Total Stake</div>
+                                    <div class="wallet-value gold">$${(user.totalStake || totalStake || 0).toFixed(2)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Wallet Summary -->
+            <div class="col-lg-8 col-md-7">
+                <div class="card-glass">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-wallet2 text-success me-2"></i>Wallet Summary</h6>
+                    <div class="row g-2">
+                        <div class="col-md-3 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">💰 Deposit Wallet</div>
+                                <div class="wallet-value usd">$${(user.depositWallet || 0).toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">📊 RND Wallet</div>
+                                <div class="wallet-value rnd">${(user.rndWallet || 0).toFixed(4)}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">🔒 Locked RND</div>
+                                <div class="wallet-value locked">${(user.lockedRND || totalLockedRND || 0).toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">⛓️ Blockchain Deposit</div>
+                                <div class="wallet-value usd">$${blockchainTotal.toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">📈 Total Stake</div>
+                                <div class="wallet-value gold">$${(user.totalStake || totalStake || 0).toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">📆 Today's Income</div>
+                                <div class="wallet-value rnd">${todayIncome.toFixed(4)} RND</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">📊 Total Released</div>
+                                <div class="wallet-value rnd">${totalReleased.toFixed(2)} RND</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">👥 Referral Income</div>
+                                <div class="wallet-value gold">$${totalReferralIncome.toFixed(2)}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Blockchain Deposit Details -->
+                ${blockchainDeposits.length > 0 ? `
+                <div class="card-glass mt-3">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-blockchain text-success me-2"></i>Blockchain Deposit</h6>
+                    <div class="row g-2">
+                        <div class="col-md-4 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">Total Deposit</div>
+                                <div class="wallet-value usd">$${blockchainTotal.toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">✅ Approved</div>
+                                <div class="wallet-value" style="color:#2ecc71;">$${blockchainApproved.toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <div class="wallet-summary-card">
+                                <div class="wallet-label">⏳ Pending</div>
+                                <div class="wallet-value" style="color:#fbbf24;">$${blockchainPending.toFixed(2)}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Stats -->
+                <div class="card-glass mt-3">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-graph-up text-success me-2"></i>Statistics</h6>
+                    <div class="row g-2">
+                        <div class="col-md-4 col-6">
+                            <div class="info-row">
+                                <span class="label">Total Deposit</span>
+                                <span class="value highlight">$${totalDeposit.toFixed(2)}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <div class="info-row">
+                                <span class="label">Total Withdrawal</span>
+                                <span class="value" style="color:#f87171;">$${totalWithdrawal.toFixed(2)}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <div class="info-row">
+                                <span class="label">⏳ Pending Withdrawal</span>
+                                <span class="value gold">$${pendingWithdrawalAmount.toFixed(2)}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <div class="info-row">
+                                <span class="label">Direct Referral</span>
+                                <span class="value">${user.directReferrals || 0}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <div class="info-row">
+                                <span class="label">Team Size</span>
+                                <span class="value">${user.totalReferrals || 0}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <div class="info-row" style="border-bottom:none;">
+                                <span class="label">Total Income</span>
+                                <span class="value highlight">${totalIncome.toFixed(2)} RND</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Active Packages -->
+                ${activePackages.length > 0 ? `
+                <div class="card-glass mt-3">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-box-seam text-success me-2"></i>Active Packages (${activePackages.length})</h6>
+                    <div class="table-responsive">
+                        <table class="table table-custom table-sm">
+                            <thead>
                                 <tr>
-                                    <td>
-                                        <i class="bi ${getTypeIcon(item.type)}" style="color:${amountColor};"></i>
-                                        ${item.label || item.type}
-                                    </td>
-                                    <td><strong>${item.user}</strong></td>
-                                    <td>
-                                        <strong style="color:${amountColor}">
-                                            ${sign}$${(item.amount || 0).toFixed(2)}
-                                        </strong>
-                                    </td>
-                                    <td><span class="${statusClass}">${statusText}</span></td>
-                                    <td style="font-size:0.8rem;color:#8899bb;">${new Date(item.timestamp).toLocaleString('hi-IN')}</td>
+                                    <th>Plan</th>
+                                    <th>Amount</th>
+                                    <th>Total RND</th>
+                                    <th>Released</th>
+                                    <th>Daily</th>
                                 </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
+                            </thead>
+                            <tbody>
+                                ${activePackages.map(pkg => `
+                                    <tr>
+                                        <td style="color:#fbbf24;">${pkg.planName || 'Package'}</td>
+                                        <td>$${(pkg.usdtAmount || 0).toFixed(2)}</td>
+                                        <td style="color:#60a5fa;">${(pkg.totalRND || 0).toFixed(2)}</td>
+                                        <td style="color:#34d399;">${(pkg.releasedRND || 0).toFixed(2)}</td>
+                                        <td style="color:#fbbf24;">${(pkg.dailyRelease || 0).toFixed(4)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// 🔥 RENDER USERS TAB
+// ============================================================
+function renderUsersTab() {
+    const sortedUsers = getSortedUsers();
+    
+    return `
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="card-glass">
+                    <div class="d-flex flex-wrap gap-3 align-items-center" id="userSearchContainer">
+                        <div class="flex-grow-1" style="position:relative;max-width:500px;">
+                            <div style="position:relative;">
+                                <i class="bi bi-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#556688;"></i>
+                                <input type="text" id="userSearchInput" class="form-control form-control-custom" 
+                                       placeholder="Search by Name, User ID, Email, Phone..." style="padding-left:40px;">
+                            </div>
+                            <div id="searchResults" class="search-results-container"></div>
+                        </div>
+                        <span class="text-muted small">${sortedUsers.length} users • Newest first</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-12" id="userProfileContainer">
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-person fs-1 d-block mb-3"></i>
+                    <p>Search and select a user to view complete details</p>
+                </div>
             </div>
         </div>
     `;
@@ -1165,11 +1581,9 @@ function renderDashboardTab() {
 // 🔥 RENDER WITHDRAWALS TAB
 // ============================================================
 function renderWithdrawalsTab() {
-    // Get all pending and recent withdrawals
     const allWithdrawalsList = allTransactions.filter(t => t.type === 'withdrawal');
     allWithdrawalsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     
-    // Also include from root withdrawals
     for (let key in allWithdrawals) {
         const w = allWithdrawals[key];
         const exists = allWithdrawalsList.some(t => t.withdrawalId === w.withdrawalId);
@@ -1312,7 +1726,7 @@ function renderDepositsTab() {
                             <th>#</th>
                             <th>User</th>
                             <th>Amount</th>
-                            <th>Details</th>
+                            <th>Source</th>
                             <th>Date</th>
                             <th>Status</th>
                         </tr>
@@ -1330,6 +1744,8 @@ function renderDepositsTab() {
         const statusText = d.status === 'pending' ? '⏳ Pending' : 
                            d.status === 'approved' || d.status === 'completed' || d.status === 'success' ? '✅ Approved' : 
                            '❌ Rejected';
+        const sourceIcon = d.source === 'blockchain' ? '⛓️' : '🏦';
+        const sourceLabel = d.source === 'blockchain' ? 'Blockchain' : 'Manual';
         
         html += `
             <tr data-user="${(user.username || user.name || '').toLowerCase()}">
@@ -1340,129 +1756,11 @@ function renderDepositsTab() {
                 </td>
                 <td><strong style="color:#2ecc71;">$${(d.amount || 0).toFixed(2)}</strong></td>
                 <td style="font-size:0.8rem;color:#8899bb;">
-                    ${d.description || 'Deposit'}
+                    ${sourceIcon} ${sourceLabel}
                     ${d.txHash ? `<br><small>TX: ${d.txHash.substring(0, 15)}...</small>` : ''}
                 </td>
                 <td style="font-size:0.8rem;color:#8899bb;">${new Date(d.timestamp).toLocaleString('hi-IN')}</td>
                 <td><span class="${statusClass}">${statusText}</span></td>
-            </tr>
-        `;
-    }
-
-    html += `</tbody></table></div></div>`;
-    return html;
-}
-
-// ============================================================
-// 🔥 RENDER USERS TAB
-// ============================================================
-function renderUsersTab() {
-    const userList = Object.keys(allUsers || {});
-    const filteredUsers = userList.filter(key => allUsers[key].role !== 'admin');
-    
-    if (filteredUsers.length === 0) {
-        return `
-            <div class="card-glass">
-                <div class="no-data">
-                    <i class="bi bi-inbox"></i>
-                    <p>No users found.</p>
-                </div>
-            </div>
-        `;
-    }
-
-    let html = `
-        <div class="card-glass">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-people text-success me-2"></i>All Users (${filteredUsers.length})</div>
-                <input type="text" class="search-box" placeholder="Search by name..." oninput="filterUsers(this.value)">
-            </div>
-            
-            <!-- Admin Adjustment Form -->
-            <div class="card-glass mb-3" style="background:rgba(251,191,36,0.05);border-color:rgba(251,191,36,0.1);">
-                <h6 class="text-muted"><i class="bi bi-shield"></i> Admin Adjustment</h6>
-                <form id="adminAdjustForm" class="row g-2 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label">User</label>
-                        <select id="adminUserSelect" class="form-control form-control-custom">
-                            ${filteredUsers.map(uid => {
-                                const u = allUsers[uid];
-                                return `<option value="${uid}">${u.name || 'Unknown'} (@${u.username || 'N/A'})</option>`;
-                            }).join('')}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Wallet</label>
-                        <select id="adminWalletSelect" class="form-control form-control-custom">
-                            <option value="depositWallet">Deposit Wallet</option>
-                            <option value="referralWallet">Referral Wallet</option>
-                            <option value="rndWallet">RND Wallet</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Type</label>
-                        <select id="adminAdjustType" class="form-control form-control-custom">
-                            <option value="credit">➕ Credit</option>
-                            <option value="debit">➖ Debit</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Amount (USDT)</label>
-                        <input type="number" id="adminAdjustAmount" class="form-control form-control-custom" placeholder="0.00" step="0.01" min="0.01" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Description</label>
-                        <input type="text" id="adminAdjustDesc" class="form-control form-control-custom" placeholder="Reason for adjustment">
-                    </div>
-                    <div class="col-12 mt-2">
-                        <button type="submit" class="btn btn-warning-custom w-100">
-                            <i class="bi bi-shield me-1"></i> Apply Adjustment
-                        </button>
-                    </div>
-                </form>
-            </div>
-            
-            <div class="table-responsive">
-                <table class="table table-custom" id="usersTable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>User</th>
-                            <th>Email</th>
-                            <th>Deposit</th>
-                            <th>RND</th>
-                            <th>Locked</th>
-                            <th>Refs</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-
-    let count = 0;
-    for (let key of filteredUsers) {
-        const u = allUsers[key];
-        count++;
-        const depositWallet = u.depositWallet || 0;
-        const rndWallet = u.rndWallet || 0;
-        const lockedRND = u.lockedRND || 0;
-        const totalReferrals = u.totalReferrals || 0;
-        
-        html += `
-            <tr data-user="${(u.username || u.name || '').toLowerCase()}">
-                <td>${count}</td>
-                <td>
-                    <strong>${u.name || 'Unknown'}</strong><br>
-                    <small style="color:#556688;">@${u.username || 'N/A'}</small>
-                </td>
-                <td style="font-size:0.85rem;">${u.email || 'N/A'}</td>
-                <td><strong style="color:#2ecc71;">$${depositWallet.toFixed(2)}</strong></td>
-                <td><strong style="color:#60a5fa;">${rndWallet.toFixed(4)}</strong></td>
-                <td><strong style="color:#a78bfa;">${lockedRND.toFixed(2)}</strong></td>
-                <td>${totalReferrals}</td>
-                <td>
-                    <button class="btn btn-info btn-sm" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa;" onclick="viewUserDetails('${key}')"><i class="bi bi-eye"></i></button>
-                </td>
             </tr>
         `;
     }
@@ -1561,6 +1859,9 @@ function renderSettingsTab() {
         totalLockedRND += (u.lockedRND || 0);
     }
     
+    // Admin adjustment form - get sorted users for dropdown
+    const sortedUsers = getSortedUsers();
+    
     return `
         <div class="card-glass">
             <div class="card-title"><i class="bi bi-gear text-success me-2"></i>Admin Settings</div>
@@ -1582,6 +1883,49 @@ function renderSettingsTab() {
 
             <hr class="border-secondary">
 
+            <!-- Admin Adjustment Form -->
+            <h6 class="text-muted mb-3"><i class="bi bi-shield me-2"></i>Admin Adjustment</h6>
+            <form id="adminAdjustForm" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">User</label>
+                    <select id="adminUserSelect" class="form-control form-control-custom">
+                        ${sortedUsers.map(user => 
+                            `<option value="${user.id}">${user.name || 'Unknown'} (@${user.username || 'N/A'})</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Wallet</label>
+                    <select id="adminWalletSelect" class="form-control form-control-custom">
+                        <option value="depositWallet">Deposit Wallet</option>
+                        <option value="referralWallet">Referral Wallet</option>
+                        <option value="rndWallet">RND Wallet</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Type</label>
+                    <select id="adminAdjustType" class="form-control form-control-custom">
+                        <option value="credit">➕ Credit</option>
+                        <option value="debit">➖ Debit</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Amount (USDT)</label>
+                    <input type="number" id="adminAdjustAmount" class="form-control form-control-custom" placeholder="0.00" step="0.01" min="0.01" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Description</label>
+                    <input type="text" id="adminAdjustDesc" class="form-control form-control-custom" placeholder="Reason for adjustment">
+                </div>
+                <div class="col-12 mt-2">
+                    <button type="submit" class="btn btn-warning-custom w-100">
+                        <i class="bi bi-shield me-1"></i> Apply Adjustment
+                    </button>
+                </div>
+            </form>
+
+            <hr class="border-secondary">
+
             <div class="row g-3">
                 <div class="col-md-6">
                     <h6 class="text-muted">📊 Platform Stats</h6>
@@ -1589,16 +1933,16 @@ function renderSettingsTab() {
                     <div class="info-row"><span class="label">Total Deposits</span><span class="value">${allTransactions.filter(t => t.type === 'deposit').length}</span></div>
                     <div class="info-row"><span class="label">Total Withdrawals</span><span class="value">${allTransactions.filter(t => t.type === 'withdrawal').length}</span></div>
                     <div class="info-row"><span class="label">Total Packages</span><span class="value">${allPackages.length}</span></div>
-                    <div class="info-row"><span class="label">Total Deposit Wallet</span><span class="value" style="color:#2ecc71;">$${totalDepositWallet.toFixed(2)}</span></div>
-                    <div class="info-row"><span class="label">Total RND Wallet</span><span class="value" style="color:#60a5fa;">${totalRNDWallet.toFixed(2)}</span></div>
-                    <div class="info-row"><span class="label">Total Locked RND</span><span class="value" style="color:#a78bfa;">${totalLockedRND.toFixed(2)}</span></div>
+                    <div class="info-row"><span class="label">Total Deposit Wallet</span><span class="value highlight">$${totalDepositWallet.toFixed(2)}</span></div>
+                    <div class="info-row"><span class="label">Total RND Wallet</span><span class="value rnd-color">${totalRNDWallet.toFixed(2)}</span></div>
+                    <div class="info-row"><span class="label">Total Locked RND</span><span class="value locked-color">${totalLockedRND.toFixed(2)}</span></div>
                 </div>
                 <div class="col-md-6">
                     <h6 class="text-muted">🔐 Security</h6>
                     <div class="info-row"><span class="label">Admin Status</span><span class="value"><i class="bi bi-check-circle text-success"></i> Active</span></div>
                     <div class="info-row"><span class="label">Session Time</span><span class="value">${new Date().toLocaleString('hi-IN')}</span></div>
                     <div class="info-row"><span class="label">Database</span><span class="value"><i class="bi bi-check-circle text-success"></i> Connected</span></div>
-                    <div class="info-row"><span class="label">Pending Withdrawals</span><span class="value" style="color:#fbbf24;">${pendingWithdrawals.length}</span></div>
+                    <div class="info-row"><span class="label">Pending Withdrawals</span><span class="value gold">${pendingWithdrawals.length}</span></div>
                 </div>
             </div>
         </div>
@@ -1634,15 +1978,6 @@ window.filterWithdrawals = function(value) {
     });
 };
 
-window.filterUsers = function(value) {
-    const rows = document.querySelectorAll('#usersTable tbody tr');
-    const search = value.toLowerCase();
-    rows.forEach(row => {
-        const user = row.getAttribute('data-user') || '';
-        row.style.display = user.includes(search) ? '' : 'none';
-    });
-};
-
 window.filterPackages = function(value) {
     const rows = document.querySelectorAll('#packagesTable tbody tr');
     const search = value.toLowerCase();
@@ -1653,60 +1988,17 @@ window.filterPackages = function(value) {
 };
 
 // ============================================================
-// 🔥 VIEW USER DETAILS
-// ============================================================
-window.viewUserDetails = function(userId) {
-    const user = allUsers[userId];
-    if (!user) {
-        showToast('❌ User not found!', 'error');
-        return;
-    }
-    
-    const userTxs = allTransactions.filter(t => t.uid === userId);
-    const deposits = userTxs.filter(t => t.type === 'deposit');
-    const withdrawals = userTxs.filter(t => t.type === 'withdrawal');
-    const userPackages = allPackages.filter(p => p.uid === userId);
-    
-    let totalReleased = 0;
-    let totalLocked = 0;
-    for (let pkg of userPackages) {
-        totalReleased += (pkg.releasedRND || 0);
-        totalLocked += ((pkg.totalRND || 0) - (pkg.releasedRND || 0));
-    }
-    
-    alert(`📊 User Details
-━━━━━━━━━━━━━━━━━━━━━━
-👤 Name: ${user.name || 'Unknown'}
-📛 Username: ${user.username || 'N/A'}
-📧 Email: ${user.email || 'N/A'}
-━━━━━━━━━━━━━━━━━━━━━━
-💰 Deposit Wallet: $${(user.depositWallet || 0).toFixed(2)}
-📊 RND Wallet: ${(user.rndWallet || 0).toFixed(4)}
-🔒 Locked RND: ${(user.lockedRND || 0).toFixed(2)}
-━━━━━━━━━━━━━━━━━━━━━━
-📥 Deposits: ${deposits.length}
-📤 Withdrawals: ${withdrawals.length}
-👥 Referrals: ${user.totalReferrals || 0}
-━━━━━━━━━━━━━━━━━━━━━━
-📦 Packages: ${userPackages.length}
-✅ Released: ${totalReleased.toFixed(2)} RND
-🔒 Locked: ${totalLocked.toFixed(2)} RND`);
-};
-
-// ============================================================
 // 🔥 APPROVE WITHDRAWAL
 // ============================================================
 window.approveWithdrawal = async function(uid, withdrawalId) {
     if (!confirm('✅ Approve this withdrawal?')) return;
     
     try {
-        // Update status in user's transactions
         const result = await updateWithdrawalStatusAtomic(uid, withdrawalId, 'approved');
         
         if (result.success) {
             showToast('✅ Withdrawal approved successfully!', 'success');
             
-            // Also update root withdrawals if exists
             try {
                 const rootSnap = await get(ref(db, 'withdrawals'));
                 if (rootSnap.exists()) {
@@ -1725,7 +2017,6 @@ window.approveWithdrawal = async function(uid, withdrawalId) {
                 console.warn('Root withdrawal update warning:', err);
             }
             
-            // Refresh data
             setTimeout(() => renderDashboard(), 500);
         } else {
             showToast('❌ Failed to approve withdrawal: ' + (result.error || 'Unknown error'), 'error');
@@ -1749,7 +2040,6 @@ window.rejectWithdrawal = async function(uid, withdrawalId) {
         if (result.success) {
             showToast('❌ Withdrawal rejected!', 'success');
             
-            // Also update root withdrawals if exists
             try {
                 const rootSnap = await get(ref(db, 'withdrawals'));
                 if (rootSnap.exists()) {
