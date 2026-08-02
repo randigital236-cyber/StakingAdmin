@@ -76,8 +76,7 @@
         .table-custom { color: #f0f4ff; border-color: #1f334f; }
         .table-custom th { border-bottom: 2px solid #2a3a5a; color: #a0b8d0; font-weight: 600; }
         .table-custom td { border-color: #1f334f; vertical-align: middle; }
-        .table-custom tr:hover { background: rgba(46,204,113,0.03); cursor: pointer; }
-        .table-custom tr.active-row { background: rgba(46,204,113,0.08); border-left: 3px solid #2ecc71; }
+        .table-custom tr:hover { background: rgba(46,204,113,0.03); }
         
         .btn-success-custom { background: #2ecc71; border: none; color: #0b1120; font-weight: 600; padding: 6px 16px; border-radius: 8px; transition: all 0.3s ease; font-size: 0.8rem; }
         .btn-success-custom:hover { background: #27ae60; color: #fff; transform: translateY(-1px); }
@@ -98,7 +97,6 @@
             font-size: 0.9rem;
         }
         .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(46,204,113,0.3); color: #fff; }
-        .btn-primary-custom:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
         
         .btn-copy {
             background: rgba(46,204,113,0.1);
@@ -117,7 +115,6 @@
         .badge-rejected { background: rgba(239,68,68,0.15); color: #f87171; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         .badge-active { background: rgba(46,204,113,0.15); color: #2ecc71; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         .badge-completed { background: rgba(59,130,246,0.15); color: #60a5fa; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
-        .badge-inactive { background: rgba(239,68,68,0.15); color: #f87171; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
         
         .search-box {
             background: rgba(8,14,26,0.6);
@@ -164,16 +161,11 @@
         .info-row {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(46,204,113,0.05);
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(46,204,113,0.06);
         }
         .info-row .label { color: #8899bb; font-size: 0.85rem; }
         .info-row .value { color: #f0f4ff; font-weight: 500; font-size: 0.95rem; }
-        .info-row .value.highlight { color: #2ecc71; }
-        .info-row .value.rnd-color { color: #60a5fa; }
-        .info-row .value.locked-color { color: #a78bfa; }
-        .info-row .value.gold { color: #fbbf24; }
-        .info-row .value.red { color: #f87171; }
         
         .toast-container {
             position: fixed;
@@ -282,94 +274,12 @@
             border-top: 1px solid rgba(46,204,113,0.1);
         }
         
-        .profile-avatar {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #2ecc71, #27ae60);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #fff;
-            flex-shrink: 0;
-        }
-        .profile-badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 0.65rem;
-            font-weight: 600;
-        }
-        .profile-badge.active { background: rgba(46,204,113,0.15); color: #2ecc71; }
-        .profile-badge.inactive { background: rgba(239,68,68,0.15); color: #f87171; }
-        
-        .wallet-summary-card {
-            background: rgba(8,14,26,0.4);
-            border-radius: 12px;
-            padding: 15px;
-            border: 1px solid rgba(46,204,113,0.05);
-        }
-        .wallet-summary-card .wallet-label {
-            color: #8899bb;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .wallet-summary-card .wallet-value {
-            font-size: 1.1rem;
-            font-weight: 700;
-        }
-        .wallet-summary-card .wallet-value.usd { color: #2ecc71; }
-        .wallet-summary-card .wallet-value.rnd { color: #60a5fa; }
-        .wallet-summary-card .wallet-value.locked { color: #a78bfa; }
-        .wallet-summary-card .wallet-value.gold { color: #fbbf24; }
-        
-        .search-results-container {
-            max-height: 300px;
-            overflow-y: auto;
-            background: rgba(19,34,55,0.95);
-            border-radius: 12px;
-            border: 1px solid rgba(46,204,113,0.1);
-            margin-top: 5px;
-            display: none;
-        }
-        .search-results-container.show { display: block; }
-        .search-results-container::-webkit-scrollbar {
-            width: 4px;
-        }
-        .search-results-container::-webkit-scrollbar-track {
-            background: rgba(8,14,26,0.3);
-            border-radius: 4px;
-        }
-        .search-results-container::-webkit-scrollbar-thumb {
-            background: #2ecc71;
-            border-radius: 4px;
-        }
-        
-        .user-search-result {
-            cursor: pointer;
-            padding: 10px 15px;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-            border-bottom: 1px solid rgba(46,204,113,0.05);
-        }
-        .user-search-result:hover {
-            background: rgba(46,204,113,0.08);
-        }
-        .user-search-result:last-child { border-bottom: none; }
-        .user-search-result .result-name { font-weight: 600; color: #fff; }
-        .user-search-result .result-id { color: #8899bb; font-size: 0.8rem; }
-        .user-search-result .result-wallet { color: #2ecc71; font-size: 0.8rem; }
-        
         @media (max-width: 768px) {
             .dashboard-container { padding: 15px; }
             .search-box { max-width: 100%; }
             .table-responsive { font-size: 0.8rem; }
             .stat-card .stat-number { font-size: 1.3rem; }
             .wallet-address-cell { max-width: 80px; }
-            .profile-avatar { width: 44px; height: 44px; font-size: 1rem; }
         }
         @media (max-width: 480px) { .card-glass { padding: 1rem; } }
     </style>
@@ -442,6 +352,1555 @@
     }
 }
 </script>
-<script type="module" src="admin.js"></script>
+<script type="module">
+import { initializeApp } from "firebase/app";
+import { 
+    getAuth, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged 
+} from "firebase/auth";
+import { 
+    getDatabase, 
+    ref, 
+    get, 
+    update, 
+    set, 
+    onValue, 
+    remove,
+    runTransaction,
+    push
+} from "firebase/database";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
+    authDomain: "rnd2-70080.firebaseapp.com",
+    databaseURL: "https://rnd2-70080-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "rnd2-70080",
+    storageBucket: "rnd2-70080.firebasestorage.app",
+    messagingSenderId: "468625887938",
+    appId: "1:468625887938:web:5cb4ddbcf31b6fc0a4615b",
+    measurementId: "G-ELVJD5NQKB"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+const ADMIN_EMAIL = "admin@rndstaking.com";
+
+let currentTab = 'dashboard';
+let allUsers = {};
+let allTransactions = [];
+let allPackages = [];
+let allWithdrawals = {};
+let allDeposits = {};
+let allSettings = { rate: 1.00 };
+let isDataLoaded = false;
+let dataListeners = {};
+let pendingWithdrawals = [];
+let pendingDeposits = [];
+
+// ============================================================
+// 🔥 TOAST
+// ============================================================
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast-custom ${type}`;
+    const icon = type === 'success' ? 'bi-check-circle-fill text-success' : 'bi-exclamation-triangle-fill text-danger';
+    toast.innerHTML = `<i class="bi ${icon}"></i><span class="toast-msg">${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// ============================================================
+// 🔥 COPY
+// ============================================================
+window.copyAddress = function(address, label = 'Address') {
+    if (!address || address === 'N/A') {
+        showToast('❌ No address to copy!', 'error');
+        return;
+    }
+    navigator.clipboard.writeText(address).then(() => {
+        showToast(`✅ ${label} copied to clipboard!`, 'success');
+    }).catch(() => {
+        const textArea = document.createElement('textarea');
+        textArea.value = address;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast(`✅ ${label} copied to clipboard!`, 'success');
+    });
+};
+
+// ============================================================
+// 🔥 AUTHENTICATION
+// ============================================================
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const email = document.getElementById('adminEmail').value;
+    const password = document.getElementById('adminPasswordInput').value;
+    const btn = document.getElementById('loginBtn');
+    const errorDiv = document.getElementById('loginError');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
+    errorDiv.style.display = 'none';
+    
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = '❌ ' + error.message;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-shield-lock me-2"></i>Login';
+        showToast('❌ Login failed: ' + error.message, 'error');
+    }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async function() {
+    try {
+        await signOut(auth);
+    } catch (error) {
+        showToast('❌ Logout error: ' + error.message, 'error');
+    }
+});
+
+// ============================================================
+// 🔥 ATOMIC TRANSACTION SAVE FUNCTION
+// ============================================================
+async function saveTransaction(uid, transactionData) {
+    try {
+        const userRef = ref(db, 'users/' + uid);
+        
+        const result = await runTransaction(userRef, (currentData) => {
+            if (!currentData) {
+                return { ...currentData };
+            }
+            
+            const transactions = currentData.transactions || {};
+            
+            // Duplicate check based on type + id
+            if (transactionData.withdrawalId) {
+                for (let key in transactions) {
+                    const tx = transactions[key];
+                    if (tx.type === 'withdrawal' && tx.withdrawalId === transactionData.withdrawalId) {
+                        return { ...currentData };
+                    }
+                }
+            }
+            
+            if (transactionData.packageId) {
+                for (let key in transactions) {
+                    const tx = transactions[key];
+                    if (tx.type === 'package' && tx.packageId === transactionData.packageId) {
+                        return { ...currentData };
+                    }
+                }
+            }
+            
+            // Generate unique ID
+            const txId = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+            transactions[txId] = transactionData;
+            
+            return {
+                ...currentData,
+                transactions: transactions
+            };
+        });
+        
+        if (result.committed) {
+            console.log('✅ Transaction saved atomically:', transactionData.type);
+            return true;
+        } else {
+            console.log('⚠️ Transaction not committed (duplicate or no change)');
+            return false;
+        }
+    } catch (error) {
+        console.error('Error saving transaction:', error);
+        return false;
+    }
+}
+
+// ============================================================
+// 🔥 ATOMIC UPDATE WITHDRAWAL STATUS
+// ============================================================
+async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark = '') {
+    const userRef = ref(db, 'users/' + uid);
+    
+    const result = await runTransaction(userRef, (currentData) => {
+        if (!currentData) return { ...currentData };
+        
+        const transactions = currentData.transactions || {};
+        let found = false;
+        
+        for (let key in transactions) {
+            const tx = transactions[key];
+            if (tx.type === 'withdrawal' && tx.withdrawalId === withdrawalId) {
+                transactions[key].status = newStatus;
+                transactions[key].updatedAt = Date.now();
+                if (remark) transactions[key].remark = remark;
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) return { ...currentData };
+        
+        return {
+            ...currentData,
+            transactions: transactions
+        };
+    });
+    
+    if (result.committed) {
+        console.log('✅ Withdrawal status updated:', withdrawalId, newStatus);
+        return { success: true };
+    } else {
+        console.log('⚠️ Withdrawal not found or update failed');
+        return { success: false, error: 'Withdrawal not found' };
+    }
+}
+
+// ============================================================
+// 🔥 ATOMIC UPDATE DEPOSIT STATUS
+// ============================================================
+async function updateDepositStatusAtomic(uid, depositId, newStatus, remark = '') {
+    const userRef = ref(db, 'users/' + uid);
+    
+    const result = await runTransaction(userRef, (currentData) => {
+        if (!currentData) return { ...currentData };
+        
+        const transactions = currentData.transactions || {};
+        let found = false;
+        
+        for (let key in transactions) {
+            const tx = transactions[key];
+            if (tx.type === 'deposit' && tx.depositId === depositId) {
+                transactions[key].status = newStatus;
+                transactions[key].updatedAt = Date.now();
+                if (remark) transactions[key].remark = remark;
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) return { ...currentData };
+        
+        return {
+            ...currentData,
+            transactions: transactions
+        };
+    });
+    
+    if (result.committed) {
+        console.log('✅ Deposit status updated:', depositId, newStatus);
+        return { success: true };
+    } else {
+        console.log('⚠️ Deposit not found or update failed');
+        return { success: false, error: 'Deposit not found' };
+    }
+}
+
+// ============================================================
+// 🔥 ATOMIC ADMIN CREDIT / DEBIT
+// ============================================================
+async function processAdminAdjustment(uid, walletType, amount, type, description, remark = '') {
+    const userRef = ref(db, 'users/' + uid);
+    
+    const result = await runTransaction(userRef, (currentData) => {
+        if (!currentData) return { ...currentData };
+        
+        const currentBalance = currentData[walletType] || 0;
+        const newBalance = type === 'credit' ? currentBalance + amount : currentBalance - amount;
+        
+        if (newBalance < 0) {
+            return { ...currentData };
+        }
+        
+        // Create transaction
+        const transactions = currentData.transactions || {};
+        const txId = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+        transactions[txId] = {
+            type: type === 'credit' ? 'admin_credit' : 'admin_debit',
+            amount: amount,
+            currency: 'USDT',
+            walletType: walletType,
+            timestamp: Date.now(),
+            date: new Date().toDateString(),
+            status: 'completed',
+            description: description || `${type === 'credit' ? 'Admin Credit' : 'Admin Debit'}`,
+            remark: remark
+        };
+        
+        return {
+            ...currentData,
+            [walletType]: newBalance,
+            transactions: transactions
+        };
+    });
+    
+    if (result.committed) {
+        console.log('✅ Admin adjustment completed:', type, amount);
+        return { success: true };
+    } else {
+        console.log('⚠️ Admin adjustment failed (insufficient balance or error)');
+        return { success: false, error: 'Insufficient balance or transaction failed' };
+    }
+}
+
+// ============================================================
+// 🔥 AUTH STATE CHANGE
+// ============================================================
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        console.log('✅ Admin logged in:', user.email);
+        
+        if (user.email === ADMIN_EMAIL || true) {
+            document.getElementById('passwordScreen').style.display = 'none';
+            document.getElementById('mainNav').style.display = 'flex';
+            document.getElementById('adminContent').style.display = 'block';
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('dbStatus').className = 'db-status loading';
+            document.getElementById('dbStatus').innerHTML = '<i class="bi bi-database"></i> Authenticated';
+            showToast('✅ Welcome Admin!', 'success');
+            loadAdminPanel();
+        } else {
+            showToast('❌ You are not authorized as admin.', 'error');
+            signOut(auth);
+        }
+    } else {
+        console.log('❌ Admin logged out');
+        document.getElementById('passwordScreen').style.display = 'flex';
+        document.getElementById('mainNav').style.display = 'none';
+        document.getElementById('adminContent').style.display = 'none';
+        document.getElementById('adminPasswordInput').value = '';
+        document.getElementById('adminPasswordInput').focus();
+        document.getElementById('loginBtn').disabled = false;
+        document.getElementById('loginBtn').innerHTML = '<i class="bi bi-shield-lock me-2"></i>Login';
+        
+        for (let key in dataListeners) {
+            if (dataListeners[key]) {
+                dataListeners[key]();
+            }
+        }
+        dataListeners = {};
+        allUsers = {};
+        allTransactions = [];
+        allPackages = [];
+        allWithdrawals = {};
+        allDeposits = {};
+        pendingWithdrawals = [];
+        pendingDeposits = [];
+        isDataLoaded = false;
+    }
+});
+
+// ============================================================
+// 🔥 SETUP REALTIME LISTENERS
+// ============================================================
+function setupRealtimeListeners() {
+    for (let key in dataListeners) {
+        if (dataListeners[key]) {
+            dataListeners[key]();
+        }
+    }
+    dataListeners = {};
+    
+    // 1. Users listener
+    const usersRef = ref(db, 'users');
+    dataListeners.users = onValue(usersRef, (snapshot) => {
+        if (snapshot.exists()) {
+            allUsers = snapshot.val();
+            console.log('✅ Users loaded:', Object.keys(allUsers).length);
+            extractTransactionsFromUsers();
+        } else {
+            allUsers = {};
+            allTransactions = [];
+            allPackages = [];
+        }
+        if (isDataLoaded) renderDashboard();
+    }, (error) => {
+        console.error('Users listener error:', error);
+        showToast('⚠️ Error loading users: ' + error.message, 'error');
+    });
+
+    // 2. Withdrawals listener
+    const withdrawalsRef = ref(db, 'withdrawals');
+    dataListeners.withdrawals = onValue(withdrawalsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            allWithdrawals = snapshot.val();
+            console.log('✅ Withdrawals loaded:', Object.keys(allWithdrawals).length);
+        } else {
+            allWithdrawals = {};
+        }
+        if (isDataLoaded) renderDashboard();
+    }, (error) => {
+        console.error('Withdrawals listener error:', error);
+    });
+
+    // 3. Deposits listener
+    const depositsRef = ref(db, 'deposits');
+    dataListeners.deposits = onValue(depositsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            allDeposits = snapshot.val();
+            console.log('✅ Deposits loaded:', Object.keys(allDeposits).length);
+        } else {
+            allDeposits = {};
+        }
+        if (isDataLoaded) renderDashboard();
+    }, (error) => {
+        console.error('Deposits listener error:', error);
+    });
+
+    // 4. Settings listener
+    const settingsRef = ref(db, 'settings');
+    dataListeners.settings = onValue(settingsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            allSettings = snapshot.val();
+            console.log('✅ Settings loaded:', allSettings);
+        } else {
+            allSettings = { rate: 1.00 };
+        }
+        if (isDataLoaded) {
+            const rateInput = document.getElementById('rndRate');
+            const rateDisplay = document.getElementById('currentRateDisplay');
+            if (rateInput && allSettings.rate) {
+                rateInput.value = allSettings.rate;
+                if (rateDisplay) rateDisplay.textContent = allSettings.rate;
+            }
+            renderDashboard();
+        }
+    });
+    
+    document.getElementById('dbStatus').className = 'db-status connected';
+    document.getElementById('dbStatus').innerHTML = '<i class="bi bi-database"></i> Connected';
+}
+
+// ============================================================
+// 🔥 EXTRACT TRANSACTIONS FROM USERS
+// ============================================================
+function extractTransactionsFromUsers() {
+    allTransactions = [];
+    allPackages = [];
+    pendingWithdrawals = [];
+    pendingDeposits = [];
+    
+    for (let uid in allUsers) {
+        const user = allUsers[uid];
+        if (user.role === 'admin') continue;
+        
+        const transactions = user.transactions || {};
+        for (let txId in transactions) {
+            const tx = transactions[txId];
+            allTransactions.push({
+                id: txId,
+                uid: uid,
+                user: user,
+                source: 'user_transactions',
+                ...tx
+            });
+            
+            // Track pending withdrawals
+            if (tx.type === 'withdrawal' && tx.status === 'pending') {
+                pendingWithdrawals.push({
+                    id: txId,
+                    uid: uid,
+                    user: user,
+                    ...tx
+                });
+            }
+            
+            // Track pending deposits
+            if (tx.type === 'deposit' && tx.status === 'pending') {
+                pendingDeposits.push({
+                    id: txId,
+                    uid: uid,
+                    user: user,
+                    ...tx
+                });
+            }
+        }
+        
+        const packages = user.packages || {};
+        for (let pkgId in packages) {
+            const pkg = packages[pkgId];
+            allPackages.push({
+                id: pkgId,
+                uid: uid,
+                user: user,
+                ...pkg
+            });
+        }
+    }
+    
+    // Also check root withdrawals node
+    for (let key in allWithdrawals) {
+        const w = allWithdrawals[key];
+        if (w.status === 'pending') {
+            // Check if already in pendingWithdrawals
+            const exists = pendingWithdrawals.some(p => p.withdrawalId === w.withdrawalId || p.id === key);
+            if (!exists) {
+                const user = allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
+                pendingWithdrawals.push({
+                    id: key,
+                    uid: w.uid,
+                    user: user,
+                    ...w
+                });
+            }
+        }
+    }
+    
+    allTransactions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    allPackages.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    console.log('✅ Extracted transactions:', allTransactions.length);
+    console.log('✅ Extracted packages:', allPackages.length);
+    console.log('✅ Pending withdrawals:', pendingWithdrawals.length);
+    console.log('✅ Pending deposits:', pendingDeposits.length);
+}
+
+// ============================================================
+// 🔥 LOAD ADMIN PANEL
+// ============================================================
+async function loadAdminPanel() {
+    try {
+        setupRealtimeListeners();
+        
+        await new Promise((resolve) => {
+            let attempts = 0;
+            const checkData = () => {
+                attempts++;
+                const hasData = Object.keys(allUsers).length > 0 || attempts > 15;
+                if (hasData) {
+                    isDataLoaded = true;
+                    resolve();
+                } else {
+                    setTimeout(checkData, 500);
+                }
+            };
+            checkData();
+        });
+        
+        renderDashboard();
+        
+    } catch (error) {
+        console.error('Error loading admin:', error);
+        document.getElementById('adminContent').innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-exclamation-triangle text-danger fs-1 d-block mb-3"></i>
+                <h4>Error Loading Panel</h4>
+                <p class="text-muted">${error.message || 'Please check your internet connection.'}</p>
+                <button class="btn btn-primary-custom mt-3" onclick="location.reload()">Refresh</button>
+            </div>
+        `;
+    }
+}
+
+// ============================================================
+// 🔥 RENDER DASHBOARD
+// ============================================================
+function renderDashboard() {
+    console.log('🔄 Rendering dashboard...');
+    
+    let totalUsers = 0;
+    let totalRNDWallet = 0;
+    let totalLockedRND = 0;
+    let totalDepositWallet = 0;
+    let totalReferrals = 0;
+    let totalStaked = 0;
+    
+    for (let key in allUsers) {
+        const u = allUsers[key];
+        if (u.role === 'admin') continue;
+        totalUsers++;
+        totalRNDWallet += (u.rndWallet || 0);
+        totalLockedRND += (u.lockedRND || 0);
+        totalDepositWallet += (u.depositWallet || 0);
+        totalReferrals += (u.totalReferrals || 0);
+        totalStaked += (u.totalStake || 0);
+    }
+    
+    const currentRate = allSettings.rate || 1.00;
+
+    document.getElementById('adminContent').innerHTML = `
+        <div class="row g-4">
+            <div class="col-12">
+                <div class="d-flex flex-wrap justify-content-between align-items-center">
+                    <h4 class="fw-bold"><i class="bi bi-shield-lock text-success me-2"></i>Admin Dashboard</h4>
+                    <span class="text-muted small">${new Date().toLocaleString('hi-IN')}</span>
+                </div>
+                <hr class="border-secondary">
+            </div>
+
+            <!-- Stats Row 1 -->
+            <div class="col-12">
+                <div class="row g-3">
+                    <div class="col-md-2 col-4">
+                        <div class="stat-card">
+                            <div class="stat-icon green"><i class="bi bi-people"></i></div>
+                            <div class="stat-number">${totalUsers}</div>
+                            <div class="stat-label">Total Users</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="stat-card">
+                            <div class="stat-icon blue"><i class="bi bi-arrow-down-circle"></i></div>
+                            <div class="stat-number">${allTransactions.filter(t => t.type === 'deposit').length}</div>
+                            <div class="stat-label">Total Deposits</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="stat-card">
+                            <div class="stat-icon orange"><i class="bi bi-arrow-up-circle"></i></div>
+                            <div class="stat-number">${allTransactions.filter(t => t.type === 'withdrawal').length}</div>
+                            <div class="stat-label">Total Withdrawals</div>
+                            ${pendingWithdrawals.length > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;font-size:0.7rem;">${pendingWithdrawals.length} Pending</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-icon purple"><i class="bi bi-cash-stack"></i></div>
+                            <div class="stat-number">$${allTransactions.filter(t => t.type === 'deposit' && t.status !== 'rejected').reduce((sum, t) => sum + (t.amount || 0), 0).toFixed(2)}</div>
+                            <div class="stat-label">Total Deposited</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;"><i class="bi bi-currency-dollar"></i></div>
+                            <div class="stat-number" style="color:#fbbf24;">$${currentRate}</div>
+                            <div class="stat-label">RND Rate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Row 2 -->
+            <div class="col-12">
+                <div class="row g-3">
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:rgba(46,204,113,0.12);color:#2ecc71;"><i class="bi bi-wallet2"></i></div>
+                            <div class="stat-number" style="color:#2ecc71;">$${totalDepositWallet.toFixed(2)}</div>
+                            <div class="stat-label">Total Deposit Wallet</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:rgba(96,165,250,0.12);color:#60a5fa;"><i class="bi bi-coin"></i></div>
+                            <div class="stat-number" style="color:#60a5fa;">${totalRNDWallet.toFixed(2)}</div>
+                            <div class="stat-label">Total RND Wallet</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:rgba(167,139,250,0.12);color:#a78bfa;"><i class="bi bi-lock"></i></div>
+                            <div class="stat-number" style="color:#a78bfa;">${totalLockedRND.toFixed(2)}</div>
+                            <div class="stat-label">Total Locked RND</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;"><i class="bi bi-people"></i></div>
+                            <div class="stat-number" style="color:#fbbf24;">${totalReferrals}</div>
+                            <div class="stat-label">Total Referrals</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="col-12">
+                <ul class="nav nav-tabs-custom" style="border-bottom:1px solid rgba(46,204,113,0.1);margin-bottom:20px;flex-wrap:wrap;">
+                    <li class="nav-item">
+                        <a class="nav-link ${currentTab === 'dashboard' ? 'active' : ''}" onclick="switchTab('dashboard')">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link ${currentTab === 'withdrawals' ? 'active' : ''}" onclick="switchTab('withdrawals')">
+                            <i class="bi bi-arrow-up-circle"></i> Withdrawals 
+                            ${pendingWithdrawals.length > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;margin-left:5px;">${pendingWithdrawals.length}</span>` : ''}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link ${currentTab === 'deposits' ? 'active' : ''}" onclick="switchTab('deposits')">
+                            <i class="bi bi-arrow-down-circle"></i> Deposits
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link ${currentTab === 'users' ? 'active' : ''}" onclick="switchTab('users')">
+                            <i class="bi bi-people"></i> Users (${totalUsers})
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link ${currentTab === 'packages' ? 'active' : ''}" onclick="switchTab('packages')">
+                            <i class="bi bi-box-seam"></i> Packages (${allPackages.length})
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link ${currentTab === 'settings' ? 'active' : ''}" onclick="switchTab('settings')">
+                            <i class="bi bi-gear"></i> Settings
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="col-12">
+                ${currentTab === 'dashboard' ? renderDashboardTab() : ''}
+                ${currentTab === 'withdrawals' ? renderWithdrawalsTab() : ''}
+                ${currentTab === 'deposits' ? renderDepositsTab() : ''}
+                ${currentTab === 'users' ? renderUsersTab() : ''}
+                ${currentTab === 'packages' ? renderPackagesTab() : ''}
+                ${currentTab === 'settings' ? renderSettingsTab() : ''}
+            </div>
+        </div>
+    `;
+    
+    setTimeout(() => {
+        const settingsForm = document.getElementById('settingsForm');
+        if (settingsForm) {
+            settingsForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await saveSettings();
+            });
+        }
+        
+        const adminForm = document.getElementById('adminAdjustForm');
+        if (adminForm) {
+            adminForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await handleAdminAdjustment();
+            });
+        }
+    }, 300);
+}
+
+// ============================================================
+// 🔥 RENDER DASHBOARD TAB
+// ============================================================
+function renderDashboardTab() {
+    let recentActivity = [];
+    
+    for (let tx of allTransactions.slice(0, 20)) {
+        recentActivity.push({
+            type: tx.type,
+            user: tx.user?.name || 'Unknown',
+            amount: tx.amount || 0,
+            status: tx.status || 'pending',
+            timestamp: tx.timestamp || 0,
+            label: getTypeLabel(tx.type),
+            uid: tx.uid
+        });
+    }
+    
+    if (recentActivity.length === 0) {
+        return `
+            <div class="card-glass">
+                <div class="card-title"><i class="bi bi-clock-history text-success me-2"></i>Recent Activity</div>
+                <div class="no-data">
+                    <i class="bi bi-inbox"></i>
+                    <p>No recent activity</p>
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="card-glass">
+            <div class="card-title"><i class="bi bi-clock-history text-success me-2"></i>Recent Activity</div>
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recentActivity.map(item => {
+                            const statusClass = item.status === 'pending' ? 'badge-pending' : 
+                                               item.status === 'approved' || item.status === 'completed' || item.status === 'success' ? 'badge-approved' : 
+                                               'badge-rejected';
+                            const statusText = item.status === 'pending' ? '⏳ Pending' : 
+                                               item.status === 'approved' || item.status === 'completed' || item.status === 'success' ? '✅ Done' : 
+                                               '❌ Rejected';
+                            const amountColor = item.type === 'withdrawal' || item.type === 'admin_debit' ? '#f87171' : '#2ecc71';
+                            const sign = item.type === 'withdrawal' || item.type === 'admin_debit' ? '-' : '+';
+                            return `
+                                <tr>
+                                    <td>
+                                        <i class="bi ${getTypeIcon(item.type)}" style="color:${amountColor};"></i>
+                                        ${item.label || item.type}
+                                    </td>
+                                    <td><strong>${item.user}</strong></td>
+                                    <td>
+                                        <strong style="color:${amountColor}">
+                                            ${sign}$${(item.amount || 0).toFixed(2)}
+                                        </strong>
+                                    </td>
+                                    <td><span class="${statusClass}">${statusText}</span></td>
+                                    <td style="font-size:0.8rem;color:#8899bb;">${new Date(item.timestamp).toLocaleString('hi-IN')}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// 🔥 RENDER WITHDRAWALS TAB
+// ============================================================
+function renderWithdrawalsTab() {
+    // Get all pending and recent withdrawals
+    const allWithdrawalsList = allTransactions.filter(t => t.type === 'withdrawal');
+    allWithdrawalsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    // Also include from root withdrawals
+    for (let key in allWithdrawals) {
+        const w = allWithdrawals[key];
+        const exists = allWithdrawalsList.some(t => t.withdrawalId === w.withdrawalId);
+        if (!exists) {
+            const user = allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
+            allWithdrawalsList.push({
+                id: key,
+                uid: w.uid,
+                user: user,
+                withdrawalId: w.withdrawalId || key,
+                amount: w.amount || 0,
+                currency: w.currency || 'USDT',
+                status: w.status || 'pending',
+                timestamp: w.timestamp || Date.now(),
+                walletAddress: w.wallet || '',
+                walletType: w.walletType || '',
+                source: 'root'
+            });
+        }
+    }
+    
+    allWithdrawalsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    if (allWithdrawalsList.length === 0) {
+        return `
+            <div class="card-glass">
+                <div class="no-data">
+                    <i class="bi bi-inbox"></i>
+                    <p>No withdrawals found.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    let html = `
+        <div class="card-glass">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div class="card-title" style="margin-bottom:0;">
+                    <i class="bi bi-arrow-up-circle text-success me-2"></i>
+                    Withdrawals (${allWithdrawalsList.length})
+                    ${allWithdrawalsList.filter(w => w.status === 'pending').length > 0 ? 
+                        `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;margin-left:10px;">${allWithdrawalsList.filter(w => w.status === 'pending').length} Pending</span>` : ''}
+                </div>
+                <input type="text" class="search-box" placeholder="Search by user..." oninput="filterWithdrawals(this.value)">
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom" id="withdrawalsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Wallet</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    let count = 0;
+    for (let w of allWithdrawalsList) {
+        count++;
+        const user = w.user || allUsers[w.uid] || { name: 'Unknown', username: 'N/A' };
+        const statusClass = w.status === 'pending' ? 'badge-pending' : 
+                           w.status === 'approved' || w.status === 'success' ? 'badge-approved' : 
+                           'badge-rejected';
+        const statusText = w.status === 'pending' ? '⏳ Pending' : 
+                           w.status === 'approved' || w.status === 'success' ? '✅ Approved' : 
+                           '❌ Rejected';
+        const currency = w.currency || 'USDT';
+        const walletDisplay = w.walletAddress ? w.walletAddress.substring(0, 20) + '...' : 'N/A';
+        const withdrawalId = w.withdrawalId || w.id;
+        
+        html += `
+            <tr data-user="${(user.username || user.name || '').toLowerCase()}">
+                <td>${count}</td>
+                <td>
+                    <strong>${user.name || 'Unknown'}</strong><br>
+                    <small style="color:#556688;">${user.username || 'N/A'}</small>
+                    ${w.source ? `<br><small style="color:#556688;font-size:0.6rem;">${w.source}</small>` : ''}
+                </td>
+                <td><strong style="color:#fbbf24;">${(w.amount || 0).toFixed(2)} ${currency}</strong></td>
+                <td>
+                    <span class="wallet-address-cell">${walletDisplay}</span>
+                    ${w.walletAddress ? `<button class="btn-copy ms-1" onclick="copyAddress('${w.walletAddress}','Wallet')"><i class="bi bi-clipboard"></i></button>` : ''}
+                </td>
+                <td style="font-size:0.8rem;color:#8899bb;">${new Date(w.timestamp).toLocaleString('hi-IN')}</td>
+                <td><span class="${statusClass}">${statusText}</span></td>
+                <td>
+                    ${w.status === 'pending' ? `
+                        <button class="btn btn-success-custom btn-sm me-1" onclick="approveWithdrawal('${w.uid}', '${withdrawalId}')"><i class="bi bi-check-lg"></i></button>
+                        <button class="btn btn-danger-custom btn-sm" onclick="rejectWithdrawal('${w.uid}', '${withdrawalId}')"><i class="bi bi-x-lg"></i></button>
+                    ` : w.status === 'approved' || w.status === 'success' ? `
+                        <span class="text-success"><i class="bi bi-check-circle"></i> Done</span>
+                    ` : `
+                        <span class="text-danger"><i class="bi bi-x-circle"></i> Rejected</span>
+                    `}
+                </td>
+            </tr>
+        `;
+    }
+
+    html += `</tbody></table></div></div>`;
+    return html;
+}
+
+// ============================================================
+// 🔥 RENDER DEPOSITS TAB
+// ============================================================
+function renderDepositsTab() {
+    const allDepositsList = allTransactions.filter(t => t.type === 'deposit');
+    allDepositsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    if (allDepositsList.length === 0) {
+        return `
+            <div class="card-glass">
+                <div class="no-data">
+                    <i class="bi bi-inbox"></i>
+                    <p>No deposits found.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    let html = `
+        <div class="card-glass">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div class="card-title" style="margin-bottom:0;">
+                    <i class="bi bi-arrow-down-circle text-success me-2"></i>
+                    Deposits (${allDepositsList.length})
+                </div>
+                <input type="text" class="search-box" placeholder="Search by user..." oninput="filterDeposits(this.value)">
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom" id="depositsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Details</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    let count = 0;
+    for (let d of allDepositsList) {
+        count++;
+        const user = d.user || allUsers[d.uid] || { name: 'Unknown', username: 'N/A' };
+        const statusClass = d.status === 'pending' ? 'badge-pending' : 
+                           d.status === 'approved' || d.status === 'completed' || d.status === 'success' ? 'badge-approved' : 
+                           'badge-rejected';
+        const statusText = d.status === 'pending' ? '⏳ Pending' : 
+                           d.status === 'approved' || d.status === 'completed' || d.status === 'success' ? '✅ Approved' : 
+                           '❌ Rejected';
+        
+        html += `
+            <tr data-user="${(user.username || user.name || '').toLowerCase()}">
+                <td>${count}</td>
+                <td>
+                    <strong>${user.name || 'Unknown'}</strong><br>
+                    <small style="color:#556688;">${user.username || 'N/A'}</small>
+                </td>
+                <td><strong style="color:#2ecc71;">$${(d.amount || 0).toFixed(2)}</strong></td>
+                <td style="font-size:0.8rem;color:#8899bb;">
+                    ${d.description || 'Deposit'}
+                    ${d.txHash ? `<br><small>TX: ${d.txHash.substring(0, 15)}...</small>` : ''}
+                </td>
+                <td style="font-size:0.8rem;color:#8899bb;">${new Date(d.timestamp).toLocaleString('hi-IN')}</td>
+                <td><span class="${statusClass}">${statusText}</span></td>
+            </tr>
+        `;
+    }
+
+    html += `</tbody></table></div></div>`;
+    return html;
+}
+
+// ============================================================
+// 🔥 RENDER USERS TAB
+// ============================================================
+function renderUsersTab() {
+    const userList = Object.keys(allUsers || {});
+    const filteredUsers = userList.filter(key => allUsers[key].role !== 'admin');
+    
+    if (filteredUsers.length === 0) {
+        return `
+            <div class="card-glass">
+                <div class="no-data">
+                    <i class="bi bi-inbox"></i>
+                    <p>No users found.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    let html = `
+        <div class="card-glass">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-people text-success me-2"></i>All Users (${filteredUsers.length})</div>
+                <input type="text" class="search-box" placeholder="Search by name..." oninput="filterUsers(this.value)">
+            </div>
+            
+            <!-- Admin Adjustment Form -->
+            <div class="card-glass mb-3" style="background:rgba(251,191,36,0.05);border-color:rgba(251,191,36,0.1);">
+                <h6 class="text-muted"><i class="bi bi-shield"></i> Admin Adjustment</h6>
+                <form id="adminAdjustForm" class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">User</label>
+                        <select id="adminUserSelect" class="form-control form-control-custom">
+                            ${filteredUsers.map(uid => {
+                                const u = allUsers[uid];
+                                return `<option value="${uid}">${u.name || 'Unknown'} (@${u.username || 'N/A'})</option>`;
+                            }).join('')}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Wallet</label>
+                        <select id="adminWalletSelect" class="form-control form-control-custom">
+                            <option value="depositWallet">Deposit Wallet</option>
+                            <option value="referralWallet">Referral Wallet</option>
+                            <option value="rndWallet">RND Wallet</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Type</label>
+                        <select id="adminAdjustType" class="form-control form-control-custom">
+                            <option value="credit">➕ Credit</option>
+                            <option value="debit">➖ Debit</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Amount (USDT)</label>
+                        <input type="number" id="adminAdjustAmount" class="form-control form-control-custom" placeholder="0.00" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" id="adminAdjustDesc" class="form-control form-control-custom" placeholder="Reason for adjustment">
+                    </div>
+                    <div class="col-12 mt-2">
+                        <button type="submit" class="btn btn-warning-custom w-100">
+                            <i class="bi bi-shield me-1"></i> Apply Adjustment
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-custom" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Deposit</th>
+                            <th>RND</th>
+                            <th>Locked</th>
+                            <th>Refs</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    let count = 0;
+    for (let key of filteredUsers) {
+        const u = allUsers[key];
+        count++;
+        const depositWallet = u.depositWallet || 0;
+        const rndWallet = u.rndWallet || 0;
+        const lockedRND = u.lockedRND || 0;
+        const totalReferrals = u.totalReferrals || 0;
+        
+        html += `
+            <tr data-user="${(u.username || u.name || '').toLowerCase()}">
+                <td>${count}</td>
+                <td>
+                    <strong>${u.name || 'Unknown'}</strong><br>
+                    <small style="color:#556688;">@${u.username || 'N/A'}</small>
+                </td>
+                <td style="font-size:0.85rem;">${u.email || 'N/A'}</td>
+                <td><strong style="color:#2ecc71;">$${depositWallet.toFixed(2)}</strong></td>
+                <td><strong style="color:#60a5fa;">${rndWallet.toFixed(4)}</strong></td>
+                <td><strong style="color:#a78bfa;">${lockedRND.toFixed(2)}</strong></td>
+                <td>${totalReferrals}</td>
+                <td>
+                    <button class="btn btn-info btn-sm" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa;" onclick="viewUserDetails('${key}')"><i class="bi bi-eye"></i></button>
+                </td>
+            </tr>
+        `;
+    }
+
+    html += `</tbody></table></div></div>`;
+    return html;
+}
+
+// ============================================================
+// 🔥 RENDER PACKAGES TAB
+// ============================================================
+function renderPackagesTab() {
+    if (allPackages.length === 0) {
+        return `
+            <div class="card-glass">
+                <div class="no-data">
+                    <i class="bi bi-inbox"></i>
+                    <p>No packages found.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    let html = `
+        <div class="card-glass">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-box-seam text-success me-2"></i>All Packages (${allPackages.length})</div>
+                <input type="text" class="search-box" placeholder="Search by user..." oninput="filterPackages(this.value)">
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom" id="packagesTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th>Plan</th>
+                            <th>Amount</th>
+                            <th>Total RND</th>
+                            <th>Released</th>
+                            <th>Locked</th>
+                            <th>Daily</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    let count = 0;
+    for (let pkg of allPackages) {
+        count++;
+        const user = pkg.user || allUsers[pkg.uid] || { name: 'Unknown', username: 'N/A' };
+        const statusClass = pkg.status === 'active' ? 'badge-active' : 'badge-completed';
+        const statusText = pkg.status === 'active' ? '🟢 Active' : '🔵 Completed';
+        const released = pkg.releasedRND || 0;
+        const locked = Math.max(0, (pkg.totalRND || 0) - released);
+        
+        html += `
+            <tr data-user="${(user.username || user.name || '').toLowerCase()}">
+                <td>${count}</td>
+                <td>
+                    <strong>${user.name || 'Unknown'}</strong><br>
+                    <small style="color:#556688;">${user.username || 'N/A'}</small>
+                </td>
+                <td style="color:#fbbf24;">${pkg.planName || 'Package'}</td>
+                <td><strong style="color:#2ecc71;">$${(pkg.usdtAmount || 0).toFixed(2)}</strong></td>
+                <td><strong style="color:#60a5fa;">${(pkg.totalRND || 0).toFixed(2)}</strong></td>
+                <td style="color:#34d399;">${released.toFixed(2)}</td>
+                <td style="color:#a78bfa;">${locked.toFixed(2)}</td>
+                <td style="color:#fbbf24;">${(pkg.dailyRelease || 0).toFixed(4)}</td>
+                <td><span class="${statusClass}">${statusText}</span></td>
+            </tr>
+        `;
+    }
+
+    html += `</tbody></table></div></div>`;
+    return html;
+}
+
+// ============================================================
+// 🔥 RENDER SETTINGS TAB
+// ============================================================
+function renderSettingsTab() {
+    const currentRate = allSettings.rate || 1.00;
+    
+    let totalUsers = 0;
+    let totalDepositWallet = 0;
+    let totalRNDWallet = 0;
+    let totalLockedRND = 0;
+    
+    for (let key in allUsers) {
+        const u = allUsers[key];
+        if (u.role === 'admin') continue;
+        totalUsers++;
+        totalDepositWallet += (u.depositWallet || 0);
+        totalRNDWallet += (u.rndWallet || 0);
+        totalLockedRND += (u.lockedRND || 0);
+    }
+    
+    return `
+        <div class="card-glass">
+            <div class="card-title"><i class="bi bi-gear text-success me-2"></i>Admin Settings</div>
+            
+            <form id="settingsForm">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">RND Token Rate (USD)</label>
+                        <input type="number" id="rndRate" class="form-control form-control-custom" step="0.0001" value="${currentRate}" required>
+                        <small class="text-muted">Current rate: 1 RND = $<span id="currentRateDisplay">${currentRate}</span></small>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="submit" class="btn-primary-custom" id="saveSettingsBtn">
+                            <i class="bi bi-save me-2"></i>Update Rate
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <hr class="border-secondary">
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <h6 class="text-muted">📊 Platform Stats</h6>
+                    <div class="info-row"><span class="label">Total Users</span><span class="value">${totalUsers}</span></div>
+                    <div class="info-row"><span class="label">Total Deposits</span><span class="value">${allTransactions.filter(t => t.type === 'deposit').length}</span></div>
+                    <div class="info-row"><span class="label">Total Withdrawals</span><span class="value">${allTransactions.filter(t => t.type === 'withdrawal').length}</span></div>
+                    <div class="info-row"><span class="label">Total Packages</span><span class="value">${allPackages.length}</span></div>
+                    <div class="info-row"><span class="label">Total Deposit Wallet</span><span class="value" style="color:#2ecc71;">$${totalDepositWallet.toFixed(2)}</span></div>
+                    <div class="info-row"><span class="label">Total RND Wallet</span><span class="value" style="color:#60a5fa;">${totalRNDWallet.toFixed(2)}</span></div>
+                    <div class="info-row"><span class="label">Total Locked RND</span><span class="value" style="color:#a78bfa;">${totalLockedRND.toFixed(2)}</span></div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted">🔐 Security</h6>
+                    <div class="info-row"><span class="label">Admin Status</span><span class="value"><i class="bi bi-check-circle text-success"></i> Active</span></div>
+                    <div class="info-row"><span class="label">Session Time</span><span class="value">${new Date().toLocaleString('hi-IN')}</span></div>
+                    <div class="info-row"><span class="label">Database</span><span class="value"><i class="bi bi-check-circle text-success"></i> Connected</span></div>
+                    <div class="info-row"><span class="label">Pending Withdrawals</span><span class="value" style="color:#fbbf24;">${pendingWithdrawals.length}</span></div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// 🔥 SWITCH TAB
+// ============================================================
+window.switchTab = function(tab) {
+    currentTab = tab;
+    renderDashboard();
+};
+
+// ============================================================
+// 🔥 FILTER FUNCTIONS
+// ============================================================
+window.filterDeposits = function(value) {
+    const rows = document.querySelectorAll('#depositsTable tbody tr');
+    const search = value.toLowerCase();
+    rows.forEach(row => {
+        const user = row.getAttribute('data-user') || '';
+        row.style.display = user.includes(search) ? '' : 'none';
+    });
+};
+
+window.filterWithdrawals = function(value) {
+    const rows = document.querySelectorAll('#withdrawalsTable tbody tr');
+    const search = value.toLowerCase();
+    rows.forEach(row => {
+        const user = row.getAttribute('data-user') || '';
+        row.style.display = user.includes(search) ? '' : 'none';
+    });
+};
+
+window.filterUsers = function(value) {
+    const rows = document.querySelectorAll('#usersTable tbody tr');
+    const search = value.toLowerCase();
+    rows.forEach(row => {
+        const user = row.getAttribute('data-user') || '';
+        row.style.display = user.includes(search) ? '' : 'none';
+    });
+};
+
+window.filterPackages = function(value) {
+    const rows = document.querySelectorAll('#packagesTable tbody tr');
+    const search = value.toLowerCase();
+    rows.forEach(row => {
+        const user = row.getAttribute('data-user') || '';
+        row.style.display = user.includes(search) ? '' : 'none';
+    });
+};
+
+// ============================================================
+// 🔥 VIEW USER DETAILS
+// ============================================================
+window.viewUserDetails = function(userId) {
+    const user = allUsers[userId];
+    if (!user) {
+        showToast('❌ User not found!', 'error');
+        return;
+    }
+    
+    const userTxs = allTransactions.filter(t => t.uid === userId);
+    const deposits = userTxs.filter(t => t.type === 'deposit');
+    const withdrawals = userTxs.filter(t => t.type === 'withdrawal');
+    const userPackages = allPackages.filter(p => p.uid === userId);
+    
+    let totalReleased = 0;
+    let totalLocked = 0;
+    for (let pkg of userPackages) {
+        totalReleased += (pkg.releasedRND || 0);
+        totalLocked += ((pkg.totalRND || 0) - (pkg.releasedRND || 0));
+    }
+    
+    alert(`📊 User Details
+━━━━━━━━━━━━━━━━━━━━━━
+👤 Name: ${user.name || 'Unknown'}
+📛 Username: ${user.username || 'N/A'}
+📧 Email: ${user.email || 'N/A'}
+━━━━━━━━━━━━━━━━━━━━━━
+💰 Deposit Wallet: $${(user.depositWallet || 0).toFixed(2)}
+📊 RND Wallet: ${(user.rndWallet || 0).toFixed(4)}
+🔒 Locked RND: ${(user.lockedRND || 0).toFixed(2)}
+━━━━━━━━━━━━━━━━━━━━━━
+📥 Deposits: ${deposits.length}
+📤 Withdrawals: ${withdrawals.length}
+👥 Referrals: ${user.totalReferrals || 0}
+━━━━━━━━━━━━━━━━━━━━━━
+📦 Packages: ${userPackages.length}
+✅ Released: ${totalReleased.toFixed(2)} RND
+🔒 Locked: ${totalLocked.toFixed(2)} RND`);
+};
+
+// ============================================================
+// 🔥 APPROVE WITHDRAWAL
+// ============================================================
+window.approveWithdrawal = async function(uid, withdrawalId) {
+    if (!confirm('✅ Approve this withdrawal?')) return;
+    
+    try {
+        // Update status in user's transactions
+        const result = await updateWithdrawalStatusAtomic(uid, withdrawalId, 'approved');
+        
+        if (result.success) {
+            showToast('✅ Withdrawal approved successfully!', 'success');
+            
+            // Also update root withdrawals if exists
+            try {
+                const rootSnap = await get(ref(db, 'withdrawals'));
+                if (rootSnap.exists()) {
+                    const rootData = rootSnap.val();
+                    for (let key in rootData) {
+                        if (rootData[key].withdrawalId === withdrawalId) {
+                            await update(ref(db, 'withdrawals/' + key), { 
+                                status: 'approved',
+                                approvedAt: Date.now()
+                            });
+                            break;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Root withdrawal update warning:', err);
+            }
+            
+            // Refresh data
+            setTimeout(() => renderDashboard(), 500);
+        } else {
+            showToast('❌ Failed to approve withdrawal: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Approve error:', error);
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+};
+
+// ============================================================
+// 🔥 REJECT WITHDRAWAL
+// ============================================================
+window.rejectWithdrawal = async function(uid, withdrawalId) {
+    const remark = prompt('❌ Reason for rejection (optional):');
+    if (remark === null) return;
+    
+    try {
+        const result = await updateWithdrawalStatusAtomic(uid, withdrawalId, 'rejected', remark);
+        
+        if (result.success) {
+            showToast('❌ Withdrawal rejected!', 'success');
+            
+            // Also update root withdrawals if exists
+            try {
+                const rootSnap = await get(ref(db, 'withdrawals'));
+                if (rootSnap.exists()) {
+                    const rootData = rootSnap.val();
+                    for (let key in rootData) {
+                        if (rootData[key].withdrawalId === withdrawalId) {
+                            await update(ref(db, 'withdrawals/' + key), { 
+                                status: 'rejected',
+                                rejectedAt: Date.now(),
+                                rejectReason: remark
+                            });
+                            break;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Root withdrawal update warning:', err);
+            }
+            
+            setTimeout(() => renderDashboard(), 500);
+        } else {
+            showToast('❌ Failed to reject withdrawal: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Reject error:', error);
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+};
+
+// ============================================================
+// 🔥 ADMIN ADJUSTMENT
+// ============================================================
+async function handleAdminAdjustment() {
+    const uid = document.getElementById('adminUserSelect').value;
+    const walletType = document.getElementById('adminWalletSelect').value;
+    const type = document.getElementById('adminAdjustType').value;
+    const amount = parseFloat(document.getElementById('adminAdjustAmount').value);
+    const description = document.getElementById('adminAdjustDesc').value || `${type === 'credit' ? 'Admin Credit' : 'Admin Debit'} to ${walletType}`;
+    
+    if (!amount || amount <= 0) {
+        showToast('❌ Please enter a valid amount!', 'error');
+        return;
+    }
+    
+    if (!uid) {
+        showToast('❌ Please select a user!', 'error');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Are you sure you want to ${type === 'credit' ? 'CREDIT' : 'DEBIT'} ${amount} USDT to/from ${walletType}?`)) {
+        return;
+    }
+    
+    const btn = document.querySelector('#adminAdjustForm button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+    
+    try {
+        const result = await processAdminAdjustment(uid, walletType, amount, type, description);
+        
+        if (result.success) {
+            showToast(`✅ ${type === 'credit' ? 'Credited' : 'Debited'} ${amount} USDT successfully!`, 'success');
+            document.getElementById('adminAdjustAmount').value = '';
+            document.getElementById('adminAdjustDesc').value = '';
+            setTimeout(() => renderDashboard(), 500);
+        } else {
+            showToast('❌ Failed: ' + (result.error || 'Insufficient balance or error'), 'error');
+        }
+    } catch (error) {
+        console.error('Admin adjustment error:', error);
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+}
+
+// ============================================================
+// 🔥 SAVE SETTINGS
+// ============================================================
+async function saveSettings() {
+    const rateInput = document.getElementById('rndRate');
+    if (!rateInput) {
+        showToast('❌ Settings form not found!', 'error');
+        return;
+    }
+    
+    const rate = parseFloat(rateInput.value);
+    if (!rate || rate <= 0) {
+        showToast('❌ Please enter a valid rate.', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('saveSettingsBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    }
+    
+    try {
+        await set(ref(db, 'settings/rate'), rate);
+        const display = document.getElementById('currentRateDisplay');
+        if (display) display.textContent = rate;
+        showToast('✅ RND rate updated to $' + rate, 'success');
+    } catch (error) {
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+    
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save me-2"></i>Update Rate';
+    }
+}
+
+// ============================================================
+// 🔥 GET TYPE LABEL HELPER
+// ============================================================
+function getTypeLabel(type) {
+    const map = {
+        'deposit': 'Deposit',
+        'withdrawal': 'Withdrawal',
+        'package': 'Package Purchase',
+        'transfer_sent': 'Transfer Sent',
+        'transfer_received': 'Transfer Received',
+        'referral_commission': 'Referral Commission',
+        'daily_release': 'Daily Release',
+        'admin_credit': 'Admin Credit',
+        'admin_debit': 'Admin Debit',
+        'bonus': 'Bonus Credit',
+        'package_completed': 'Package Completed'
+    };
+    return map[type] || type;
+}
+
+function getTypeIcon(type) {
+    const map = {
+        'deposit': 'bi-arrow-down-circle',
+        'withdrawal': 'bi-arrow-up-circle',
+        'package': 'bi-box-seam',
+        'transfer_sent': 'bi-arrow-up-right',
+        'transfer_received': 'bi-arrow-down-left',
+        'referral_commission': 'bi-people',
+        'daily_release': 'bi-clock-history',
+        'admin_credit': 'bi-plus-circle',
+        'admin_debit': 'bi-dash-circle',
+        'bonus': 'bi-gift',
+        'package_completed': 'bi-check-circle'
+    };
+    return map[type] || 'bi-circle';
+}
+</script>
 </body>
 </html>
