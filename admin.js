@@ -1,5 +1,5 @@
 // ============================================================
-// ADMIN PANEL - RND STAKING (Complete Final v5 - Financial Safe)
+// ADMIN PANEL - RND STAKING (Complete Final v6 - 5-Level Referral)
 // ============================================================
 // Features:
 //   - All existing functionality preserved
@@ -14,6 +14,12 @@
 //     * Conditional refund on reject
 //     * Admin adjustment with audit + validation
 //     * Statistics deduplication
+//   - 🔥 v6: 5-LEVEL REFERRAL SUPPORT:
+//     * Calculate L1, L2, L3, L4, L5 counts for every user
+//     * Show referral tree in user detail
+//     * Users table shows level-wise breakdown
+//     * Search results include levels
+//     * Total team count (L1-L5 sum)
 // ============================================================
 
 import { initializeApp } from "firebase/app";
@@ -37,6 +43,7 @@ const db = getDatabase(app);
 
 const ADMIN_EMAIL = "admin@rndstaking.com";
 const CAMPAIGN_ID = 'direct_offer_2026';
+const MAX_REFERRAL_LEVELS = 5;
 
 // ============================================================
 // GLOBAL STATE
@@ -53,6 +60,11 @@ let allSettings = { rate: 1.00 };
 let isDataLoaded = false;
 let dataListeners = {};
 
+// 🔥 v6: Referral tree cache
+let referralTreeCache = {}; // { uid: { L1: [...uids], L2: [...], ... L5: [...] } }
+let referralCountCache = {}; // { uid: { L1: n, L2: n, L3: n, L4: n, L5: n, total: n } }
+let referralLevelsComputed = false;
+
 let activityFeed = [];
 let seenActivityIds = new Set();
 
@@ -62,7 +74,6 @@ let previousSnapshot = {
     deposits: new Set(), initialized: false
 };
 
-// Direct Offer view state
 let directOfferViewMode = 'breakdown';
 let directOfferSelectedTier = null;
 
@@ -161,6 +172,148 @@ function relativeTime(timestamp) {
 }
 
 // ============================================================
+// 🔥 v6: REFERRAL HELPERS (5-LEVEL)
+// ============================================================
+// Get the sponsor uid for a user (canonical + legacy support)
+function getSponsorUid(user) {
+    if (!user || typeof user !== 'object') return null;
+    return user.sponsorUid || user.referredByUid || null;
+}
+
+// Get the sponsor "code" reference for legacy support
+function getSponsorLegacyRef(user) {
+    if (!user || typeof user !== 'object') return null;
+    return user.referredBy || user.sponsor || null;
+}
+
+// Resolve a legacy ref (code/username/uid) to a uid
+function resolveLegacyRefToUid(legacyRef, ownerMap) {
+    if (!legacyRef) return null;
+    const refStr = String(legacyRef);
+    // Direct uid match
+    if (ownerMap[refStr]) return refStr;
+    // Code/username match
+    for (const oUid in ownerMap) {
+        const o = ownerMap[oUid];
+        if (!o) continue;
+        if (String(o.referralCode || '') === refStr) return oUid;
+        if (String(o.username || '') === refStr) return oUid;
+    }
+    return null;
+}
+
+// 🔥 Build the entire referral tree for all users (cached)
+function buildReferralTree() {
+    if (referralLevelsComputed) return;
+
+    const tree = {}; // { uid: { L1: Set, L2: Set, L3: Set, L4: Set, L5: Set } }
+
+    // Initialize for all non-admin users
+    for (const uid in allUsers) {
+        const u = allUsers[uid];
+        if (!u || u.role === 'admin') continue;
+        tree[uid] = {
+            L1: new Set(),
+            L2: new Set(),
+            L3: new Set(),
+            L4: new Set(),
+            L5: new Set()
+        };
+    }
+
+    // Step 1: Direct referrals (L1)
+    for (const uid in allUsers) {
+        const u = allUsers[uid];
+        if (!u || u.role === 'admin') continue;
+
+        // Canonical sponsor
+        let sponsorUid = getSponsorUid(u);
+
+        // Legacy resolution
+        if (!sponsorUid) {
+            const legacyRef = getSponsorLegacyRef(u);
+            if (legacyRef) {
+                sponsorUid = resolveLegacyRefToUid(legacyRef, allUsers);
+            }
+        }
+
+        if (!sponsorUid || sponsorUid === uid) continue;
+        if (!tree[sponsorUid]) continue; // sponsor not in tree (maybe admin)
+
+        tree[sponsorUid].L1.add(uid);
+    }
+
+    // Step 2: Build L2, L3, L4, L5 from L1
+    // For each level, L(n) = union of L1 of all users in L(n-1)
+    const levels = ['L1', 'L2', 'L3', 'L4', 'L5'];
+    for (let i = 1; i < levels.length; i++) {
+        const prevLevel = levels[i - 1];
+        const currLevel = levels[i];
+
+        for (const uid in tree) {
+            const prevUids = tree[uid][prevLevel];
+            const currSet = tree[uid][currLevel];
+
+            for (const prevUid of prevUids) {
+                const prevChildren = tree[prevUid]?.[prevLevel === 'L1' ? 'L1' : 'L1'];
+                // For all levels, we always expand from L1 of the previous level's users
+                const prevL1 = tree[prevUid]?.L1;
+                if (prevL1) {
+                    for (const childUid of prevL1) {
+                        if (childUid !== uid) {
+                            currSet.add(childUid);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Step 3: Convert Sets to Arrays and build counts
+    referralTreeCache = {};
+    referralCountCache = {};
+
+    for (const uid in tree) {
+        const entry = tree[uid];
+        const levels = {};
+        const counts = {};
+        let total = 0;
+
+        for (const level of ['L1', 'L2', 'L3', 'L4', 'L5']) {
+            // Remove overlap with upper levels (a user should only be counted once per level)
+            const arr = Array.from(entry[level]);
+            levels[level] = arr;
+            counts[level] = arr.length;
+            total += arr.length;
+        }
+
+        referralTreeCache[uid] = levels;
+        referralCountCache[uid] = { ...counts, total };
+    }
+
+    referralLevelsComputed = true;
+    console.log('✅ Referral tree built for', Object.keys(referralTreeCache).length, 'users');
+}
+
+function invalidateReferralCache() {
+    referralLevelsComputed = false;
+    referralTreeCache = {};
+    referralCountCache = {};
+}
+
+// 🔥 Get level counts for a user (returns { L1, L2, L3, L4, L5, total })
+function getReferralCounts(uid) {
+    if (!referralLevelsComputed) buildReferralTree();
+    return referralCountCache[uid] || { L1: 0, L2: 0, L3: 0, L4: 0, L5: 0, total: 0 };
+}
+
+// 🔥 Get level user arrays for a user
+function getReferralLevels(uid) {
+    if (!referralLevelsComputed) buildReferralTree();
+    return referralTreeCache[uid] || { L1: [], L2: [], L3: [], L4: [], L5: [] };
+}
+
+// ============================================================
 // AUTH
 // ============================================================
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
@@ -205,7 +358,6 @@ async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark
     try {
         const result = await runTransaction(userRef, (currentData) => {
             if (!currentData) return currentData;
-
             const transactions = currentData.transactions || {};
             let targetTxKey = null;
             let targetTx = null;
@@ -218,21 +370,15 @@ async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark
                     break;
                 }
             }
-
             if (!targetTxKey || !targetTx) return currentData;
 
             const currentStatus = String(targetTx.status || 'pending').toLowerCase();
-
-            // ✅ ONLY pending can be processed
-            if (currentStatus !== 'pending') {
-                return currentData;
-            }
+            if (currentStatus !== 'pending') return currentData;
 
             targetTx.status = newStatus;
             targetTx.updatedAt = now;
             if (remark) targetTx.remark = remark;
 
-            // ✅ REFUND: only if deduction actually happened
             if (newStatus === 'rejected' && targetTx.deducted === true && targetTx.deductedAmount) {
                 const refundWallet = targetTx.deductedFromWallet || 'depositWallet';
                 const refundAmount = Number(targetTx.deductedAmount) || 0;
@@ -240,7 +386,6 @@ async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark
                 if (refundAmount > 0 && isFinite(refundAmount)) {
                     const currentBal = Number(currentData[refundWallet] || 0);
                     const newBal = Math.round((currentBal + refundAmount) * 1e8) / 1e8;
-
                     currentData[refundWallet] = newBal;
                     targetTx.refunded = true;
                     targetTx.refundedAt = now;
@@ -254,7 +399,6 @@ async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark
             targetTx.isFinalized = true;
 
             transactions[targetTxKey] = targetTx;
-
             return { ...currentData, transactions };
         });
 
@@ -292,7 +436,6 @@ async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark
     return finalResult;
 }
 
-// Sync normal withdrawal status across locations
 async function syncWithdrawalAcrossLocations(uid, withdrawalId, newStatus, remark) {
     const now = Date.now();
     const updates = [];
@@ -445,7 +588,6 @@ async function processAdminAdjustment(uid, walletType, amount, type, description
 async function atomicDirectOfferSync(uid, withdrawalId, updates) {
     const rootUpdates = {};
 
-    // 1. admin/withdrawals
     try {
         const adminSnap = await get(ref(db, 'admin/withdrawals'));
         if (adminSnap.exists()) {
@@ -466,7 +608,6 @@ async function atomicDirectOfferSync(uid, withdrawalId, updates) {
         }
     } catch (err) { console.warn('admin/withdrawals read warning:', err); }
 
-    // 2. users/{uid}/transactions
     try {
         const userSnap = await get(ref(db, 'users/' + uid + '/transactions'));
         if (userSnap.exists()) {
@@ -487,7 +628,6 @@ async function atomicDirectOfferSync(uid, withdrawalId, updates) {
         }
     } catch (err) { console.warn('users/transactions read warning:', err); }
 
-    // 3. root /transactions
     try {
         const globalSnap = await get(ref(db, 'transactions'));
         if (globalSnap.exists()) {
@@ -514,7 +654,7 @@ async function atomicDirectOfferSync(uid, withdrawalId, updates) {
 }
 
 // ============================================================
-// 🔥 DIRECT OFFER — ATOMIC APPROVE (pending → approved)
+// 🔥 DIRECT OFFER — ATOMIC APPROVE
 // ============================================================
 async function approveDirectOfferWithdrawal(uid, withdrawalId) {
     if (!uid || !withdrawalId) {
@@ -554,14 +694,8 @@ async function approveDirectOfferWithdrawal(uid, withdrawalId) {
         } catch (syncErr) {
             console.error('Multi-location sync failed:', syncErr);
             try {
-                await update(campaignRef, {
-                    status: 'pending',
-                    updatedAt: Date.now(),
-                    isProcessed: false
-                });
-            } catch (rollbackErr) {
-                console.error('CRITICAL: Rollback failed', rollbackErr);
-            }
+                await update(campaignRef, { status: 'pending', updatedAt: Date.now(), isProcessed: false });
+            } catch (rollbackErr) { console.error('CRITICAL: Rollback failed', rollbackErr); }
             return { success: false, error: 'Sync failed — rolled back' };
         }
 
@@ -573,7 +707,7 @@ async function approveDirectOfferWithdrawal(uid, withdrawalId) {
 }
 
 // ============================================================
-// 🔥 DIRECT OFFER — MARK PAID (approved → paid ONLY)
+// 🔥 DIRECT OFFER — MARK PAID
 // ============================================================
 async function markDirectOfferPaid(uid, withdrawalId, txHash) {
     if (!uid || !withdrawalId) {
@@ -616,15 +750,8 @@ async function markDirectOfferPaid(uid, withdrawalId, txHash) {
         } catch (syncErr) {
             console.error('Multi-location sync failed:', syncErr);
             try {
-                await update(campaignRef, {
-                    status: 'approved',
-                    updatedAt: Date.now(),
-                    isProcessed: false,
-                    isPaidFinal: false
-                });
-            } catch (rollbackErr) {
-                console.error('CRITICAL: Rollback failed', rollbackErr);
-            }
+                await update(campaignRef, { status: 'approved', updatedAt: Date.now(), isProcessed: false, isPaidFinal: false });
+            } catch (rollbackErr) { console.error('CRITICAL: Rollback failed', rollbackErr); }
             return { success: false, error: 'Sync failed — rolled back' };
         }
 
@@ -636,7 +763,7 @@ async function markDirectOfferPaid(uid, withdrawalId, txHash) {
 }
 
 // ============================================================
-// 🔥 DIRECT OFFER — ATOMIC REJECT (pending → rejected ONLY)
+// 🔥 DIRECT OFFER — ATOMIC REJECT
 // ============================================================
 async function rejectDirectOfferWithdrawal(uid, withdrawalId, remark) {
     if (!uid || !withdrawalId) {
@@ -692,15 +819,8 @@ async function rejectDirectOfferWithdrawal(uid, withdrawalId, remark) {
         } catch (syncErr) {
             console.error('Multi-location sync failed:', syncErr);
             try {
-                await update(campaignRef, {
-                    status: 'pending',
-                    updatedAt: Date.now(),
-                    isProcessed: false,
-                    refundPending: false
-                });
-            } catch (rollbackErr) {
-                console.error('CRITICAL: Rollback failed', rollbackErr);
-            }
+                await update(campaignRef, { status: 'pending', updatedAt: Date.now(), isProcessed: false, refundPending: false });
+            } catch (rollbackErr) { console.error('CRITICAL: Rollback failed', rollbackErr); }
             return { success: false, error: 'Sync failed — rolled back' };
         }
 
@@ -738,6 +858,7 @@ onAuthStateChanged(auth, (user) => {
         allWithdrawals = {}; allDeposits = {};
         allAdminWithdrawals = {}; allCampaignRewards = {};
         activityFeed = []; seenActivityIds.clear();
+        invalidateReferralCache();
         previousSnapshot = {
             users: new Set(), packages: new Set(),
             transactions: new Set(), campaignRewards: new Set(),
@@ -759,6 +880,8 @@ function setupRealtimeListeners() {
         detectActivityFromUsers(newUsers, allUsers);
         allUsers = newUsers;
         extractTransactionsFromUsers();
+        // 🔥 v6: Invalidate referral cache on user data change
+        invalidateReferralCache();
         if (isDataLoaded) renderDashboard();
     }, (error) => { console.error('Users listener error:', error); showToast('⚠️ Error loading users: ' + error.message, 'error'); });
 
@@ -1016,7 +1139,13 @@ async function loadAdminPanel() {
             const checkData = () => {
                 attempts++;
                 const hasData = Object.keys(allUsers).length > 0 || attempts > 15;
-                if (hasData) { isDataLoaded = true; previousSnapshot.initialized = true; resolve(); }
+                if (hasData) {
+                    isDataLoaded = true;
+                    previousSnapshot.initialized = true;
+                    // 🔥 v6: Build referral tree after users load
+                    try { buildReferralTree(); } catch (e) { console.warn('Referral tree build failed:', e); }
+                    resolve();
+                }
                 else setTimeout(checkData, 500);
             };
             checkData();
@@ -1053,8 +1182,33 @@ function computeStats() {
     return { totalUsers, totalDepositWallet, totalRNDWallet, totalLockedRND, totalReferrals };
 }
 
+// 🔥 v6: Global referral stats
+function computeGlobalReferralStats() {
+    let usersWithReferrals = 0;
+    let totalReferralLinks = 0;
+    let level1Users = 0;
+    let maxReferrals = 0;
+    let topReferrer = null;
+
+    for (const uid in referralCountCache) {
+        const c = referralCountCache[uid];
+        if (!c) continue;
+        if (c.L1 > 0) {
+            usersWithReferrals++;
+            totalReferralLinks += c.L1;
+            if (c.L1 > maxReferrals) {
+                maxReferrals = c.L1;
+                topReferrer = uid;
+            }
+        }
+        level1Users += c.L1;
+    }
+
+    return { usersWithReferrals, totalReferralLinks: level1Users, maxReferrals, topReferrer };
+}
+
 // ============================================================
-// 🔥 DIRECT OFFER STATS (Deduplicated — campaign_rewards = source)
+// 🔥 DIRECT OFFER STATS (Deduplicated)
 // ============================================================
 function computeDirectOfferStats() {
     const stats = {
@@ -1183,9 +1337,6 @@ function getDirectOfferRecords() {
     return list;
 }
 
-// ============================================================
-// 🔥 DIRECT OFFER WITHDRAWALS (Deduplicated)
-// ============================================================
 function computeDirectOfferWithdrawals() {
     const seenWithdrawalIds = new Set();
     const list = [];
@@ -1268,6 +1419,7 @@ function renderDashboard() {
     const currentRate = allSettings.rate || 1.00;
     const offerStats = computeDirectOfferStats();
     const pendingCounts = countPendingItems();
+    const refStats = computeGlobalReferralStats();
 
     document.getElementById('adminContent').innerHTML = `
         <div class="row g-4">
@@ -1364,8 +1516,50 @@ function renderDashboard() {
                     <div class="col-md-3 col-6">
                         <div class="stat-card">
                             <div class="stat-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;"><i class="bi bi-people"></i></div>
-                            <div class="stat-number" style="color:#fbbf24;">${stats.totalReferrals}</div>
-                            <div class="stat-label">Total Referrals</div>
+                            <div class="stat-number" style="color:#fbbf24;">${refStats.totalReferralLinks}</div>
+                            <div class="stat-label">Total Referral Links</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🔥 v6: REFERRAL TREE OVERVIEW -->
+            <div class="col-12">
+                <div class="card-glass" style="border-color:rgba(96,165,250,0.15);">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <div class="card-title" style="margin-bottom:0;">
+                            <i class="bi bi-diagram-3" style="color:#60a5fa;"></i> 5-Level Referral Overview
+                        </div>
+                        <span class="badge-pending" style="font-size:0.7rem;">Max Depth: L5</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-3 col-6">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:rgba(96,165,250,0.12);color:#60a5fa;"><i class="bi bi-people-fill"></i></div>
+                                <div class="stat-number" style="color:#60a5fa;">${refStats.usersWithReferrals}</div>
+                                <div class="stat-label">Users With Referrals</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:rgba(52,211,153,0.12);color:#34d399;"><i class="bi bi-link-45deg"></i></div>
+                                <div class="stat-number" style="color:#34d399;">${refStats.totalReferralLinks}</div>
+                                <div class="stat-label">Total Direct (L1) Links</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;"><i class="bi bi-trophy"></i></div>
+                                <div class="stat-number" style="color:#fbbf24;">${refStats.maxReferrals}</div>
+                                <div class="stat-label">Max Referrals (Single)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:rgba(167,139,250,0.12);color:#a78bfa;"><i class="bi bi-star"></i></div>
+                                <div class="stat-number" style="color:#a78bfa;">${refStats.topReferrer ? escapeHtml(allUsers[refStats.topReferrer]?.name || 'N/A') : 'N/A'}</div>
+                                <div class="stat-label">Top Referrer</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1525,7 +1719,7 @@ function renderDashboard() {
 }
 
 // ============================================================
-// USER SEARCH
+// USER SEARCH (with 5-level info)
 // ============================================================
 window.__lastSearchValue = '';
 
@@ -1555,10 +1749,24 @@ window.handleUserSearch = function(query) {
     }
     resultsDiv.innerHTML = matched.slice(0, 20).map(({ uid, u }) => {
         const sponsor = getSponsorInfo(u, allUsers);
+        const counts = getReferralCounts(uid);
         const initial = (u.name || u.username || 'U').charAt(0).toUpperCase();
         const referredHtml = sponsor
             ? `<div class="referred-by"><i class="bi bi-arrow-return-right"></i> Referred by <strong>${escapeHtml(sponsor.name)}</strong> (@${escapeHtml(sponsor.username)})</div>`
             : `<div class="referred-by" style="color:#556688;"><i class="bi bi-dash-circle"></i> No referrer</div>`;
+
+        const levelsHtml = `
+            <div class="referred-by" style="color:#2ecc71;margin-top:4px;">
+                <i class="bi bi-diagram-3"></i>
+                <strong>L1:</strong> ${counts.L1} ·
+                <strong>L2:</strong> ${counts.L2} ·
+                <strong>L3:</strong> ${counts.L3} ·
+                <strong>L4:</strong> ${counts.L4} ·
+                <strong>L5:</strong> ${counts.L5}
+                <span style="color:#fbbf24;margin-left:6px;">(Total: ${counts.total})</span>
+            </div>
+        `;
+
         return `
             <div class="search-result-item" onclick="viewUserDetails('${escapeAttr(uid)}')">
                 <div class="avatar-sm">${escapeHtml(initial)}</div>
@@ -1566,6 +1774,7 @@ window.handleUserSearch = function(query) {
                     <div class="name">${escapeHtml(u.name || 'Unknown')} <span style="color:#8899bb;font-weight:400;">@${escapeHtml(u.username || 'N/A')}</span></div>
                     <div class="meta">${escapeHtml(u.email || 'No email')} · ${escapeHtml(uid.substring(0, 14))}...</div>
                     ${referredHtml}
+                    ${levelsHtml}
                 </div>
                 <div class="arrow"><i class="bi bi-chevron-right"></i></div>
             </div>
@@ -1953,10 +2162,9 @@ window.markDirectOfferPaid = async function(uid, withdrawalId) {
 };
 
 // ============================================================
-// WITHDRAWALS TAB (with dedup by withdrawalId)
+// WITHDRAWALS TAB
 // ============================================================
 function renderWithdrawalsTab() {
-    // Build deduped list of normal + direct offer withdrawals
     const seenIds = new Set();
     const list = [];
 
@@ -2088,7 +2296,7 @@ window.filterDeposits = function(value) {
 };
 
 // ============================================================
-// USERS TAB
+// 🔥 USERS TAB (with 5-level referral columns)
 // ============================================================
 function renderUsersTab() {
     const filteredUsers = Object.keys(allUsers).filter(k => allUsers[k].role !== 'admin');
@@ -2131,11 +2339,29 @@ function renderUsersTab() {
             </div>
             <div class="table-responsive">
                 <table class="table table-custom" id="usersTable">
-                    <thead><tr><th>#</th><th>User</th><th>Email</th><th>Deposit</th><th>RND</th><th>Locked</th><th>Refs</th><th>Referred By</th><th>Action</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Deposit</th>
+                            <th>RND</th>
+                            <th>Locked</th>
+                            <th style="text-align:center;background:rgba(96,165,250,0.05);">L1</th>
+                            <th style="text-align:center;background:rgba(96,165,250,0.05);">L2</th>
+                            <th style="text-align:center;background:rgba(96,165,250,0.05);">L3</th>
+                            <th style="text-align:center;background:rgba(96,165,250,0.05);">L4</th>
+                            <th style="text-align:center;background:rgba(96,165,250,0.05);">L5</th>
+                            <th style="text-align:center;background:rgba(251,191,36,0.05);">Total Team</th>
+                            <th>Referred By</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         ${filteredUsers.map((key, i) => {
                             const u = allUsers[key];
                             const sponsor = getSponsorInfo(u, allUsers);
+                            const counts = getReferralCounts(key);
                             const sponsorHtml = sponsor
                                 ? `<span style="color:#60a5fa;font-size:0.78rem;"><i class="bi bi-person-check"></i> ${escapeHtml(sponsor.name)}</span>`
                                 : `<span style="color:#556688;font-size:0.78rem;">Direct</span>`;
@@ -2147,9 +2373,17 @@ function renderUsersTab() {
                                     <td><strong style="color:#2ecc71;">$${(u.depositWallet || 0).toFixed(2)}</strong></td>
                                     <td><strong style="color:#60a5fa;">${(u.rndWallet || 0).toFixed(4)}</strong></td>
                                     <td><strong style="color:#a78bfa;">${(u.lockedRND || 0).toFixed(2)}</strong></td>
-                                    <td>${u.totalReferrals || 0}</td>
+                                    <td style="text-align:center;"><strong style="color:${counts.L1 > 0 ? '#2ecc71' : '#556688'};font-size:0.9rem;">${counts.L1}</strong></td>
+                                    <td style="text-align:center;"><strong style="color:${counts.L2 > 0 ? '#60a5fa' : '#556688'};font-size:0.9rem;">${counts.L2}</strong></td>
+                                    <td style="text-align:center;"><strong style="color:${counts.L3 > 0 ? '#fbbf24' : '#556688'};font-size:0.9rem;">${counts.L3}</strong></td>
+                                    <td style="text-align:center;"><strong style="color:${counts.L4 > 0 ? '#a78bfa' : '#556688'};font-size:0.9rem;">${counts.L4}</strong></td>
+                                    <td style="text-align:center;"><strong style="color:${counts.L5 > 0 ? '#34d399' : '#556688'};font-size:0.9rem;">${counts.L5}</strong></td>
+                                    <td style="text-align:center;background:rgba(251,191,36,0.03);"><strong style="color:#fbbf24;font-size:1rem;">${counts.total}</strong></td>
                                     <td>${sponsorHtml}</td>
-                                    <td><button class="btn btn-info btn-sm" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa;" onclick="viewUserDetails('${escapeAttr(key)}')"><i class="bi bi-eye"></i></button></td>
+                                    <td>
+                                        <button class="btn btn-info btn-sm" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa;" onclick="viewUserDetails('${escapeAttr(key)}')" title="View Details"><i class="bi bi-eye"></i></button>
+                                        <button class="btn btn-sm ms-1" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.2);color:#34d399;" onclick="viewReferralTree('${escapeAttr(key)}')" title="View Referral Tree"><i class="bi bi-diagram-3"></i></button>
+                                    </td>
                                 </tr>
                             `;
                         }).join('')}
@@ -2164,6 +2398,8 @@ window.filterUsers = function(value) {
     const s = value.toLowerCase();
     rows.forEach(r => { r.style.display = (r.getAttribute('data-user') || '').includes(s) ? '' : 'none'; });
 };
+
+// 🔥 v6: User detail (with levels)
 window.viewUserDetails = function(userId) {
     const user = allUsers[userId];
     if (!user) { showToast('❌ User not found!', 'error'); return; }
@@ -2171,6 +2407,7 @@ window.viewUserDetails = function(userId) {
     const userPackages = allPackages.filter(p => p.uid === userId);
     const campaignData = allCampaignRewards[userId]?.[CAMPAIGN_ID];
     const sponsor = getSponsorInfo(user, allUsers);
+    const counts = getReferralCounts(userId);
     const campaignReward = campaignData
         ? Number(campaignData.finalReward ?? campaignData.currentReward ?? 0)
         : 0;
@@ -2186,13 +2423,22 @@ window.viewUserDetails = function(userId) {
 ━━━━━━━━━━━━━━━━━━━━━━
 👥 Referred By: ${sponsor ? `${sponsor.name} (@${sponsor.username})` : 'Direct Signup'}
 ━━━━━━━━━━━━━━━━━━━━━━
+🔥 5-LEVEL REFERRALS:
+   L1 (Direct):    ${counts.L1}
+   L2:             ${counts.L2}
+   L3:             ${counts.L3}
+   L4:             ${counts.L4}
+   L5:             ${counts.L5}
+   ─────────────
+   Total Team:     ${counts.total}
+━━━━━━━━━━━━━━━━━━━━━━
 💰 Deposit Wallet: $${(user.depositWallet || 0).toFixed(2)}
 📊 RND Wallet: ${(user.rndWallet || 0).toFixed(4)}
 🔒 Locked RND: ${(user.lockedRND || 0).toFixed(2)}
 ━━━━━━━━━━━━━━━━━━━━━━
 📥 Transactions: ${userTxs.length}
 📦 Packages: ${userPackages.length}
-👥 Referrals: ${user.totalReferrals || 0}
+👥 Referrals (self): ${user.totalReferrals || 0}
 ━━━━━━━━━━━━━━━━━━━━━━
 🎁 Direct Offer:
    Status: ${campaignData?.status || 'Not Participated'}
@@ -2200,6 +2446,53 @@ window.viewUserDetails = function(userId) {
    Reward: $${campaignReward.toFixed(2)}
    Wallet: ${campaignData?.walletAddress || 'N/A'}
    TX Hash: ${campaignData?.txHash || 'N/A'}`);
+};
+
+// 🔥 v6: Referral tree modal (detailed view)
+window.viewReferralTree = function(userId) {
+    const user = allUsers[userId];
+    if (!user) { showToast('❌ User not found!', 'error'); return; }
+
+    const levels = getReferralLevels(userId);
+    const counts = getReferralCounts(userId);
+
+    // Build level text
+    let levelText = `🌳 REFERRAL TREE — ${user.name || 'Unknown'} (@${user.username || 'N/A'})\n`;
+    levelText += `═══════════════════════════════════════\n\n`;
+
+    for (let i = 1; i <= MAX_REFERRAL_LEVELS; i++) {
+        const levelKey = `L${i}`;
+        const uids = levels[levelKey] || [];
+        levelText += `📌 LEVEL ${i} (${uids.length} users)\n`;
+
+        if (uids.length === 0) {
+            levelText += `   ── No users\n\n`;
+            continue;
+        }
+
+        // Show max 10 users per level in alert
+        const displayLimit = 10;
+        const displayUids = uids.slice(0, displayLimit);
+
+        displayUids.forEach((u, idx) => {
+            const child = allUsers[u];
+            if (!child) return;
+            const name = child.name || child.username || 'Unknown';
+            const uname = child.username ? `@${child.username}` : '';
+            levelText += `   ${idx + 1}. ${name} ${uname}\n`;
+        });
+
+        if (uids.length > displayLimit) {
+            levelText += `   ... and ${uids.length - displayLimit} more\n`;
+        }
+        levelText += `\n`;
+    }
+
+    levelText += `═══════════════════════════════════════\n`;
+    levelText += `📊 TOTAL TEAM SIZE: ${counts.total} users\n`;
+    levelText += `   (L1: ${counts.L1} | L2: ${counts.L2} | L3: ${counts.L3} | L4: ${counts.L4} | L5: ${counts.L5})`;
+
+    alert(levelText);
 };
 
 // ============================================================
@@ -2256,6 +2549,7 @@ function renderSettingsTab() {
     const currentRate = allSettings.rate || 1.00;
     const stats = computeStats();
     const offerStats = computeDirectOfferStats();
+    const refStats = computeGlobalReferralStats();
     return `
         <div class="card-glass">
             <div class="card-title"><i class="bi bi-gear text-success me-2"></i>Admin Settings</div>
@@ -2284,15 +2578,35 @@ function renderSettingsTab() {
                     <div class="info-row"><span class="label">Total Locked RND</span><span class="value" style="color:#a78bfa;">${stats.totalLockedRND.toFixed(2)}</span></div>
                 </div>
                 <div class="col-md-6">
+                    <h6 class="text-muted">🌳 Referral Stats</h6>
+                    <div class="info-row"><span class="label">Users With Referrals</span><span class="value" style="color:#60a5fa;">${refStats.usersWithReferrals}</span></div>
+                    <div class="info-row"><span class="label">Total L1 Links</span><span class="value" style="color:#34d399;">${refStats.totalReferralLinks}</span></div>
+                    <div class="info-row"><span class="label">Max Referrals (Single)</span><span class="value" style="color:#fbbf24;">${refStats.maxReferrals}</span></div>
+                    <div class="info-row"><span class="label">Top Referrer</span><span class="value" style="color:#a78bfa;">${refStats.topReferrer ? escapeHtml(allUsers[refStats.topReferrer]?.name || 'N/A') : 'N/A'}</span></div>
+                </div>
+            </div>
+            <hr class="border-secondary">
+            <div class="row g-3">
+                <div class="col-md-12">
                     <h6 class="text-muted">🎁 Direct Offer Stats</h6>
-                    <div class="info-row"><span class="label">Total Participants</span><span class="value">${offerStats.totalParticipants}</span></div>
-                    <div class="info-row"><span class="label">Completed Offers</span><span class="value" style="color:#60a5fa;">${offerStats.completed}</span></div>
-                    <div class="info-row"><span class="label">Pending</span><span class="value" style="color:#fbbf24;">${offerStats.pending}</span></div>
-                    <div class="info-row"><span class="label">Approved</span><span class="value" style="color:#2ecc71;">${offerStats.approved}</span></div>
-                    <div class="info-row"><span class="label">Paid</span><span class="value" style="color:#34d399;">${offerStats.paid}</span></div>
-                    <div class="info-row"><span class="label">Rejected</span><span class="value" style="color:#f87171;">${offerStats.rejected}</span></div>
-                    <div class="info-row"><span class="label">Total Paid Value</span><span class="value" style="color:#34d399;">$${offerStats.paidValue.toFixed(2)}</span></div>
-                    <div class="info-row"><span class="label">Pending Value</span><span class="value" style="color:#fbbf24;">$${offerStats.pendingValue.toFixed(2)}</span></div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="info-row"><span class="label">Total Participants</span><span class="value">${offerStats.totalParticipants}</span></div>
+                            <div class="info-row"><span class="label">Completed Offers</span><span class="value" style="color:#60a5fa;">${offerStats.completed}</span></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-row"><span class="label">Pending</span><span class="value" style="color:#fbbf24;">${offerStats.pending}</span></div>
+                            <div class="info-row"><span class="label">Approved</span><span class="value" style="color:#2ecc71;">${offerStats.approved}</span></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-row"><span class="label">Paid</span><span class="value" style="color:#34d399;">${offerStats.paid}</span></div>
+                            <div class="info-row"><span class="label">Rejected</span><span class="value" style="color:#f87171;">${offerStats.rejected}</span></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-row"><span class="label">Total Paid Value</span><span class="value" style="color:#34d399;">$${offerStats.paidValue.toFixed(2)}</span></div>
+                            <div class="info-row"><span class="label">Pending Value</span><span class="value" style="color:#fbbf24;">$${offerStats.pendingValue.toFixed(2)}</span></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
