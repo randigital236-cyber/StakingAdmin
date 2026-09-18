@@ -91,12 +91,19 @@
 
         .btn-copy {
             background: rgba(46,204,113,0.1);
-            border: 1px solid rgba(46,204,113,0.15);
-            color: #2ecc71; padding: 4px 12px;
+            border: 1px solid rgba(46,204,113,0.2);
+            color: #2ecc71; padding: 4px 10px;
             border-radius: 6px; font-size: 0.7rem;
             cursor: pointer; transition: all 0.3s ease;
+            display: inline-flex; align-items: center; gap: 4px;
+            font-weight: 500;
         }
-        .btn-copy:hover { background: rgba(46,204,113,0.2); transform: scale(1.05); }
+        .btn-copy:hover { background: rgba(46,204,113,0.25); transform: scale(1.05); }
+        .btn-copy.copied {
+            background: rgba(52,211,153,0.25);
+            color: #34d399;
+            border-color: rgba(52,211,153,0.4);
+        }
 
         /* ============ BADGES ============ */
         .badge-pending { background: rgba(251,191,36,0.15); color: #fbbf24; padding: 4px 12px; border-radius: 20px; font-weight: 500; font-size: 0.7rem; }
@@ -106,6 +113,38 @@
         .badge-completed { background: rgba(59,130,246,0.15); color: #60a5fa; padding: 4px 12px; border-radius: 20px; font-weight: 500; font-size: 0.7rem; }
         .badge-paid { background: rgba(52,211,153,0.15); color: #34d399; padding: 4px 12px; border-radius: 20px; font-weight: 500; font-size: 0.7rem; }
         .badge-available { background: rgba(96,165,250,0.15); color: #60a5fa; padding: 4px 12px; border-radius: 20px; font-weight: 500; font-size: 0.7rem; }
+
+        /* ============ TAB COUNT BADGE ============ */
+        .tab-count-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 10px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            margin-left: 6px;
+            background: rgba(46,204,113,0.2);
+            color: #2ecc71;
+            border: 1px solid rgba(46,204,113,0.3);
+        }
+        .tab-count-badge.pending {
+            background: rgba(251,191,36,0.2);
+            color: #fbbf24;
+            border-color: rgba(251,191,36,0.4);
+            animation: pulseBadge 2s infinite;
+        }
+        .tab-count-badge.danger {
+            background: rgba(239,68,68,0.2);
+            color: #f87171;
+            border-color: rgba(239,68,68,0.4);
+        }
+        @keyframes pulseBadge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
 
         /* ============ SEARCH BOX ============ */
         .search-box {
@@ -130,9 +169,7 @@
             margin-bottom: 12px; display: flex; align-items: center; gap: 10px;
         }
         .user-search-section .section-title i { color: #2ecc71; }
-        .user-search-input-wrap {
-            position: relative;
-        }
+        .user-search-input-wrap { position: relative; }
         .user-search-input-wrap .search-icon {
             position: absolute; left: 16px; top: 50%;
             transform: translateY(-50%); color: #556688;
@@ -188,7 +225,7 @@
         .search-result-item .info .referred-by i { color: #2ecc71; }
         .search-result-item .arrow { color: #556688; font-size: 1.2rem; }
 
-        /* ============ RECENT ACTIVITY (ENHANCED) ============ */
+        /* ============ ACTIVITY FEED ============ */
         .activity-feed {
             max-height: 620px; overflow-y: auto;
             padding-right: 8px;
@@ -311,6 +348,7 @@
             padding: 10px 20px; font-weight: 500;
             border-radius: 12px; transition: all 0.3s ease;
             cursor: pointer; font-size: 0.85rem;
+            display: inline-flex; align-items: center;
         }
         .nav-tabs-custom .nav-link:hover { color: #fff; background: rgba(46,204,113,0.05); }
         .nav-tabs-custom .nav-link.active { color: #2ecc71; background: rgba(46,204,113,0.1); }
@@ -369,11 +407,32 @@
         .db-status.loading { background: rgba(251,191,36,0.15); color: #fbbf24; }
 
         /* ============ WALLET CELL ============ */
-        .wallet-address-cell {
-            font-family: monospace; font-size: 0.7rem;
-            color: #60a5fa; max-width: 120px;
-            overflow: hidden; text-overflow: ellipsis;
-            white-space: nowrap; display: inline-block; vertical-align: middle;
+        .wallet-cell {
+            display: flex; align-items: center; gap: 6px;
+            max-width: 220px;
+        }
+        .wallet-cell .addr {
+            font-family: 'Courier New', monospace;
+            font-size: 0.72rem;
+            color: #60a5fa;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Full address display in view mode */
+        .full-address {
+            font-family: 'Courier New', monospace;
+            font-size: 0.72rem;
+            color: #60a5fa;
+            background: rgba(96,165,250,0.05);
+            padding: 4px 8px;
+            border-radius: 6px;
+            word-break: break-all;
+            display: block;
+            margin-top: 4px;
         }
 
         /* ============ NO DATA ============ */
@@ -381,25 +440,15 @@
         .no-data i { font-size: 3rem; color: #556688; margin-bottom: 15px; display: block; }
         .no-data p { color: #8899bb; }
 
-        /* ============ MODAL ============ */
-        .modal-content-custom {
-            background: rgba(19,34,55,0.98);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(46,204,113,0.15);
-            border-radius: 20px; color: #f0f4ff;
-        }
-        .modal-header-custom { border-bottom: 1px solid rgba(46,204,113,0.1); }
-        .modal-footer-custom { border-top: 1px solid rgba(46,204,113,0.1); }
-
         /* ============ RESPONSIVE ============ */
         @media (max-width: 768px) {
             .dashboard-container { padding: 15px; }
             .search-box { max-width: 100%; }
             .table-responsive { font-size: 0.8rem; }
             .stat-card .stat-number { font-size: 1.3rem; }
-            .wallet-address-cell { max-width: 80px; }
             .activity-card { padding: 12px; }
             .activity-icon { width: 36px; height: 36px; font-size: 1rem; }
+            .wallet-cell { max-width: 140px; }
         }
         @media (max-width: 480px) { .card-glass { padding: 1rem; } }
     </style>
