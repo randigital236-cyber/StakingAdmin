@@ -1,13 +1,13 @@
 // ============================================================
-// ADMIN PANEL - RND STAKING (Professional v2)
+// ADMIN PANEL - RND STAKING (Professional v3)
 // ============================================================
-// Features:
-//   - Existing functionality preserved (users, deposits, withdrawals,
-//     packages, settings, admin adjustments)
-//   - Direct Offer integration (campaign_rewards + admin/withdrawals)
-//   - Live Activity Feed (realtime, deduplicated, XSS-safe)
-//   - User Search (by name/username/email/uid + referred-by)
-//   - Top "Referred By" visibility for new users
+// FIXES in v3:
+//   ✅ Withdrawal address COPY button (full address, easy copy)
+//   ✅ Tab count badges (pending withdrawal/deposit counts)
+//   ✅ Direct Offer completed users NOW SHOW (fixed filtering)
+//   ✅ Full wallet address display (no truncation issues)
+//   ✅ Copy button visual feedback
+//   ✅ User search with referred-by
 // ============================================================
 
 import { initializeApp } from "firebase/app";
@@ -106,25 +106,58 @@ function showToast(message, type = 'success') {
 }
 
 // ============================================================
-// COPY
+// 🔥 COPY ADDRESS WITH FULL FEEDBACK
 // ============================================================
-window.copyAddress = function(address, label = 'Address') {
+window.copyAddress = function(address, label = 'Address', btnElement) {
     if (!address || address === 'N/A') {
         showToast('❌ No address to copy!', 'error');
         return;
     }
-    navigator.clipboard.writeText(address).then(() => {
-        showToast(`✅ ${label} copied!`, 'success');
-    }).catch(() => {
-        const ta = document.createElement('textarea');
-        ta.value = address;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showToast(`✅ ${label} copied!`, 'success');
-    });
+
+    // Trim and normalize
+    const cleanAddress = String(address).trim();
+
+    const doCopy = () => {
+        // Visual feedback
+        if (btnElement) {
+            const originalHtml = btnElement.innerHTML;
+            btnElement.classList.add('copied');
+            btnElement.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+            setTimeout(() => {
+                btnElement.classList.remove('copied');
+                btnElement.innerHTML = originalHtml;
+            }, 2000);
+        }
+        showToast(`✅ ${label} copied: ${cleanAddress.substring(0, 12)}...${cleanAddress.substring(cleanAddress.length - 6)}`, 'success');
+    };
+
+    // Modern clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(cleanAddress).then(doCopy).catch(() => {
+            // Fallback
+            fallbackCopy(cleanAddress);
+            doCopy();
+        });
+    } else {
+        fallbackCopy(cleanAddress);
+        doCopy();
+    }
 };
+
+function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand('copy');
+    } catch (e) {
+        console.error('Copy failed:', e);
+    }
+    document.body.removeChild(ta);
+}
 
 // ============================================================
 // RELATIVE TIME
@@ -274,7 +307,6 @@ async function approveDirectOfferWithdrawal(uid, withdrawalId) {
         const now = Date.now();
         await update(campaignRef, { status: 'approved', approvedAt: now, updatedAt: now });
 
-        // Update admin/withdrawals
         try {
             const adminSnap = await get(ref(db, 'admin/withdrawals'));
             if (adminSnap.exists()) {
@@ -288,7 +320,6 @@ async function approveDirectOfferWithdrawal(uid, withdrawalId) {
             }
         } catch (err) { console.warn('Admin withdrawal update warning:', err); }
 
-        // Update user transactions
         try {
             const userSnap = await get(ref(db, 'users/' + uid));
             if (userSnap.exists()) {
@@ -301,7 +332,6 @@ async function approveDirectOfferWithdrawal(uid, withdrawalId) {
             }
         } catch (err) { console.warn('User transaction update warning:', err); }
 
-        // Update global transactions
         try {
             const globalSnap = await get(ref(db, 'transactions'));
             if (globalSnap.exists()) {
@@ -333,7 +363,6 @@ async function markDirectOfferPaid(uid, withdrawalId, txHash) {
             updatedAt: now
         });
 
-        // admin/withdrawals
         try {
             const adminSnap = await get(ref(db, 'admin/withdrawals'));
             if (adminSnap.exists()) {
@@ -349,7 +378,6 @@ async function markDirectOfferPaid(uid, withdrawalId, txHash) {
             }
         } catch (err) { console.warn('Admin withdrawal update warning:', err); }
 
-        // user + global transactions
         try {
             const userSnap = await get(ref(db, 'users/' + uid));
             if (userSnap.exists()) {
@@ -394,7 +422,6 @@ async function rejectDirectOfferWithdrawal(uid, withdrawalId, remark) {
             updatedAt: now
         });
 
-        // admin/withdrawals
         try {
             const adminSnap = await get(ref(db, 'admin/withdrawals'));
             if (adminSnap.exists()) {
@@ -410,7 +437,6 @@ async function rejectDirectOfferWithdrawal(uid, withdrawalId, remark) {
             }
         } catch (err) { console.warn('Admin withdrawal update warning:', err); }
 
-        // user + global transactions
         try {
             const userSnap = await get(ref(db, 'users/' + uid));
             if (userSnap.exists()) {
@@ -465,7 +491,6 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('loginBtn').disabled = false;
         document.getElementById('loginBtn').innerHTML = '<i class="bi bi-shield-lock me-2"></i>Login';
 
-        // Cleanup
         for (let key in dataListeners) {
             if (dataListeners[key]) dataListeners[key]();
         }
@@ -492,7 +517,6 @@ function setupRealtimeListeners() {
     }
     dataListeners = {};
 
-    // 1. Users
     dataListeners.users = onValue(ref(db, 'users'), (snapshot) => {
         const newUsers = snapshot.exists() ? snapshot.val() : {};
         detectActivityFromUsers(newUsers, allUsers);
@@ -504,13 +528,11 @@ function setupRealtimeListeners() {
         showToast('⚠️ Error loading users: ' + error.message, 'error');
     });
 
-    // 2. Root withdrawals
     dataListeners.withdrawals = onValue(ref(db, 'withdrawals'), (snapshot) => {
         allWithdrawals = snapshot.exists() ? snapshot.val() : {};
         if (isDataLoaded) renderDashboard();
     }, (error) => console.error('Withdrawals listener error:', error));
 
-    // 3. Root deposits
     dataListeners.deposits = onValue(ref(db, 'deposits'), (snapshot) => {
         const newDeposits = snapshot.exists() ? snapshot.val() : {};
         detectActivityFromDeposits(newDeposits, allDeposits);
@@ -518,13 +540,11 @@ function setupRealtimeListeners() {
         if (isDataLoaded) renderDashboard();
     }, (error) => console.error('Deposits listener error:', error));
 
-    // 4. Admin withdrawals (Direct Offer)
     dataListeners.adminWithdrawals = onValue(ref(db, 'admin/withdrawals'), (snapshot) => {
         allAdminWithdrawals = snapshot.exists() ? snapshot.val() : {};
         if (isDataLoaded) renderDashboard();
     }, (error) => console.error('Admin withdrawals listener error:', error));
 
-    // 5. Campaign rewards (Direct Offer)
     dataListeners.campaignRewards = onValue(ref(db, 'campaign_rewards'), (snapshot) => {
         const newRewards = snapshot.exists() ? snapshot.val() : {};
         detectActivityFromCampaignRewards(newRewards, allCampaignRewards);
@@ -532,7 +552,6 @@ function setupRealtimeListeners() {
         if (isDataLoaded) renderDashboard();
     }, (error) => console.error('Campaign rewards listener error:', error));
 
-    // 6. Settings
     dataListeners.settings = onValue(ref(db, 'settings'), (snapshot) => {
         allSettings = snapshot.exists() ? snapshot.val() : { rate: 1.00 };
         if (isDataLoaded) {
@@ -592,7 +611,6 @@ function pushActivity(activity) {
 }
 
 function getSponsorInfo(candidate, ownerMap) {
-    // Determine sponsor uid
     const sponsorUid = candidate.sponsorUid || candidate.referredByUid || null;
     if (sponsorUid && ownerMap[sponsorUid]) {
         const s = ownerMap[sponsorUid];
@@ -603,7 +621,6 @@ function getSponsorInfo(candidate, ownerMap) {
         };
     }
 
-    // Legacy: sponsor stored as code/username
     const legacy = candidate.referredBy || candidate.sponsor || null;
     if (legacy) {
         for (const oUid in ownerMap) {
@@ -631,7 +648,6 @@ function detectActivityFromUsers(newUsers, oldUsers) {
         const u = newUsers[uid];
         if (!u || u.role === 'admin') continue;
 
-        // NEW USER REGISTERED
         const userKey = `user_${uid}`;
         if (!previousSnapshot.users.has(userKey)) {
             previousSnapshot.users.add(userKey);
@@ -653,7 +669,6 @@ function detectActivityFromUsers(newUsers, oldUsers) {
             }
         }
 
-        // NEW PACKAGES
         const packages = u.packages || {};
         for (const pkgId in packages) {
             const pkg = packages[pkgId];
@@ -679,7 +694,6 @@ function detectActivityFromUsers(newUsers, oldUsers) {
             }
         }
 
-        // NEW TRANSACTIONS
         const txs = u.transactions || {};
         for (const txId in txs) {
             const tx = txs[txId];
@@ -709,7 +723,6 @@ function detectActivityFromUsers(newUsers, oldUsers) {
                     }
                     else if (tx.type === 'package_completed') { icon = 'bi-check-circle-fill'; title = 'Package Completed'; amountType = 'credit'; type = 'reward'; }
 
-                    // Add pending release detection
                     if (tx.type === 'daily_release' && String(tx.status).toLowerCase() === 'pending') {
                         title = 'Pending Release';
                     }
@@ -874,12 +887,13 @@ function computeStats() {
 }
 
 // ============================================================
-// DIRECT OFFER STATS
+// 🔥 DIRECT OFFER STATS - FIXED (includes ALL completed)
 // ============================================================
 function computeDirectOfferStats() {
     const stats = {
         totalParticipants: 0, totalSnapshots: 0,
         pending: 0, approved: 0, paid: 0, rejected: 0, available: 0,
+        completed: 0, // 🔥 new - total completed (available+approved+paid)
         totalValue: 0, paidValue: 0, pendingValue: 0,
         amountTiers: {},
         latest: null
@@ -897,19 +911,30 @@ function computeDirectOfferStats() {
             const reward = Number(r.finalReward || 0);
             const status = String(r.status || 'available').toLowerCase();
 
-            if (status === 'pending') { stats.pending++; stats.pendingValue += reward; }
-            else if (status === 'approved') { stats.approved++; stats.totalValue += reward; }
-            else if (status === 'paid') { stats.paid++; stats.paidValue += reward; stats.totalValue += reward; }
-            else if (status === 'rejected') { stats.rejected++; }
-            else if (status === 'available') { stats.available++; stats.totalValue += reward; }
+            // 🔥 FIX: Count ALL users who completed (finalized with reward > 0)
+            // regardless of current withdrawal status
+            if (reward > 0 && r.isFinalized) {
+                stats.completed++;
+                if (status === 'available' || status === 'approved' || status === 'paid') {
+                    stats.totalValue += reward;
+                }
+            }
 
-            if (reward > 0) {
+            if (status === 'pending') { stats.pending++; stats.pendingValue += reward; }
+            else if (status === 'approved') { stats.approved++; }
+            else if (status === 'paid') { stats.paid++; stats.paidValue += reward; }
+            else if (status === 'rejected') { stats.rejected++; }
+            else if (status === 'available') { stats.available++; }
+
+            // 🔥 Tier tracking - ALL finalized rewards (regardless of withdrawal status)
+            if (reward > 0 && r.isFinalized) {
                 const tierKey = String(reward);
                 if (!stats.amountTiers[tierKey]) {
-                    stats.amountTiers[tierKey] = { count: 0, value: 0, paidCount: 0, paidValue: 0 };
+                    stats.amountTiers[tierKey] = { count: 0, value: 0, paidCount: 0, paidValue: 0, completedCount: 0 };
                 }
                 stats.amountTiers[tierKey].count++;
                 stats.amountTiers[tierKey].value += reward;
+                stats.amountTiers[tierKey].completedCount++;
                 if (status === 'paid') {
                     stats.amountTiers[tierKey].paidCount++;
                     stats.amountTiers[tierKey].paidValue += reward;
@@ -933,6 +958,26 @@ function computeDirectOfferStats() {
     stats.amountTiers = sortedTiers;
 
     return stats;
+}
+
+// ============================================================
+// 🔥 DIRECT OFFER RECORDS - FIXED (show all finalized, not just pending)
+// ============================================================
+function getDirectOfferRecords() {
+    const list = [];
+    for (const uid in allCampaignRewards) {
+        const campaigns = allCampaignRewards[uid] || {};
+        for (const cid in campaigns) {
+            const r = campaigns[cid];
+            if (!r) continue;
+            list.push({
+                uid, campaignId: cid, ...r,
+                user: allUsers[uid] || { name: 'Unknown', username: 'N/A' }
+            });
+        }
+    }
+    list.sort((a, b) => (b.updatedAt || b.snapshotAt || 0) - (a.updatedAt || a.snapshotAt || 0));
+    return list;
 }
 
 // ============================================================
@@ -977,21 +1022,56 @@ function computeDirectOfferWithdrawals() {
 }
 
 // ============================================================
-// RENDER DASHBOARD (MAIN)
+// 🔥 COUNT PENDING ITEMS FOR TAB BADGES
+// ============================================================
+function countPendingItems() {
+    let pendingWithdrawals = 0;
+    let pendingDeposits = 0;
+    let pendingOfferWds = 0;
+
+    // Regular withdrawals pending
+    for (const tx of allTransactions) {
+        if (tx.type === 'withdrawal' && String(tx.status).toLowerCase() === 'pending') {
+            pendingWithdrawals++;
+        }
+        if (tx.type === 'deposit' && String(tx.status).toLowerCase() === 'pending') {
+            pendingDeposits++;
+        }
+    }
+
+    // Direct offer pending
+    for (const uid in allCampaignRewards) {
+        const campaigns = allCampaignRewards[uid] || {};
+        for (const cid in campaigns) {
+            const r = campaigns[cid];
+            if (r && String(r.status).toLowerCase() === 'pending') {
+                pendingOfferWds++;
+            }
+        }
+    }
+
+    return {
+        pendingWithdrawals,
+        pendingDeposits,
+        pendingOfferWds,
+        totalPending: pendingWithdrawals + pendingOfferWds
+    };
+}
+
+// ============================================================
+// RENDER DASHBOARD
 // ============================================================
 function renderDashboard() {
     const stats = computeStats();
     const currentRate = allSettings.rate || 1.00;
     const offerStats = computeDirectOfferStats();
     const offerWithdrawals = computeDirectOfferWithdrawals();
-    const pendingOfferWds = offerWithdrawals.filter(w => String(w.status).toLowerCase() === 'pending');
+    const pendingCounts = countPendingItems();
 
     document.getElementById('adminContent').innerHTML = `
         <div class="row g-4">
 
-            <!-- ============================================ -->
             <!-- USER SEARCH (TOP SECTION) -->
-            <!-- ============================================ -->
             <div class="col-12">
                 <div class="user-search-section">
                     <div class="section-title">
@@ -1008,9 +1088,7 @@ function renderDashboard() {
                 </div>
             </div>
 
-            <!-- ============================================ -->
             <!-- PAGE HEADER -->
-            <!-- ============================================ -->
             <div class="col-12">
                 <div class="d-flex flex-wrap justify-content-between align-items-center">
                     <h4 class="fw-bold"><i class="bi bi-shield-lock text-success me-2"></i>Admin Dashboard</h4>
@@ -1019,9 +1097,7 @@ function renderDashboard() {
                 <hr class="border-secondary">
             </div>
 
-            <!-- ============================================ -->
             <!-- STATS ROW 1 -->
-            <!-- ============================================ -->
             <div class="col-12">
                 <div class="row g-3">
                     <div class="col-md-2 col-4">
@@ -1062,9 +1138,7 @@ function renderDashboard() {
                 </div>
             </div>
 
-            <!-- ============================================ -->
             <!-- STATS ROW 2 -->
-            <!-- ============================================ -->
             <div class="col-12">
                 <div class="row g-3">
                     <div class="col-md-3 col-6">
@@ -1098,9 +1172,7 @@ function renderDashboard() {
                 </div>
             </div>
 
-            <!-- ============================================ -->
             <!-- DIRECT OFFER OVERVIEW -->
-            <!-- ============================================ -->
             <div class="col-12">
                 <div class="card-glass" style="border-color:rgba(251,191,36,0.15);">
                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
@@ -1120,7 +1192,7 @@ function renderDashboard() {
                         <div class="col-md-2 col-6">
                             <div class="stat-card">
                                 <div class="stat-icon" style="background:rgba(96,165,250,0.12);color:#60a5fa;"><i class="bi bi-trophy"></i></div>
-                                <div class="stat-number" style="color:#60a5fa;">${offerStats.available + offerStats.paid + offerStats.approved}</div>
+                                <div class="stat-number" style="color:#60a5fa;">${offerStats.completed}</div>
                                 <div class="stat-label">Completed Offers</div>
                             </div>
                         </div>
@@ -1157,7 +1229,7 @@ function renderDashboard() {
                     ${Object.keys(offerStats.amountTiers).length > 0 ? `
                     <div class="mt-4">
                         <div class="text-muted small mb-2" style="letter-spacing:0.5px;text-transform:uppercase;font-weight:600;">
-                            <i class="bi bi-bar-chart-fill me-1"></i> Completed Amount Breakdown
+                            <i class="bi bi-bar-chart-fill me-1"></i> Amount-wise Breakdown (All Completed)
                         </div>
                         <div class="row g-2">
                             ${Object.entries(offerStats.amountTiers).map(([tier, data]) => `
@@ -1175,9 +1247,7 @@ function renderDashboard() {
                 </div>
             </div>
 
-            <!-- ============================================ -->
             <!-- TABS -->
-            <!-- ============================================ -->
             <div class="col-12">
                 <ul class="nav nav-tabs-custom" style="border-bottom:1px solid rgba(46,204,113,0.1);margin-bottom:20px;flex-wrap:wrap;">
                     <li class="nav-item">
@@ -1188,23 +1258,26 @@ function renderDashboard() {
                     <li class="nav-item">
                         <a class="nav-link ${currentTab === 'activity' ? 'active' : ''}" onclick="switchTab('activity')">
                             <i class="bi bi-activity"></i> Live Activity
-                            ${activityFeed.length > 0 ? `<span class="badge" style="background:rgba(46,204,113,0.15);color:#2ecc71;margin-left:5px;">${activityFeed.length}</span>` : ''}
+                            ${activityFeed.length > 0 ? `<span class="tab-count-badge">${activityFeed.length}</span>` : ''}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link ${currentTab === 'directOffer' ? 'active' : ''}" onclick="switchTab('directOffer')">
                             <i class="bi bi-gift"></i> Direct Offer
-                            ${pendingOfferWds.length > 0 ? `<span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;margin-left:5px;">${pendingOfferWds.length}</span>` : ''}
+                            ${offerStats.completed > 0 ? `<span class="tab-count-badge">${offerStats.completed}</span>` : ''}
+                            ${pendingCounts.pendingOfferWds > 0 ? `<span class="tab-count-badge pending">${pendingCounts.pendingOfferWds} new</span>` : ''}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link ${currentTab === 'withdrawals' ? 'active' : ''}" onclick="switchTab('withdrawals')">
                             <i class="bi bi-arrow-up-circle"></i> Withdrawals
+                            ${pendingCounts.totalPending > 0 ? `<span class="tab-count-badge pending">${pendingCounts.totalPending}</span>` : ''}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link ${currentTab === 'deposits' ? 'active' : ''}" onclick="switchTab('deposits')">
                             <i class="bi bi-arrow-down-circle"></i> Deposits
+                            ${pendingCounts.pendingDeposits > 0 ? `<span class="tab-count-badge pending">${pendingCounts.pendingDeposits}</span>` : ''}
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1247,7 +1320,6 @@ function renderDashboard() {
         if (adminForm) {
             adminForm.addEventListener('submit', async (e) => { e.preventDefault(); await handleAdminAdjustment(); });
         }
-        // Restore search input if user was typing
         const searchInput = document.getElementById('userSearchInput');
         if (searchInput && window.__lastSearchValue) {
             searchInput.value = window.__lastSearchValue;
@@ -1257,7 +1329,7 @@ function renderDashboard() {
 }
 
 // ============================================================
-// USER SEARCH (NEW - TOP SECTION)
+// USER SEARCH
 // ============================================================
 window.__lastSearchValue = '';
 
@@ -1403,7 +1475,7 @@ function renderActivityTab() {
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                 <div class="card-title" style="margin-bottom:0;">
                     <i class="bi bi-activity text-success me-2"></i>Live Activity
-                    <span class="badge" style="background:rgba(46,204,113,0.15);color:#2ecc71;margin-left:8px;">${activityFeed.length}</span>
+                    <span class="tab-count-badge">${activityFeed.length}</span>
                 </div>
                 <button class="btn btn-sm" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2);border-radius:8px;" onclick="clearActivityFeed()">
                     <i class="bi bi-trash"></i> Clear Feed
@@ -1462,22 +1534,10 @@ window.clearActivityFeed = function() {
 };
 
 // ============================================================
-// DIRECT OFFER TAB
+// 🔥 DIRECT OFFER TAB - FIXED (shows ALL records including completed)
 // ============================================================
 function renderDirectOfferTab() {
-    const list = [];
-    for (const uid in allCampaignRewards) {
-        const campaigns = allCampaignRewards[uid] || {};
-        for (const cid in campaigns) {
-            const r = campaigns[cid];
-            if (!r) continue;
-            list.push({
-                uid, campaignId: cid, ...r,
-                user: allUsers[uid] || { name: 'Unknown', username: 'N/A' }
-            });
-        }
-    }
-    list.sort((a, b) => (b.updatedAt || b.snapshotAt || 0) - (a.updatedAt || a.snapshotAt || 0));
+    const list = getDirectOfferRecords();
 
     if (list.length === 0) {
         return `
@@ -1492,11 +1552,42 @@ function renderDirectOfferTab() {
         `;
     }
 
+    // 🔥 Stats summary at top
+    const stats = computeDirectOfferStats();
+
     return `
         <div class="card-glass">
+            <!-- Summary stats -->
+            <div class="row g-2 mb-3">
+                <div class="col-md-3 col-6">
+                    <div class="stat-card" style="padding:0.8rem;">
+                        <div class="stat-number" style="font-size:1.4rem;color:#60a5fa;">${stats.completed}</div>
+                        <div class="stat-label" style="font-size:0.7rem;">Completed</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-card" style="padding:0.8rem;">
+                        <div class="stat-number" style="font-size:1.4rem;color:#fbbf24;">${stats.pending}</div>
+                        <div class="stat-label" style="font-size:0.7rem;">Pending</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-card" style="padding:0.8rem;">
+                        <div class="stat-number" style="font-size:1.4rem;color:#2ecc71;">${stats.paid}</div>
+                        <div class="stat-label" style="font-size:0.7rem;">Paid</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-card" style="padding:0.8rem;">
+                        <div class="stat-number" style="font-size:1.4rem;color:#f87171;">${stats.rejected}</div>
+                        <div class="stat-label" style="font-size:0.7rem;">Rejected</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                 <div class="card-title" style="margin-bottom:0;">
-                    <i class="bi bi-gift text-warning me-2"></i>Direct Offer Records (${list.length})
+                    <i class="bi bi-gift text-warning me-2"></i>All Direct Offer Records (${list.length})
                 </div>
                 <input type="text" class="search-box" placeholder="Search by user..." oninput="filterDirectOffer(this.value)">
             </div>
@@ -1525,7 +1616,6 @@ function renderDirectOfferTab() {
                                               status === 'approved' ? '✅ Approved' :
                                               status === 'paid' ? '💰 Paid' :
                                               status === 'rejected' ? '❌ Rejected' : '📋 Available';
-                            const walletDisplay = r.walletAddress ? r.walletAddress.substring(0, 18) + '...' : 'N/A';
 
                             let actionHtml = '';
                             if (status === 'pending') {
@@ -1538,12 +1628,22 @@ function renderDirectOfferTab() {
                                     <button class="btn btn-warning-custom btn-sm" onclick="markDirectOfferPaid('${escapeAttr(r.uid)}', '${escapeAttr(r.withdrawalId || '')}')" title="Mark Paid"><i class="bi bi-currency-dollar"></i> Mark Paid</button>
                                 `;
                             } else if (status === 'paid') {
-                                actionHtml = `<span style="color:#34d399;font-size:0.75rem;">✓ Completed</span>`;
+                                actionHtml = `<span style="color:#34d399;font-size:0.75rem;"><i class="bi bi-check-circle-fill"></i> Completed</span>`;
                             } else if (status === 'rejected') {
-                                actionHtml = `<span style="color:#f87171;font-size:0.75rem;">✗ Rejected</span>`;
+                                actionHtml = `<span style="color:#f87171;font-size:0.75rem;"><i class="bi bi-x-circle-fill"></i> Rejected</span>`;
                             } else {
-                                actionHtml = `<span style="color:#60a5fa;font-size:0.75rem;">Awaiting Request</span>`;
+                                actionHtml = `<span style="color:#60a5fa;font-size:0.75rem;"><i class="bi bi-hourglass"></i> Awaiting Request</span>`;
                             }
+
+                            // 🔥 Wallet display - full address with copy button
+                            const walletHtml = r.walletAddress
+                                ? `<div class="wallet-cell">
+                                     <span class="addr" title="${escapeAttr(r.walletAddress)}">${escapeHtml(r.walletAddress)}</span>
+                                     <button class="btn-copy" onclick="event.stopPropagation(); copyAddress('${escapeAttr(r.walletAddress)}','Wallet', this)" title="Copy full address">
+                                       <i class="bi bi-clipboard"></i>
+                                     </button>
+                                   </div>`
+                                : `<span style="color:#556688;font-size:0.75rem;">Not provided</span>`;
 
                             return `
                                 <tr data-user="${escapeAttr((r.user.username || r.user.name || '').toLowerCase())}">
@@ -1554,10 +1654,7 @@ function renderDirectOfferTab() {
                                     </td>
                                     <td><strong style="color:#2ecc71;">${r.finalDirectCount || 0}</strong></td>
                                     <td><strong style="color:#fbbf24;">$${(r.finalReward || 0).toFixed(2)}</strong></td>
-                                    <td>
-                                        <span class="wallet-address-cell">${escapeHtml(walletDisplay)}</span>
-                                        ${r.walletAddress ? `<button class="btn-copy ms-1" onclick="copyAddress('${escapeAttr(r.walletAddress)}','Wallet')"><i class="bi bi-clipboard"></i></button>` : ''}
-                                    </td>
+                                    <td>${walletHtml}</td>
                                     <td><span class="${statusClass}">${statusText}</span></td>
                                     <td style="font-size:0.75rem;color:#8899bb;">${escapeHtml(relativeTime(r.updatedAt || r.snapshotAt))}</td>
                                     <td>${actionHtml}</td>
@@ -1619,7 +1716,7 @@ window.markDirectOfferPaid = async function(uid, withdrawalId) {
 };
 
 // ============================================================
-// WITHDRAWALS TAB (preserved + direct offer included)
+// 🔥 WITHDRAWALS TAB - WITH COPY BUTTON + FULL ADDRESS
 // ============================================================
 function renderWithdrawalsTab() {
     const allWithdrawalsList = allTransactions.filter(t => t.type === 'withdrawal' || t.type === 'direct_offer_withdrawal');
@@ -1629,19 +1726,31 @@ function renderWithdrawalsTab() {
         return `<div class="card-glass"><div class="no-data"><i class="bi bi-inbox"></i><p>No withdrawals found.</p></div></div>`;
     }
 
+    const pendingCount = allWithdrawalsList.filter(w => String(w.status).toLowerCase() === 'pending').length;
+
     return `
         <div class="card-glass">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                 <div class="card-title" style="margin-bottom:0;">
                     <i class="bi bi-arrow-up-circle text-success me-2"></i>
                     Withdrawals (${allWithdrawalsList.length})
+                    ${pendingCount > 0 ? `<span class="tab-count-badge pending">${pendingCount} pending</span>` : ''}
                 </div>
                 <input type="text" class="search-box" placeholder="Search by user..." oninput="filterWithdrawals(this.value)">
             </div>
             <div class="table-responsive">
                 <table class="table table-custom" id="withdrawalsTable">
                     <thead>
-                        <tr><th>#</th><th>User</th><th>Type</th><th>Amount</th><th>Wallet</th><th>Date</th><th>Status</th><th>Action</th></tr>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Wallet Address</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
                     </thead>
                     <tbody>
                         ${allWithdrawalsList.map((w, i) => {
@@ -1652,15 +1761,28 @@ function renderWithdrawalsTab() {
                             const statusText = status === 'pending' ? '⏳ Pending' :
                                               ['approved','success','paid'].includes(status) ? '✅ Done' : '❌ Rejected';
                             const isDirectOffer = w.type === 'direct_offer_withdrawal';
-                            const walletDisplay = w.walletAddress ? w.walletAddress.substring(0, 18) + '...' : 'N/A';
+
+                            // 🔥 FULL wallet address with copy button
+                            const walletAddr = w.walletAddress || w.wallet || '';
+                            const walletHtml = walletAddr
+                                ? `<div class="wallet-cell">
+                                     <span class="addr" title="${escapeAttr(walletAddr)}">${escapeHtml(walletAddr)}</span>
+                                     <button class="btn-copy" onclick="event.stopPropagation(); copyAddress('${escapeAttr(walletAddr)}','Wallet', this)" title="Copy full address">
+                                       <i class="bi bi-clipboard"></i>
+                                     </button>
+                                   </div>`
+                                : `<span style="color:#556688;font-size:0.75rem;">No address</span>`;
 
                             return `
                                 <tr data-user="${escapeAttr((user.username || user.name || '').toLowerCase())}">
                                     <td>${i + 1}</td>
-                                    <td><strong>${escapeHtml(user.name || 'Unknown')}</strong><br><small style="color:#556688;">${escapeHtml(user.username || 'N/A')}</small></td>
+                                    <td>
+                                        <strong>${escapeHtml(user.name || 'Unknown')}</strong><br>
+                                        <small style="color:#556688;">${escapeHtml(user.username || 'N/A')}</small>
+                                    </td>
                                     <td>${isDirectOffer ? '<span style="color:#f59e0b;font-size:0.75rem;"><i class="bi bi-gift"></i> Direct Offer</span>' : '<span style="color:#2ecc71;font-size:0.75rem;">Regular</span>'}</td>
                                     <td><strong style="color:#fbbf24;">${(w.amount || 0).toFixed(2)} ${escapeHtml(w.currency || 'USDT')}</strong></td>
-                                    <td><span class="wallet-address-cell">${escapeHtml(walletDisplay)}</span></td>
+                                    <td>${walletHtml}</td>
                                     <td style="font-size:0.8rem;color:#8899bb;">${escapeHtml(new Date(w.timestamp).toLocaleString('en-IN'))}</td>
                                     <td><span class="${statusClass}">${statusText}</span></td>
                                     <td>
@@ -1715,10 +1837,15 @@ function renderDepositsTab() {
         return `<div class="card-glass"><div class="no-data"><i class="bi bi-inbox"></i><p>No deposits found.</p></div></div>`;
     }
 
+    const pendingCount = list.filter(d => String(d.status).toLowerCase() === 'pending').length;
+
     return `
         <div class="card-glass">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-arrow-down-circle text-success me-2"></i>Deposits (${list.length})</div>
+                <div class="card-title" style="margin-bottom:0;">
+                    <i class="bi bi-arrow-down-circle text-success me-2"></i>Deposits (${list.length})
+                    ${pendingCount > 0 ? `<span class="tab-count-badge pending">${pendingCount} pending</span>` : ''}
+                </div>
                 <input type="text" class="search-box" placeholder="Search by user..." oninput="filterDeposits(this.value)">
             </div>
             <div class="table-responsive">
@@ -1983,6 +2110,7 @@ function renderSettingsTab() {
                 <div class="col-md-6">
                     <h6 class="text-muted">🎁 Direct Offer Stats</h6>
                     <div class="info-row"><span class="label">Total Participants</span><span class="value">${offerStats.totalParticipants}</span></div>
+                    <div class="info-row"><span class="label">Completed Offers</span><span class="value" style="color:#60a5fa;">${offerStats.completed}</span></div>
                     <div class="info-row"><span class="label">Pending</span><span class="value" style="color:#fbbf24;">${offerStats.pending}</span></div>
                     <div class="info-row"><span class="label">Approved</span><span class="value" style="color:#2ecc71;">${offerStats.approved}</span></div>
                     <div class="info-row"><span class="label">Paid</span><span class="value" style="color:#34d399;">${offerStats.paid}</span></div>
