@@ -83,31 +83,6 @@
             50% { opacity: 0.5; transform: scale(0.85); }
         }
 
-        /* Main Tabs (Overview / Withdrawals) */
-        .main-tabs {
-            display: flex; gap: 10px; margin-bottom: 24px;
-            border-bottom: 1px solid rgba(167,139,250,0.15);
-            padding-bottom: 12px;
-        }
-        .main-tab-btn {
-            background: rgba(167,139,250,0.05);
-            border: 1.5px solid rgba(167,139,250,0.15);
-            color: #8899bb; padding: 12px 24px;
-            border-radius: 12px; font-weight: 700;
-            font-size: 0.95rem; cursor: pointer;
-            transition: all 0.3s; display: flex; align-items: center; gap: 8px;
-        }
-        .main-tab-btn:hover { color: #fff; border-color: rgba(167,139,250,0.3); }
-        .main-tab-btn.active {
-            background: rgba(167,139,250,0.15);
-            border-color: #a78bfa; color: #a78bfa;
-        }
-        .main-tab-btn .badge {
-            background: rgba(251,191,36,0.2); color: #fbbf24;
-            padding: 2px 8px; border-radius: 12px;
-            font-size: 0.72rem; font-weight: 800; margin-left: 6px;
-        }
-
         /* Summary Cards */
         .stat-card {
             background: rgba(19,34,55,0.7);
@@ -141,6 +116,36 @@
             margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px;
         }
 
+        /* Tabs */
+        .custom-tabs {
+            display: flex; gap: 8px; margin-bottom: 20px;
+            border-bottom: 1px solid rgba(167,139,250,0.1);
+            padding-bottom: 0; flex-wrap: wrap;
+        }
+        .custom-tab {
+            background: transparent; border: none; color: #8899bb;
+            padding: 12px 20px; font-weight: 600; font-size: 0.9rem;
+            cursor: pointer; transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .custom-tab:hover { color: #fff; background: rgba(167,139,250,0.05); }
+        .custom-tab.active {
+            color: #a78bfa; border-bottom-color: #a78bfa;
+            background: rgba(167,139,250,0.05);
+        }
+        .custom-tab .badge-count {
+            background: rgba(167,139,250,0.2); color: #a78bfa;
+            padding: 2px 8px; border-radius: 12px;
+            font-size: 0.7rem; font-weight: 700;
+        }
+        .custom-tab.active .badge-count { background: #a78bfa; color: #0b1120; }
+        .custom-tab.pending-tab .badge-count {
+            background: rgba(251,191,36,0.2); color: #fbbf24;
+            animation: pulseBadge 2s infinite;
+        }
+        @keyframes pulseBadge { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
         /* Card Glass */
         .card-glass {
             background: rgba(19,34,55,0.75); backdrop-filter: blur(10px);
@@ -156,31 +161,7 @@
         .card-title-text { display: flex; align-items: center; gap: 8px; }
         .card-title i { color: #a78bfa; margin-right: 4px; }
 
-        /* Secondary Tabs (Inside Withdrawals) */
-        .sub-tabs {
-            display: flex; gap: 8px; margin-bottom: 20px;
-            border-bottom: 1px solid rgba(167,139,250,0.1);
-            flex-wrap: wrap;
-        }
-        .sub-tab {
-            background: transparent; border: none; color: #8899bb;
-            padding: 10px 18px; font-weight: 600; font-size: 0.85rem;
-            cursor: pointer; transition: all 0.3s;
-            border-bottom: 3px solid transparent;
-            display: flex; align-items: center; gap: 6px;
-        }
-        .sub-tab:hover { color: #fff; }
-        .sub-tab.active { color: #a78bfa; border-bottom-color: #a78bfa; }
-        .sub-tab .badge-count {
-            background: rgba(167,139,250,0.2); color: #a78bfa;
-            padding: 2px 8px; border-radius: 12px;
-            font-size: 0.7rem; font-weight: 700;
-        }
-        .sub-tab.pending-sub.active .badge-count {
-            background: #fbbf24; color: #0b1120;
-        }
-
-        /* Withdrawal Card */
+        /* Withdrawal Card (Pending) */
         .withdrawal-card {
             background: rgba(8,14,26,0.6);
             border: 1.5px solid rgba(251,191,36,0.2);
@@ -300,21 +281,6 @@
         .status-badge.rejected { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
         .status-badge.paid { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
 
-        /* Table styling for Overview */
-        .table-responsive { overflow-x: auto; border-radius: 12px; }
-        .table-custom { color: #f0f4ff; border-color: #1f334f; margin-bottom: 0; width: 100%; }
-        .table-custom thead th {
-            border-bottom: 2px solid rgba(167,139,250,0.2);
-            color: #a0b8d0; font-weight: 700; font-size: 0.72rem;
-            text-transform: uppercase; letter-spacing: 0.5px;
-            padding: 12px 10px; white-space: nowrap;
-        }
-        .table-custom tbody td {
-            border-color: rgba(167,139,250,0.06);
-            vertical-align: middle; font-size: 0.85rem; padding: 14px 10px;
-        }
-        .table-custom tbody tr:hover { background: rgba(167,139,250,0.03); }
-
         /* Empty State */
         .empty-state { text-align: center; padding: 60px 20px; }
         .empty-state i { font-size: 4rem; color: #2a3a5a; margin-bottom: 20px; display: block; }
@@ -364,9 +330,8 @@
             .btn-back span { display: none; }
             .wc-actions { flex-direction: column-reverse; }
             .wc-actions button { width: 100%; justify-content: center; }
-            .main-tab-btn { padding: 10px 14px; font-size: 0.82rem; }
-            .sub-tabs { overflow-x: auto; }
-            .sub-tab { padding: 10px 14px; font-size: 0.8rem; }
+            .custom-tabs { overflow-x: auto; }
+            .custom-tab { padding: 10px 14px; font-size: 0.82rem; }
             .wallet-address { font-size: 0.72rem; }
         }
     </style>
@@ -408,121 +373,79 @@
             <h2><i class="bi bi-gift-fill"></i> Direct Offer Admin</h2>
             <p>
                 <span class="live-dot"></span>
-                Live • Manage direct offer data and withdrawal requests
+                Live • Manage all records and pending withdrawal requests
             </p>
         </div>
 
-        <!-- Main Tabs (Overview / Withdrawals) -->
-        <div class="main-tabs">
-            <button class="main-tab-btn active" data-main-tab="overview">
-                <i class="bi bi-grid-3x3-gap-fill"></i> Overview
-            </button>
-            <button class="main-tab-btn" data-main-tab="withdrawals">
-                <i class="bi bi-cash-stack"></i> Withdrawals
-                <span class="badge" id="mainPendingCount">0</span>
-            </button>
-        </div>
-
-        <!-- OVERVIEW SECTION -->
-        <div id="overviewSection">
-            <!-- Summary Cards -->
-            <div class="row g-3 mb-4">
-                <div class="col-md-3 col-6">
-                    <div class="stat-card">
-                        <div class="stat-icon purple"><i class="bi bi-people-fill"></i></div>
-                        <div class="stat-number purple" id="totalParticipants">0</div>
-                        <div class="stat-label">Participants</div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="stat-card">
-                        <div class="stat-icon yellow"><i class="bi bi-trophy"></i></div>
-                        <div class="stat-number yellow" id="totalCompleted">0</div>
-                        <div class="stat-label">Completed Offers</div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="stat-card">
-                        <div class="stat-icon green"><i class="bi bi-currency-dollar"></i></div>
-                        <div class="stat-number green" id="totalPaid">$0</div>
-                        <div class="stat-label">Total Paid</div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="stat-card">
-                        <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
-                        <div class="stat-number red" id="totalRejected">0</div>
-                        <div class="stat-label">Rejected</div>
-                    </div>
+        <!-- Summary Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon purple"><i class="bi bi-people-fill"></i></div>
+                    <div class="stat-number purple" id="totalParticipants">0</div>
+                    <div class="stat-label">Participants</div>
                 </div>
             </div>
-
-            <!-- Full Records Table -->
-            <div class="card-glass">
-                <div class="card-title">
-                    <div class="card-title-text">
-                        <i class="bi bi-list-ul"></i> All Direct Offer Records
-                    </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon yellow"><i class="bi bi-hourglass-split"></i></div>
+                    <div class="stat-number yellow" id="totalPending">0</div>
+                    <div class="stat-label">Pending Withdrawals</div>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-custom">
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Refs</th>
-                                <th>Reward</th>
-                                <th>Status</th>
-                                <th>Updated</th>
-                            </tr>
-                        </thead>
-                        <tbody id="overviewTableBody">
-                            <!-- Filled by JS -->
-                        </tbody>
-                    </table>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+                    <div class="stat-number green" id="totalApproved">0</div>
+                    <div class="stat-label">Approved / Paid</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
+                    <div class="stat-number red" id="totalRejected">0</div>
+                    <div class="stat-label">Rejected</div>
                 </div>
             </div>
         </div>
 
-        <!-- WITHDRAWALS SECTION (Hidden by default) -->
-        <div id="withdrawalsSection" style="display: none;">
-            
-            <!-- Sub-Tabs -->
-            <div class="sub-tabs">
-                <button class="sub-tab pending-sub active" data-sub-tab="pending">
-                    <i class="bi bi-hourglass-split"></i> Pending
-                    <span class="badge-count" id="subPendingCount">0</span>
-                </button>
-                <button class="sub-tab" data-sub-tab="approved">
-                    <i class="bi bi-check-circle-fill"></i> Approved
-                    <span class="badge-count" id="subApprovedCount">0</span>
-                </button>
-                <button class="sub-tab" data-sub-tab="rejected">
-                    <i class="bi bi-x-circle-fill"></i> Rejected
-                    <span class="badge-count" id="subRejectedCount">0</span>
-                </button>
-                <button class="sub-tab" data-sub-tab="all">
-                    <i class="bi bi-list-ul"></i> All
-                    <span class="badge-count" id="subAllCount">0</span>
-                </button>
-            </div>
+        <!-- Tabs -->
+        <div class="custom-tabs">
+            <button class="custom-tab pending-tab active" data-tab="pending">
+                <i class="bi bi-hourglass-split"></i> Pending
+                <span class="badge-count" id="pendingTabCount">0</span>
+            </button>
+            <button class="custom-tab" data-tab="approved">
+                <i class="bi bi-check-circle-fill"></i> Approved
+                <span class="badge-count" id="approvedTabCount">0</span>
+            </button>
+            <button class="custom-tab" data-tab="rejected">
+                <i class="bi bi-x-circle-fill"></i> Rejected
+                <span class="badge-count" id="rejectedTabCount">0</span>
+            </button>
+            <button class="custom-tab" data-tab="all">
+                <i class="bi bi-list-ul"></i> All Records
+                <span class="badge-count" id="allTabCount">0</span>
+            </button>
+        </div>
 
-            <!-- Search -->
-            <div class="d-flex justify-content-end mb-3">
-                <div class="search-wrap">
-                    <i class="bi bi-search"></i>
-                    <input type="text" id="searchInput" class="search-input" placeholder="Search by name, wallet or ID...">
-                </div>
+        <!-- Search -->
+        <div class="d-flex justify-content-end mb-3">
+            <div class="search-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" id="searchInput" class="search-input"
+                       placeholder="Search by name, username, or wallet address...">
             </div>
+        </div>
 
-            <!-- Withdrawals List -->
-            <div id="withdrawalsList"></div>
+        <!-- List Container -->
+        <div id="withdrawalsList"></div>
 
-            <!-- Empty State -->
-            <div id="emptyState" class="empty-state" style="display: none;">
-                <i class="bi bi-inbox"></i>
-                <h5>No withdrawal requests found</h5>
-                <p>Nothing to show in this tab</p>
-            </div>
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <i class="bi bi-inbox"></i>
+            <h5>No records found</h5>
+            <p>Nothing to show here right now</p>
         </div>
 
     </div>
