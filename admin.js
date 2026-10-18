@@ -1,18 +1,13 @@
 // ============================================================
-// ADMIN PANEL - RND STAKING (Final v7)
+// ADMIN PANEL - RND STAKING (Final v8 - Step 1 Updated)
 // ============================================================
-// Features:
-//   - Direct Offer integration (amount-wise breakdown, tier click)
-//   - Live activity feed WITH referral commission tracking
-//   - User search + Referred By
-//   - Tab count badges
-//   - Financial safety (atomic sync, status guards, refund logic)
-//   - Admin adjustment with audit
-//   - Statistics deduplication
-//   - 🔥 v7: Referral commission transactions show in Live Activity
-// ============================================================
-// ⚠️ STEP 1: Navbar में Rank Reward + Direct Offer buttons जोड़े गए
-// ⚠️ इस JavaScript फाइल में कोई बदलाव नहीं — बटन HTML में हैं
+// Changes from v7:
+//   - ❌ REMOVED: Direct Offer Overview card from Dashboard
+//   - ❌ REMOVED: Direct Offer tab (its content moved to separate page)
+//   - ❌ REMOVED: Direct Offer Stats from Settings
+//   - ✅ ADDED: Quick Nav section with 2 buttons (Rank Reward, Direct Offer)
+//   - ✅ Both buttons navigate to separate standalone pages
+//   - ✅ All existing functionality preserved (Users, Withdrawals, Deposits, etc.)
 // ============================================================
 
 import { initializeApp } from "firebase/app";
@@ -60,9 +55,6 @@ let previousSnapshot = {
     transactions: new Set(), campaignRewards: new Set(),
     deposits: new Set(), initialized: false
 };
-
-let directOfferViewMode = 'breakdown';
-let directOfferSelectedTier = null;
 
 // ============================================================
 // XSS HELPERS
@@ -456,255 +448,6 @@ async function processAdminAdjustment(uid, walletType, amount, type, description
 }
 
 // ============================================================
-// 🔥 ATOMIC MULTI-LOCATION SYNC (Direct Offer)
-// ============================================================
-async function atomicDirectOfferSync(uid, withdrawalId, updates) {
-    const rootUpdates = {};
-
-    try {
-        const adminSnap = await get(ref(db, 'admin/withdrawals'));
-        if (adminSnap.exists()) {
-            const adminData = adminSnap.val();
-            for (let key in adminData) {
-                if (adminData[key].withdrawalId === withdrawalId) {
-                    const path = `admin/withdrawals/${key}`;
-                    rootUpdates[`${path}/status`] = updates.status;
-                    rootUpdates[`${path}/updatedAt`] = updates.updatedAt;
-                    if (updates.approvedAt) rootUpdates[`${path}/approvedAt`] = updates.approvedAt;
-                    if (updates.paidAt) rootUpdates[`${path}/paidAt`] = updates.paidAt;
-                    if (updates.txHash) rootUpdates[`${path}/txHash`] = updates.txHash;
-                    if (updates.rejectReason !== undefined) rootUpdates[`${path}/rejectReason`] = updates.rejectReason;
-                    if (updates.rejectedAt) rootUpdates[`${path}/rejectedAt`] = updates.rejectedAt;
-                    break;
-                }
-            }
-        }
-    } catch (err) { console.warn('admin/withdrawals read warning:', err); }
-
-    try {
-        const userSnap = await get(ref(db, 'users/' + uid + '/transactions'));
-        if (userSnap.exists()) {
-            const txs = userSnap.val();
-            for (let txKey in txs) {
-                if (txs[txKey].withdrawalId === withdrawalId) {
-                    const path = `users/${uid}/transactions/${txKey}`;
-                    rootUpdates[`${path}/status`] = updates.status;
-                    rootUpdates[`${path}/updatedAt`] = updates.updatedAt;
-                    if (updates.approvedAt) rootUpdates[`${path}/approvedAt`] = updates.approvedAt;
-                    if (updates.paidAt) rootUpdates[`${path}/paidAt`] = updates.paidAt;
-                    if (updates.txHash) rootUpdates[`${path}/txHash`] = updates.txHash;
-                    if (updates.rejectReason !== undefined) rootUpdates[`${path}/rejectReason`] = updates.rejectReason;
-                    if (updates.rejectedAt) rootUpdates[`${path}/rejectedAt`] = updates.rejectedAt;
-                    break;
-                }
-            }
-        }
-    } catch (err) { console.warn('users/transactions read warning:', err); }
-
-    try {
-        const globalSnap = await get(ref(db, 'transactions'));
-        if (globalSnap.exists()) {
-            const globalData = globalSnap.val();
-            for (let key in globalData) {
-                if (globalData[key].withdrawalId === withdrawalId) {
-                    const path = `transactions/${key}`;
-                    rootUpdates[`${path}/status`] = updates.status;
-                    rootUpdates[`${path}/updatedAt`] = updates.updatedAt;
-                    if (updates.approvedAt) rootUpdates[`${path}/approvedAt`] = updates.approvedAt;
-                    if (updates.paidAt) rootUpdates[`${path}/paidAt`] = updates.paidAt;
-                    if (updates.txHash) rootUpdates[`${path}/txHash`] = updates.txHash;
-                    if (updates.rejectReason !== undefined) rootUpdates[`${path}/rejectReason`] = updates.rejectReason;
-                    if (updates.rejectedAt) rootUpdates[`${path}/rejectedAt`] = updates.rejectedAt;
-                    break;
-                }
-            }
-        }
-    } catch (err) { console.warn('transactions read warning:', err); }
-
-    if (Object.keys(rootUpdates).length > 0) {
-        await update(ref(db), rootUpdates);
-    }
-}
-
-// ============================================================
-// 🔥 DIRECT OFFER — ATOMIC APPROVE
-// ============================================================
-async function approveDirectOfferWithdrawal(uid, withdrawalId) {
-    if (!uid || !withdrawalId) {
-        return { success: false, error: 'Missing uid or withdrawalId' };
-    }
-
-    try {
-        const campaignRef = ref(db, `campaign_rewards/${uid}/${CAMPAIGN_ID}`);
-
-        const lockResult = await runTransaction(campaignRef, (current) => {
-            if (!current) return current;
-            const status = String(current.status || '').toLowerCase();
-            if (status !== 'pending') return current;
-
-            const now = Date.now();
-            return {
-                ...current,
-                status: 'approved',
-                approvedAt: now,
-                updatedAt: now,
-                isProcessed: true
-            };
-        });
-
-        if (!lockResult.committed) {
-            return { success: false, error: 'Cannot approve — status is not pending' };
-        }
-
-        const now = Date.now();
-
-        try {
-            await atomicDirectOfferSync(uid, withdrawalId, {
-                status: 'approved',
-                approvedAt: now,
-                updatedAt: now
-            });
-        } catch (syncErr) {
-            console.error('Multi-location sync failed:', syncErr);
-            try {
-                await update(campaignRef, { status: 'pending', updatedAt: Date.now(), isProcessed: false });
-            } catch (rollbackErr) { console.error('CRITICAL: Rollback failed', rollbackErr); }
-            return { success: false, error: 'Sync failed — rolled back' };
-        }
-
-        return { success: true };
-    } catch (error) {
-        console.error('Approve direct offer error:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// ============================================================
-// 🔥 DIRECT OFFER — MARK PAID
-// ============================================================
-async function markDirectOfferPaid(uid, withdrawalId, txHash) {
-    if (!uid || !withdrawalId) {
-        return { success: false, error: 'Missing uid or withdrawalId' };
-    }
-
-    try {
-        const campaignRef = ref(db, `campaign_rewards/${uid}/${CAMPAIGN_ID}`);
-
-        const lockResult = await runTransaction(campaignRef, (current) => {
-            if (!current) return current;
-            const status = String(current.status || '').toLowerCase();
-            if (status !== 'approved') return current;
-
-            const now = Date.now();
-            return {
-                ...current,
-                status: 'paid',
-                txHash: txHash || null,
-                paidAt: now,
-                updatedAt: now,
-                isProcessed: true,
-                isPaidFinal: true
-            };
-        });
-
-        if (!lockResult.committed) {
-            return { success: false, error: 'Cannot mark paid — status must be approved' };
-        }
-
-        const now = Date.now();
-
-        try {
-            await atomicDirectOfferSync(uid, withdrawalId, {
-                status: 'paid',
-                paidAt: now,
-                updatedAt: now,
-                txHash: txHash || null
-            });
-        } catch (syncErr) {
-            console.error('Multi-location sync failed:', syncErr);
-            try {
-                await update(campaignRef, { status: 'approved', updatedAt: Date.now(), isProcessed: false, isPaidFinal: false });
-            } catch (rollbackErr) { console.error('CRITICAL: Rollback failed', rollbackErr); }
-            return { success: false, error: 'Sync failed — rolled back' };
-        }
-
-        return { success: true };
-    } catch (error) {
-        console.error('Mark paid error:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// ============================================================
-// 🔥 DIRECT OFFER — ATOMIC REJECT
-// ============================================================
-async function rejectDirectOfferWithdrawal(uid, withdrawalId, remark) {
-    if (!uid || !withdrawalId) {
-        return { success: false, error: 'Missing uid or withdrawalId' };
-    }
-
-    try {
-        const campaignRef = ref(db, `campaign_rewards/${uid}/${CAMPAIGN_ID}`);
-
-        const lockResult = await runTransaction(campaignRef, (current) => {
-            if (!current) return current;
-            const status = String(current.status || '').toLowerCase();
-            if (status !== 'pending') return current;
-
-            const now = Date.now();
-            const wasDeducted = current.deducted === true;
-            const deductedAmount = Number(current.deductedAmount || 0);
-
-            const updateObj = {
-                ...current,
-                status: 'rejected',
-                rejectReason: remark || '',
-                rejectedAt: now,
-                updatedAt: now,
-                isProcessed: true
-            };
-
-            if (wasDeducted && deductedAmount > 0 && isFinite(deductedAmount)) {
-                updateObj.refundPending = true;
-                updateObj.refundAmount = deductedAmount;
-            } else {
-                updateObj.refundPending = false;
-                updateObj.refundAmount = 0;
-            }
-
-            return updateObj;
-        });
-
-        if (!lockResult.committed) {
-            return { success: false, error: 'Cannot reject — status is not pending' };
-        }
-
-        const rejectedData = lockResult.snapshot.val();
-        const now = Date.now();
-
-        try {
-            await atomicDirectOfferSync(uid, withdrawalId, {
-                status: 'rejected',
-                rejectedAt: now,
-                updatedAt: now,
-                rejectReason: remark || ''
-            });
-        } catch (syncErr) {
-            console.error('Multi-location sync failed:', syncErr);
-            try {
-                await update(campaignRef, { status: 'pending', updatedAt: Date.now(), isProcessed: false, refundPending: false });
-            } catch (rollbackErr) { console.error('CRITICAL: Rollback failed', rollbackErr); }
-            return { success: false, error: 'Sync failed — rolled back' };
-        }
-
-        return { success: true, refundApplied: !!rejectedData.refundPending };
-    } catch (error) {
-        console.error('Reject error:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// ============================================================
 // AUTH STATE
 // ============================================================
 onAuthStateChanged(auth, (user) => {
@@ -779,7 +522,6 @@ function setupRealtimeListeners() {
         if (isDataLoaded) renderDashboard();
     }, (error) => console.error('Campaign rewards listener error:', error));
 
-    // 🔥 v7: Global transactions listener (for referral commissions + more)
     dataListeners.globalTransactions = onValue(ref(db, 'transactions'), (snapshot) => {
         const globalTx = snapshot.exists() ? snapshot.val() : {};
         detectActivityFromGlobalTransactions(globalTx);
@@ -882,7 +624,6 @@ function detectActivityFromUsers(newUsers, oldUsers) {
             }
         }
 
-        // 🔥 v7: Detect referral commission transactions from user transactions
         const txs = u.transactions || {};
         for (const txId in txs) {
             const tx = txs[txId];
@@ -897,7 +638,6 @@ function detectActivityFromUsers(newUsers, oldUsers) {
     }
 }
 
-// 🔥 v7: Process a single transaction and push to activity feed
 function processTransactionForActivity(tx, user, uid, txId) {
     if (!tx) return;
 
@@ -923,26 +663,17 @@ function processTransactionForActivity(tx, user, uid, txId) {
     else if (tx.type === 'package') {
         icon = 'bi-box-seam-fill'; title = 'Package Purchase'; amountType = 'debit'; type = 'package';
     }
-    // 🔥 v7: REFERRAL COMMISSION — this is the key addition
     else if (tx.type === 'referral_commission') {
-        icon = 'bi-people-fill';
-        title = 'Referral Commission';
-        amountType = 'credit';
-        type = 'reward';
-
-        // Show from whom
+        icon = 'bi-people-fill'; title = 'Referral Commission'; amountType = 'credit'; type = 'reward';
         const fromName = tx.fromName || tx.fromUsername || tx.fromUid || 'a user';
         const level = tx.level || tx.referralLevel || '';
         const levelStr = level ? ` (Level ${level})` : '';
         desc = `<strong>${escapeHtml(user.name || user.username || 'Unknown')}</strong> received commission from <strong style="color:#fbbf24;">${escapeHtml(String(fromName))}</strong>${levelStr}`;
     }
-    // 🔥 v7: Direct level commissions (L1-L5) — different naming
     else if (tx.type === 'level_commission' || tx.type === 'direct_commission' || tx.type === 'team_commission') {
         icon = 'bi-people-fill';
         title = tx.type === 'direct_commission' ? 'Direct Referral Commission' : 'Team Commission';
-        amountType = 'credit';
-        type = 'reward';
-
+        amountType = 'credit'; type = 'reward';
         const fromName = tx.fromName || tx.fromUsername || 'a user';
         const level = tx.level || tx.referralLevel || '';
         const levelStr = level ? ` (L${level})` : '';
@@ -952,10 +683,7 @@ function processTransactionForActivity(tx, user, uid, txId) {
         icon = 'bi-clock-history'; title = 'Daily Release'; amountType = 'credit'; type = 'release';
         const dayStr = tx.day ? ` · Day ${escapeHtml(String(tx.day))}` : '';
         desc = `<strong>${escapeHtml(user.name || user.username || 'Unknown')}</strong> received daily release${dayStr}`;
-
-        if (String(tx.status).toLowerCase() === 'pending') {
-            title = 'Pending Release';
-        }
+        if (String(tx.status).toLowerCase() === 'pending') { title = 'Pending Release'; }
     }
     else if (tx.type === 'package_completed') {
         icon = 'bi-check-circle-fill'; title = 'Package Completed'; amountType = 'credit'; type = 'reward';
@@ -968,22 +696,14 @@ function processTransactionForActivity(tx, user, uid, txId) {
 
     pushActivity({
         id: `tx_${uid}_${txId}`,
-        type,
-        icon,
-        title,
-        desc,
-        user,
-        uid,
-        amount: tx.amount || 0,
-        amountType,
+        type, icon, title, desc, user, uid,
+        amount: tx.amount || 0, amountType,
         refId: tx.withdrawalId || txId,
         timestamp: tx.timestamp || Date.now(),
         status: tx.status || 'completed'
     });
 }
 
-// 🔥 v7: Detect activity from GLOBAL transactions node
-// (Referral commissions are often stored only in global /transactions)
 function detectActivityFromGlobalTransactions(globalTx) {
     if (!globalTx) return;
 
@@ -991,7 +711,6 @@ function detectActivityFromGlobalTransactions(globalTx) {
         const tx = globalTx[txId];
         if (!tx) continue;
 
-        // Only process referral-related types (avoid duplicate with user transactions)
         const isReferralType = ['referral_commission', 'level_commission', 'direct_commission', 'team_commission', 'referral_bonus'].includes(tx.type);
         if (!isReferralType) continue;
 
@@ -1001,11 +720,9 @@ function detectActivityFromGlobalTransactions(globalTx) {
 
         if (!previousSnapshot.initialized) continue;
 
-        // Find the receiving user
         const recipientUid = tx.uid || tx.userId || tx.toUid || null;
         const recipient = recipientUid ? (allUsers[recipientUid] || { name: 'Unknown', username: 'N/A' }) : { name: 'Unknown', username: 'N/A' };
 
-        // Find the source user
         const fromName = tx.fromName || tx.fromUsername || tx.fromUid || tx.sourceUserName || 'a user';
         const level = tx.level || tx.referralLevel || '';
         const levelStr = level ? ` (Level ${level})` : '';
@@ -1028,17 +745,9 @@ function detectActivityFromGlobalTransactions(globalTx) {
         }
 
         pushActivity({
-            id: gKey,
-            type: 'reward',
-            icon,
-            title,
-            desc,
-            user: recipient,
-            uid: recipientUid,
-            amount: tx.amount || 0,
-            amountType: 'credit',
-            refId: txId,
-            timestamp: tx.timestamp || Date.now(),
+            id: gKey, type: 'reward', icon, title, desc, user: recipient, uid: recipientUid,
+            amount: tx.amount || 0, amountType: 'credit',
+            refId: txId, timestamp: tx.timestamp || Date.now(),
             status: tx.status || 'completed'
         });
     }
@@ -1091,8 +800,7 @@ function detectActivityFromCampaignRewards(newRewards, oldRewards) {
                     pushActivity({
                         id: rKey, type: 'direct-offer', icon, title,
                         desc: `<strong>${escapeHtml(user.name || 'Unknown')}</strong> — ${escapeHtml(campaignId)} · $${amtVal.toFixed(2)}`,
-                        user, uid,
-                        amount: amtVal, amountType: 'credit',
+                        user, uid, amount: amtVal, amountType: 'credit',
                         refId: reward.withdrawalId || campaignId,
                         timestamp: reward.updatedAt || reward.snapshotAt || reward.lastUpdated || Date.now(),
                         status
@@ -1151,205 +859,13 @@ function computeStats() {
     return { totalUsers, totalDepositWallet, totalRNDWallet, totalLockedRND, totalReferrals };
 }
 
-function computeDirectOfferStats() {
-    const stats = {
-        totalParticipants: 0, totalSnapshots: 0,
-        pending: 0, approved: 0, paid: 0, rejected: 0, available: 0,
-        completed: 0,
-        totalValue: 0, paidValue: 0, pendingValue: 0,
-        totalRefs: 0,
-        amountTiers: {},
-        latest: null
-    };
-
-    const seenKeys = new Set();
-    const flatRewards = [];
-
-    for (const uid in allCampaignRewards) {
-        const campaigns = allCampaignRewards[uid] || {};
-        for (const cid in campaigns) {
-            const r = campaigns[cid];
-            if (!r) continue;
-
-            const dedupKey = `${uid}::${cid}`;
-            if (seenKeys.has(dedupKey)) continue;
-            seenKeys.add(dedupKey);
-
-            stats.totalSnapshots++;
-
-            const reward = Number(r.finalReward ?? r.currentReward ?? 0);
-            const status = String(r.status || 'available').toLowerCase();
-            const user = allUsers[uid] || { name: 'Unknown', username: 'N/A' };
-
-            const userObj = {
-                uid, campaignId: cid,
-                name: user.name || 'Unknown',
-                username: user.username || 'N/A',
-                email: user.email || '',
-                refs: Number(r.finalDirectCount ?? r.currentDirectCount ?? 0),
-                reward, status,
-                walletAddress: r.walletAddress || '',
-                withdrawalId: r.withdrawalId || '',
-                txHash: r.txHash || '',
-                paidAt: r.paidAt || null,
-                snapshotAt: r.snapshotAt || null,
-                updatedAt: r.updatedAt || r.lastUpdated || null,
-                isFinalized: !!r.isFinalized,
-                highestMilestone: Number(r.highestMilestone || 0)
-            };
-
-            const isCompleted = (r.isFinalized === true) ||
-                               (userObj.highestMilestone >= 5 && reward > 0);
-
-            if (isCompleted && reward > 0) {
-                stats.completed++;
-                stats.totalRefs += userObj.refs;
-                if (['available', 'approved', 'paid', 'progress'].includes(status)) {
-                    stats.totalValue += reward;
-                }
-            }
-
-            if (status === 'pending') { stats.pending++; stats.pendingValue += reward; }
-            else if (status === 'approved') { stats.approved++; }
-            else if (status === 'paid') { stats.paid++; stats.paidValue += reward; }
-            else if (status === 'rejected') { stats.rejected++; }
-            else if (status === 'available') { stats.available++; }
-
-            if (isCompleted && reward > 0) {
-                const tierKey = String(reward);
-                if (!stats.amountTiers[tierKey]) {
-                    stats.amountTiers[tierKey] = {
-                        count: 0, value: 0, paidCount: 0, paidValue: 0,
-                        pendingCount: 0, approvedCount: 0, rejectedCount: 0, availableCount: 0,
-                        users: []
-                    };
-                }
-                const t = stats.amountTiers[tierKey];
-                t.count++;
-                t.value += reward;
-                t.users.push(userObj);
-                if (status === 'paid') { t.paidCount++; t.paidValue += reward; }
-                else if (status === 'pending') { t.pendingCount++; }
-                else if (status === 'approved') { t.approvedCount++; }
-                else if (status === 'rejected') { t.rejectedCount++; }
-                else { t.availableCount++; }
-            }
-
-            flatRewards.push({ uid, campaignId: cid, ...r, user });
-        }
-    }
-
-    stats.totalParticipants = Object.keys(allCampaignRewards).length;
-
-    const sortedTiers = {};
-    Object.keys(stats.amountTiers).map(Number).sort((a, b) => a - b).forEach(k => {
-        sortedTiers[String(k)] = stats.amountTiers[String(k)];
-    });
-    stats.amountTiers = sortedTiers;
-
-    for (const k in stats.amountTiers) {
-        stats.amountTiers[k].users.sort((a, b) =>
-            (b.updatedAt || b.snapshotAt || 0) - (a.updatedAt || a.snapshotAt || 0)
-        );
-    }
-
-    flatRewards.sort((a, b) =>
-        (b.updatedAt || b.snapshotAt || 0) - (a.updatedAt || a.snapshotAt || 0)
-    );
-    stats.latest = flatRewards[0] || null;
-    return stats;
-}
-
-function getDirectOfferRecords() {
-    const seenKeys = new Set();
-    const list = [];
-    for (const uid in allCampaignRewards) {
-        const campaigns = allCampaignRewards[uid] || {};
-        for (const cid in campaigns) {
-            const r = campaigns[cid];
-            if (!r) continue;
-            const dedupKey = `${uid}::${cid}`;
-            if (seenKeys.has(dedupKey)) continue;
-            seenKeys.add(dedupKey);
-            list.push({ uid, campaignId: cid, ...r, user: allUsers[uid] || { name: 'Unknown', username: 'N/A' } });
-        }
-    }
-    list.sort((a, b) => (b.updatedAt || b.snapshotAt || b.lastUpdated || 0) - (a.updatedAt || a.snapshotAt || a.lastUpdated || 0));
-    return list;
-}
-
-function computeDirectOfferWithdrawals() {
-    const seenWithdrawalIds = new Set();
-    const list = [];
-
-    for (const uid in allCampaignRewards) {
-        const campaigns = allCampaignRewards[uid] || {};
-        for (const cid in campaigns) {
-            const r = campaigns[cid];
-            if (!r || !r.withdrawalId) continue;
-            if (seenWithdrawalIds.has(r.withdrawalId)) continue;
-            seenWithdrawalIds.add(r.withdrawalId);
-
-            list.push({
-                id: r.withdrawalId,
-                withdrawalId: r.withdrawalId,
-                userId: uid, uid: uid,
-                amount: Number(r.finalReward ?? r.currentReward ?? 0),
-                currency: 'USDT',
-                network: r.network || 'BEP-20 / BNB Smart Chain',
-                walletAddress: r.walletAddress || '',
-                status: r.status || 'pending',
-                timestamp: r.requestedAt || r.updatedAt || r.snapshotAt || 0,
-                txHash: r.txHash || null,
-                paidAt: r.paidAt || null,
-                user: allUsers[uid] || { name: 'Unknown', username: 'N/A' },
-                source: 'campaign_rewards'
-            });
-        }
-    }
-
-    for (const key in allAdminWithdrawals) {
-        const w = allAdminWithdrawals[key];
-        if (!w) continue;
-        if (w.type !== 'direct_offer_withdrawal' && !w.campaignId) continue;
-
-        const wid = w.withdrawalId || key;
-        if (seenWithdrawalIds.has(wid)) continue;
-        seenWithdrawalIds.add(wid);
-
-        list.push({
-            id: key, withdrawalId: wid,
-            userId: w.userId || w.uid, uid: w.userId || w.uid,
-            amount: Number(w.amount || 0),
-            currency: w.currency || 'USDT',
-            network: w.network || 'BEP-20 / BNB Smart Chain',
-            walletAddress: w.walletAddress || w.wallet || '',
-            status: w.status || 'pending',
-            timestamp: w.requestedAt || w.timestamp || 0,
-            txHash: w.txHash || null,
-            paidAt: w.paidAt || null,
-            user: allUsers[w.userId || w.uid] || { name: 'Unknown', username: 'N/A' },
-            source: 'admin/withdrawals'
-        });
-    }
-
-    list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    return list;
-}
-
 function countPendingItems() {
-    let pendingWithdrawals = 0, pendingDeposits = 0, pendingOfferWds = 0;
+    let pendingWithdrawals = 0, pendingDeposits = 0;
     for (const tx of allTransactions) {
         if (tx.type === 'withdrawal' && String(tx.status).toLowerCase() === 'pending') pendingWithdrawals++;
         if (tx.type === 'deposit' && String(tx.status).toLowerCase() === 'pending') pendingDeposits++;
     }
-    for (const uid in allCampaignRewards) {
-        const campaigns = allCampaignRewards[uid] || {};
-        for (const cid in campaigns) {
-            if (campaigns[cid] && String(campaigns[cid].status).toLowerCase() === 'pending') pendingOfferWds++;
-        }
-    }
-    return { pendingWithdrawals, pendingDeposits, pendingOfferWds, totalPending: pendingWithdrawals + pendingOfferWds };
+    return { pendingWithdrawals, pendingDeposits };
 }
 
 // ============================================================
@@ -1358,7 +874,6 @@ function countPendingItems() {
 function renderDashboard() {
     const stats = computeStats();
     const currentRate = allSettings.rate || 1.00;
-    const offerStats = computeDirectOfferStats();
     const pendingCounts = countPendingItems();
 
     document.getElementById('adminContent').innerHTML = `
@@ -1386,6 +901,19 @@ function renderDashboard() {
                     <span class="text-muted small">${escapeHtml(new Date().toLocaleString('en-IN'))}</span>
                 </div>
                 <hr class="border-secondary">
+            </div>
+
+            <!-- 🆕 QUICK NAV SECTION (Rank Reward + Direct Offer) -->
+            <div class="col-12">
+                <div class="quick-nav-section">
+                    <span class="quick-nav-label"><i class="bi bi-lightning-charge-fill"></i> Quick Access:</span>
+                    <a href="rank-reward-admin.html" class="btn-rank-reward">
+                        <i class="bi bi-trophy-fill"></i> Rank Reward
+                    </a>
+                    <a href="direct-offer-admin.html" class="btn-direct-offer">
+                        <i class="bi bi-gift-fill"></i> Direct Offer
+                    </a>
+                </div>
             </div>
 
             <!-- STATS ROW 1 -->
@@ -1463,83 +991,6 @@ function renderDashboard() {
                 </div>
             </div>
 
-            <!-- DIRECT OFFER OVERVIEW -->
-            <div class="col-12">
-                <div class="card-glass" style="border-color:rgba(251,191,36,0.15);">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                        <div class="card-title" style="margin-bottom:0;">
-                            <i class="bi bi-gift" style="color:#fbbf24;"></i> Direct Offer Overview
-                        </div>
-                        <span class="badge-pending" style="font-size:0.7rem;">${escapeHtml(CAMPAIGN_ID)}</span>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-md-2 col-6">
-                            <div class="stat-card">
-                                <div class="stat-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;"><i class="bi bi-people-fill"></i></div>
-                                <div class="stat-number" style="color:#fbbf24;">${offerStats.totalParticipants}</div>
-                                <div class="stat-label">Participants</div>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-6">
-                            <div class="stat-card">
-                                <div class="stat-icon" style="background:rgba(96,165,250,0.12);color:#60a5fa;"><i class="bi bi-trophy"></i></div>
-                                <div class="stat-number" style="color:#60a5fa;">${offerStats.completed}</div>
-                                <div class="stat-label">Completed Offers</div>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-6">
-                            <div class="stat-card">
-                                <div class="stat-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;"><i class="bi bi-hourglass-split"></i></div>
-                                <div class="stat-number" style="color:#fbbf24;">${offerStats.pending}</div>
-                                <div class="stat-label">Pending</div>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-6">
-                            <div class="stat-card">
-                                <div class="stat-icon" style="background:rgba(46,204,113,0.12);color:#2ecc71;"><i class="bi bi-check-circle-fill"></i></div>
-                                <div class="stat-number" style="color:#2ecc71;">${offerStats.paid}</div>
-                                <div class="stat-label">Paid</div>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-6">
-                            <div class="stat-card">
-                                <div class="stat-icon" style="background:rgba(52,211,153,0.12);color:#34d399;"><i class="bi bi-currency-dollar"></i></div>
-                                <div class="stat-number" style="color:#34d399;">$${offerStats.paidValue.toFixed(2)}</div>
-                                <div class="stat-label">Total Paid</div>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-6">
-                            <div class="stat-card">
-                                <div class="stat-icon" style="background:rgba(239,68,68,0.12);color:#f87171;"><i class="bi bi-x-circle-fill"></i></div>
-                                <div class="stat-number" style="color:#f87171;">${offerStats.rejected}</div>
-                                <div class="stat-label">Rejected</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    ${Object.keys(offerStats.amountTiers).length > 0 ? `
-                    <div class="mt-4">
-                        <div class="text-muted small mb-2" style="letter-spacing:0.5px;text-transform:uppercase;font-weight:600;">
-                            <i class="bi bi-bar-chart-fill me-1"></i> Amount-wise Breakdown (Click to view users)
-                        </div>
-                        <div class="row g-2">
-                            ${Object.entries(offerStats.amountTiers).map(([tier, data]) => `
-                                <div class="col-md-3 col-6 col-lg-2">
-                                    <div class="tier-detail-card" style="padding:12px;" onclick="openTierFromDashboard('${escapeAttr(tier)}')">
-                                        <div class="tier-detail-header">
-                                            <div class="tier-detail-amount" style="font-size:1.4rem;">$${escapeHtml(tier)}</div>
-                                            <div class="tier-detail-count-badge" style="font-size:0.68rem;padding:3px 10px;">${data.count}</div>
-                                        </div>
-                                        <div class="tier-detail-value" style="font-size:0.72rem;">Total: <strong style="font-size:0.85rem;">$${data.value.toFixed(2)}</strong></div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
-            </div>
-
             <!-- TABS -->
             <div class="col-12">
                 <ul class="nav nav-tabs-custom" style="border-bottom:1px solid rgba(46,204,113,0.1);margin-bottom:20px;flex-wrap:wrap;">
@@ -1552,12 +1003,6 @@ function renderDashboard() {
                         <a class="nav-link ${currentTab === 'activity' ? 'active' : ''}" onclick="switchTab('activity')">
                             <i class="bi bi-activity"></i> Live Activity
                             ${activityFeed.length > 0 ? `<span class="tab-count-badge">${activityFeed.length}</span>` : ''}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link ${currentTab === 'directOffer' ? 'active' : ''}" onclick="switchTab('directOffer')">
-                            <i class="bi bi-gift"></i> Direct Offer
-                            ${pendingCounts.pendingOfferWds > 0 ? `<span class="tab-count-badge pending">${pendingCounts.pendingOfferWds}</span>` : ''}
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1593,7 +1038,6 @@ function renderDashboard() {
             <div class="col-12">
                 ${currentTab === 'dashboard' ? renderDashboardTab() : ''}
                 ${currentTab === 'activity' ? renderActivityTab() : ''}
-                ${currentTab === 'directOffer' ? renderDirectOfferTab() : ''}
                 ${currentTab === 'withdrawals' ? renderWithdrawalsTab() : ''}
                 ${currentTab === 'deposits' ? renderDepositsTab() : ''}
                 ${currentTab === 'users' ? renderUsersTab() : ''}
@@ -1769,282 +1213,6 @@ window.clearActivityFeed = function() {
 };
 
 // ============================================================
-// DIRECT OFFER TAB
-// ============================================================
-function renderDirectOfferTab() {
-    const stats = computeDirectOfferStats();
-    if (stats.totalSnapshots === 0) {
-        return `<div class="card-glass"><div class="card-title"><i class="bi bi-gift text-warning me-2"></i>Direct Offer Records</div><div class="no-data"><i class="bi bi-inbox"></i><p>Koi Direct Offer record nahi mila.</p></div></div>`;
-    }
-    return `
-        <div class="row g-3">
-            <div class="col-12">
-                <div class="card-glass" style="border-color:rgba(251,191,36,0.2);">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                        <div class="card-title" style="margin-bottom:0;"><i class="bi bi-trophy-fill" style="color:#fbbf24;"></i> Direct Offer Summary</div>
-                        <span class="badge-pending" style="font-size:0.7rem;">${escapeHtml(CAMPAIGN_ID)}</span>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;"><i class="bi bi-people-fill"></i></div><div class="stat-number" style="color:#fbbf24;">${stats.totalParticipants}</div><div class="stat-label">Participants</div></div></div>
-                        <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-icon" style="background:rgba(96,165,250,0.12);color:#60a5fa;"><i class="bi bi-trophy"></i></div><div class="stat-number" style="color:#60a5fa;">${stats.completed}</div><div class="stat-label">Completed Offers</div></div></div>
-                        <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-icon" style="background:rgba(46,204,113,0.12);color:#2ecc71;"><i class="bi bi-check-circle-fill"></i></div><div class="stat-number" style="color:#2ecc71;">${stats.paid}</div><div class="stat-label">Paid</div></div></div>
-                        <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-icon" style="background:rgba(52,211,153,0.12);color:#34d399;"><i class="bi bi-currency-dollar"></i></div><div class="stat-number" style="color:#34d399;">$${stats.paidValue.toFixed(2)}</div><div class="stat-label">Total Paid</div></div></div>
-                    </div>
-                    <div class="row g-2 mt-2">
-                        <div class="col-md-3 col-6"><div class="stat-card" style="padding:0.8rem;"><div class="stat-number" style="font-size:1.3rem;color:#fbbf24;">${stats.pending}</div><div class="stat-label" style="font-size:0.7rem;">Pending</div></div></div>
-                        <div class="col-md-3 col-6"><div class="stat-card" style="padding:0.8rem;"><div class="stat-number" style="font-size:1.3rem;color:#60a5fa;">${stats.available}</div><div class="stat-label" style="font-size:0.7rem;">Awaiting Request</div></div></div>
-                        <div class="col-md-3 col-6"><div class="stat-card" style="padding:0.8rem;"><div class="stat-number" style="font-size:1.3rem;color:#f87171;">${stats.rejected}</div><div class="stat-label" style="font-size:0.7rem;">Rejected</div></div></div>
-                        <div class="col-md-3 col-6"><div class="stat-card" style="padding:0.8rem;"><div class="stat-number" style="font-size:1.3rem;color:#a78bfa;">${stats.totalRefs}</div><div class="stat-label" style="font-size:0.7rem;">Total Refs Counted</div></div></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12">
-                <div class="card-glass" style="padding:1rem;">
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <span style="color:#a0b8d0;font-size:0.85rem;font-weight:600;">View:</span>
-                        <button class="view-toggle-btn" style="background:${directOfferViewMode === 'breakdown' ? 'rgba(251,191,36,0.15)' : 'rgba(46,204,113,0.05)'};color:${directOfferViewMode === 'breakdown' ? '#fbbf24' : '#8899bb'};border:1px solid ${directOfferViewMode === 'breakdown' ? 'rgba(251,191,36,0.3)' : 'rgba(46,204,113,0.1)'};" onclick="setDirectOfferView('breakdown')">
-                            <i class="bi bi-grid-3x3-gap-fill"></i> Amount-wise Breakdown
-                        </button>
-                        <button class="view-toggle-btn" style="background:${directOfferViewMode === 'all' ? 'rgba(46,204,113,0.15)' : 'rgba(46,204,113,0.05)'};color:${directOfferViewMode === 'all' ? '#2ecc71' : '#8899bb'};border:1px solid ${directOfferViewMode === 'all' ? 'rgba(46,204,113,0.3)' : 'rgba(46,204,113,0.1)'};" onclick="setDirectOfferView('all')">
-                            <i class="bi bi-list-ul"></i> All Records (${stats.totalSnapshots})
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12">
-                ${directOfferViewMode === 'breakdown' ? renderTierBreakdown(stats) : renderAllRecords()}
-            </div>
-        </div>
-    `;
-}
-
-function renderTierBreakdown(stats) {
-    const tiers = Object.entries(stats.amountTiers);
-    if (tiers.length === 0) {
-        return `<div class="card-glass"><div class="no-data"><i class="bi bi-inbox"></i><p>Abhi tak koi offer complete nahi hua.</p></div></div>`;
-    }
-    if (directOfferSelectedTier && stats.amountTiers[directOfferSelectedTier]) {
-        return renderTierDetail(directOfferSelectedTier, stats.amountTiers[directOfferSelectedTier]);
-    }
-    return `
-        <div class="card-glass">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div class="card-title" style="margin-bottom:0;">
-                    <i class="bi bi-grid-3x3-gap-fill text-warning me-2"></i>Amount-wise Breakdown
-                    <span style="color:#8899bb;font-size:0.75rem;font-weight:400;margin-left:8px;">Har tier pe click karein — us amount ke sabhi users dekhein</span>
-                </div>
-            </div>
-            <div class="row g-3">
-                ${tiers.map(([tier, data]) => `
-                    <div class="col-md-6 col-lg-4">
-                        <div class="tier-detail-card" onclick="openTierDetail('${escapeAttr(tier)}')">
-                            <div class="tier-detail-header">
-                                <div class="tier-detail-amount">$${escapeHtml(tier)}</div>
-                                <div class="tier-detail-count-badge">${data.count} Users</div>
-                            </div>
-                            <div class="tier-detail-value">Total: <strong>$${data.value.toFixed(2)}</strong></div>
-                            <div class="tier-detail-status-row">
-                                ${data.availableCount > 0 ? `<span class="tier-mini-badge" style="background:rgba(96,165,250,0.15);color:#60a5fa;">📋 ${data.availableCount} Available</span>` : ''}
-                                ${data.pendingCount > 0 ? `<span class="tier-mini-badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;">⏳ ${data.pendingCount} Pending</span>` : ''}
-                                ${data.approvedCount > 0 ? `<span class="tier-mini-badge" style="background:rgba(46,204,113,0.15);color:#2ecc71;">✅ ${data.approvedCount} Approved</span>` : ''}
-                                ${data.paidCount > 0 ? `<span class="tier-mini-badge" style="background:rgba(52,211,153,0.15);color:#34d399;">💰 ${data.paidCount} Paid</span>` : ''}
-                                ${data.rejectedCount > 0 ? `<span class="tier-mini-badge" style="background:rgba(239,68,68,0.15);color:#f87171;">❌ ${data.rejectedCount} Rejected</span>` : ''}
-                            </div>
-                            <div class="tier-detail-footer">
-                                <span>Click to view all users</span>
-                                <i class="bi bi-arrow-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-}
-
-function renderTierDetail(tier, data) {
-    return `
-        <div class="card-glass">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div>
-                    <button class="btn btn-sm me-2" style="background:rgba(46,204,113,0.08);color:#2ecc71;border:1px solid rgba(46,204,113,0.2);border-radius:8px;font-size:0.8rem;" onclick="closeTierDetail()">
-                        <i class="bi bi-arrow-left"></i> Back
-                    </button>
-                    <span style="color:#fff;font-weight:700;font-size:1.1rem;">$${escapeHtml(tier)} Offer Users</span>
-                    <span class="tab-count-badge" style="margin-left:10px;">${data.count}</span>
-                </div>
-                <div class="text-end">
-                    <div style="color:#fbbf24;font-size:1.3rem;font-weight:800;">$${data.value.toFixed(2)}</div>
-                    <div style="color:#8899bb;font-size:0.7rem;">Total Value</div>
-                </div>
-            </div>
-
-            <div class="row g-2 mb-3">
-                ${data.availableCount > 0 ? `<div class="col-md-2 col-4"><div class="stat-card" style="padding:0.6rem;"><div class="stat-number" style="font-size:1.2rem;color:#60a5fa;">${data.availableCount}</div><div class="stat-label" style="font-size:0.65rem;">Available</div></div></div>` : ''}
-                ${data.pendingCount > 0 ? `<div class="col-md-2 col-4"><div class="stat-card" style="padding:0.6rem;"><div class="stat-number" style="font-size:1.2rem;color:#fbbf24;">${data.pendingCount}</div><div class="stat-label" style="font-size:0.65rem;">Pending</div></div></div>` : ''}
-                ${data.approvedCount > 0 ? `<div class="col-md-2 col-4"><div class="stat-card" style="padding:0.6rem;"><div class="stat-number" style="font-size:1.2rem;color:#2ecc71;">${data.approvedCount}</div><div class="stat-label" style="font-size:0.65rem;">Approved</div></div></div>` : ''}
-                ${data.paidCount > 0 ? `<div class="col-md-2 col-4"><div class="stat-card" style="padding:0.6rem;"><div class="stat-number" style="font-size:1.2rem;color:#34d399;">${data.paidCount}</div><div class="stat-label" style="font-size:0.65rem;">Paid</div></div></div>` : ''}
-                ${data.rejectedCount > 0 ? `<div class="col-md-2 col-4"><div class="stat-card" style="padding:0.6rem;"><div class="stat-number" style="font-size:1.2rem;color:#f87171;">${data.rejectedCount}</div><div class="stat-label" style="font-size:0.65rem;">Rejected</div></div></div>` : ''}
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-custom">
-                    <thead>
-                        <tr><th>#</th><th>User</th><th>Refs</th><th>Reward</th><th>Wallet Address</th><th>Status</th><th>Updated</th><th>Action</th></tr>
-                    </thead>
-                    <tbody>
-                        ${data.users.map((u, i) => {
-                            const statusClass = u.status === 'pending' ? 'badge-pending' :
-                                               u.status === 'approved' ? 'badge-approved' :
-                                               u.status === 'paid' ? 'badge-paid' :
-                                               u.status === 'rejected' ? 'badge-rejected' : 'badge-available';
-                            const statusText = u.status === 'pending' ? '⏳ Pending' :
-                                              u.status === 'approved' ? '✅ Approved' :
-                                              u.status === 'paid' ? '💰 Paid' :
-                                              u.status === 'rejected' ? '❌ Rejected' : '📋 Available';
-                            let actionHtml = '';
-                            if (u.status === 'pending') {
-                                actionHtml = `<button class="btn btn-success-custom btn-sm me-1" onclick="approveDirectOffer('${escapeAttr(u.uid)}', '${escapeAttr(u.withdrawalId)}')" title="Approve"><i class="bi bi-check-lg"></i></button>
-                                             <button class="btn btn-danger-custom btn-sm" onclick="rejectDirectOffer('${escapeAttr(u.uid)}', '${escapeAttr(u.withdrawalId)}')" title="Reject"><i class="bi bi-x-lg"></i></button>`;
-                            } else if (u.status === 'approved') {
-                                actionHtml = `<button class="btn btn-warning-custom btn-sm" onclick="markDirectOfferPaid('${escapeAttr(u.uid)}', '${escapeAttr(u.withdrawalId)}')"><i class="bi bi-currency-dollar"></i> Mark Paid</button>`;
-                            } else if (u.status === 'paid') {
-                                actionHtml = `<span style="color:#34d399;font-size:0.75rem;"><i class="bi bi-check-circle-fill"></i> Paid</span>`;
-                            } else if (u.status === 'rejected') {
-                                actionHtml = `<span style="color:#f87171;font-size:0.75rem;"><i class="bi bi-x-circle-fill"></i> Rejected</span>`;
-                            } else {
-                                actionHtml = `<span style="color:#60a5fa;font-size:0.75rem;"><i class="bi bi-hourglass"></i> No request</span>`;
-                            }
-                            const walletHtml = u.walletAddress
-                                ? `<div class="wallet-cell"><span class="addr" title="${escapeAttr(u.walletAddress)}">${escapeHtml(u.walletAddress)}</span>
-                                   <button class="btn-copy" onclick="event.stopPropagation(); copyAddress('${escapeAttr(u.walletAddress)}','Wallet', this)" title="Copy"><i class="bi bi-clipboard"></i></button></div>`
-                                : `<span style="color:#556688;font-size:0.75rem;">Not provided</span>`;
-                            return `
-                                <tr>
-                                    <td>${i + 1}</td>
-                                    <td><strong>${escapeHtml(u.name)}</strong><br><small style="color:#556688;">@${escapeHtml(u.username)}</small></td>
-                                    <td><strong style="color:#2ecc71;">${u.refs}</strong></td>
-                                    <td><strong style="color:#fbbf24;">$${u.reward.toFixed(2)}</strong></td>
-                                    <td>${walletHtml}</td>
-                                    <td><span class="${statusClass}">${statusText}</span></td>
-                                    <td style="font-size:0.75rem;color:#8899bb;">${escapeHtml(relativeTime(u.updatedAt || u.snapshotAt))}</td>
-                                    <td>${actionHtml}</td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-}
-
-function renderAllRecords() {
-    const list = getDirectOfferRecords();
-    return `
-        <div class="card-glass">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                <div class="card-title" style="margin-bottom:0;"><i class="bi bi-list-ul text-success me-2"></i>All Direct Offer Records (${list.length})</div>
-                <input type="text" class="search-box" placeholder="Search by user..." oninput="filterDirectOffer(this.value)">
-            </div>
-            <div class="table-responsive">
-                <table class="table table-custom" id="directOfferTable">
-                    <thead><tr><th>#</th><th>User</th><th>Refs</th><th>Reward</th><th>Wallet</th><th>Status</th><th>Updated</th><th>Action</th></tr></thead>
-                    <tbody>
-                        ${list.map((r, i) => {
-                            const status = String(r.status || 'available').toLowerCase();
-                            const statusClass = status === 'pending' ? 'badge-pending' : status === 'approved' ? 'badge-approved' : status === 'paid' ? 'badge-paid' : status === 'rejected' ? 'badge-rejected' : 'badge-available';
-                            const statusText = status === 'pending' ? '⏳ Pending' : status === 'approved' ? '✅ Approved' : status === 'paid' ? '💰 Paid' : status === 'rejected' ? '❌ Rejected' : '📋 Available';
-                            let actionHtml = '';
-                            if (status === 'pending') {
-                                actionHtml = `<button class="btn btn-success-custom btn-sm me-1" onclick="approveDirectOffer('${escapeAttr(r.uid)}', '${escapeAttr(r.withdrawalId || '')}')"><i class="bi bi-check-lg"></i></button><button class="btn btn-danger-custom btn-sm" onclick="rejectDirectOffer('${escapeAttr(r.uid)}', '${escapeAttr(r.withdrawalId || '')}')"><i class="bi bi-x-lg"></i></button>`;
-                            } else if (status === 'approved') {
-                                actionHtml = `<button class="btn btn-warning-custom btn-sm" onclick="markDirectOfferPaid('${escapeAttr(r.uid)}', '${escapeAttr(r.withdrawalId || '')}')"><i class="bi bi-currency-dollar"></i> Mark Paid</button>`;
-                            } else if (status === 'paid') {
-                                actionHtml = `<span style="color:#34d399;font-size:0.75rem;"><i class="bi bi-check-circle-fill"></i> Completed</span>`;
-                            } else if (status === 'rejected') {
-                                actionHtml = `<span style="color:#f87171;font-size:0.75rem;"><i class="bi bi-x-circle-fill"></i> Rejected</span>`;
-                            } else {
-                                actionHtml = `<span style="color:#60a5fa;font-size:0.75rem;"><i class="bi bi-hourglass"></i> Awaiting</span>`;
-                            }
-                            const walletHtml = r.walletAddress
-                                ? `<div class="wallet-cell"><span class="addr" title="${escapeAttr(r.walletAddress)}">${escapeHtml(r.walletAddress)}</span><button class="btn-copy" onclick="event.stopPropagation(); copyAddress('${escapeAttr(r.walletAddress)}','Wallet', this)"><i class="bi bi-clipboard"></i></button></div>`
-                                : `<span style="color:#556688;font-size:0.75rem;">Not provided</span>`;
-                            const reward = Number(r.finalReward ?? r.currentReward ?? 0);
-                            const refs = Number(r.finalDirectCount ?? r.currentDirectCount ?? 0);
-                            return `
-                                <tr data-user="${escapeAttr((r.user.username || r.user.name || '').toLowerCase())}">
-                                    <td>${i + 1}</td>
-                                    <td><strong>${escapeHtml(r.user.name || 'Unknown')}</strong><br><small style="color:#556688;">${escapeHtml(r.user.username || 'N/A')}</small></td>
-                                    <td><strong style="color:#2ecc71;">${refs}</strong></td>
-                                    <td><strong style="color:#fbbf24;">$${reward.toFixed(2)}</strong></td>
-                                    <td>${walletHtml}</td>
-                                    <td><span class="${statusClass}">${statusText}</span></td>
-                                    <td style="font-size:0.75rem;color:#8899bb;">${escapeHtml(relativeTime(r.updatedAt || r.snapshotAt || r.lastUpdated))}</td>
-                                    <td>${actionHtml}</td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-}
-
-window.setDirectOfferView = function(mode) {
-    directOfferViewMode = mode; directOfferSelectedTier = null; renderDashboard();
-};
-window.openTierDetail = function(tier) {
-    directOfferSelectedTier = String(tier); renderDashboard();
-};
-window.closeTierDetail = function() {
-    directOfferSelectedTier = null; renderDashboard();
-};
-window.openTierFromDashboard = function(tier) {
-    currentTab = 'directOffer';
-    directOfferViewMode = 'breakdown';
-    directOfferSelectedTier = String(tier);
-    renderDashboard();
-    setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 100);
-};
-window.filterDirectOffer = function(value) {
-    const rows = document.querySelectorAll('#directOfferTable tbody tr');
-    const s = value.toLowerCase();
-    rows.forEach(r => { r.style.display = (r.getAttribute('data-user') || '').includes(s) ? '' : 'none'; });
-};
-
-window.approveDirectOffer = async function(uid, withdrawalId) {
-    if (!withdrawalId) { showToast('❌ No withdrawal ID found', 'error'); return; }
-    if (!confirm('✅ Approve this Direct Offer withdrawal?')) return;
-    const result = await approveDirectOfferWithdrawal(uid, withdrawalId);
-    if (result.success) { showToast('✅ Approved successfully!', 'success'); setTimeout(renderDashboard, 500); }
-    else showToast('❌ ' + (result.error || 'Failed'), 'error');
-};
-window.rejectDirectOffer = async function(uid, withdrawalId) {
-    if (!withdrawalId) { showToast('❌ No withdrawal ID found', 'error'); return; }
-    const remark = prompt('❌ Reason for rejection (optional):');
-    if (remark === null) return;
-    const result = await rejectDirectOfferWithdrawal(uid, withdrawalId, remark);
-    if (result.success) {
-        const msg = result.refundApplied ? '❌ Rejected + refunded' : '❌ Rejected';
-        showToast(msg, 'success');
-        setTimeout(renderDashboard, 500);
-    }
-    else showToast('❌ ' + (result.error || 'Failed'), 'error');
-};
-window.markDirectOfferPaid = async function(uid, withdrawalId) {
-    if (!withdrawalId) { showToast('❌ No withdrawal ID found', 'error'); return; }
-    const txHash = prompt('💰 Enter BEP-20 TX Hash (or leave blank to mark as paid):');
-    if (txHash === null) return;
-    const result = await markDirectOfferPaid(uid, withdrawalId, txHash.trim());
-    if (result.success) { showToast('✅ Marked as paid!', 'success'); setTimeout(renderDashboard, 500); }
-    else showToast('❌ ' + (result.error || 'Failed'), 'error');
-};
-
-// ============================================================
 // WITHDRAWALS TAB
 // ============================================================
 function renderWithdrawalsTab() {
@@ -2099,7 +1267,7 @@ function renderWithdrawalsTab() {
                                         ${status === 'pending' && !isDirectOffer ? `
                                             <button class="btn btn-success-custom btn-sm me-1" onclick="approveWithdrawal('${escapeAttr(w.uid)}', '${escapeAttr(w.withdrawalId || '')}')"><i class="bi bi-check-lg"></i></button>
                                             <button class="btn btn-danger-custom btn-sm" onclick="rejectWithdrawal('${escapeAttr(w.uid)}', '${escapeAttr(w.withdrawalId || '')}')"><i class="bi bi-x-lg"></i></button>
-                                        ` : isDirectOffer ? `<span style="color:#f59e0b;font-size:0.7rem;">Manage in Direct Offer tab</span>` : `<span style="color:#34d399;font-size:0.75rem;">✓ Done</span>`}
+                                        ` : isDirectOffer ? `<span style="color:#f59e0b;font-size:0.7rem;">Manage in Direct Offer page</span>` : `<span style="color:#34d399;font-size:0.75rem;">✓ Done</span>`}
                                     </td>
                                 </tr>
                             `;
@@ -2179,7 +1347,7 @@ window.filterDeposits = function(value) {
 };
 
 // ============================================================
-// USERS TAB (Original — with Referred By, no 5-level columns)
+// USERS TAB
 // ============================================================
 function renderUsersTab() {
     const filteredUsers = Object.keys(allUsers).filter(k => allUsers[k].role !== 'admin');
@@ -2341,12 +1509,11 @@ window.filterPackages = function(value) {
 };
 
 // ============================================================
-// SETTINGS TAB
+// SETTINGS TAB (Direct Offer Stats REMOVED)
 // ============================================================
 function renderSettingsTab() {
     const currentRate = allSettings.rate || 1.00;
     const stats = computeStats();
-    const offerStats = computeDirectOfferStats();
     return `
         <div class="card-glass">
             <div class="card-title"><i class="bi bi-gear text-success me-2"></i>Admin Settings</div>
@@ -2375,15 +1542,15 @@ function renderSettingsTab() {
                     <div class="info-row"><span class="label">Total Locked RND</span><span class="value" style="color:#a78bfa;">${stats.totalLockedRND.toFixed(2)}</span></div>
                 </div>
                 <div class="col-md-6">
-                    <h6 class="text-muted">🎁 Direct Offer Stats</h6>
-                    <div class="info-row"><span class="label">Total Participants</span><span class="value">${offerStats.totalParticipants}</span></div>
-                    <div class="info-row"><span class="label">Completed Offers</span><span class="value" style="color:#60a5fa;">${offerStats.completed}</span></div>
-                    <div class="info-row"><span class="label">Pending</span><span class="value" style="color:#fbbf24;">${offerStats.pending}</span></div>
-                    <div class="info-row"><span class="label">Approved</span><span class="value" style="color:#2ecc71;">${offerStats.approved}</span></div>
-                    <div class="info-row"><span class="label">Paid</span><span class="value" style="color:#34d399;">${offerStats.paid}</span></div>
-                    <div class="info-row"><span class="label">Rejected</span><span class="value" style="color:#f87171;">${offerStats.rejected}</span></div>
-                    <div class="info-row"><span class="label">Total Paid Value</span><span class="value" style="color:#34d399;">$${offerStats.paidValue.toFixed(2)}</span></div>
-                    <div class="info-row"><span class="label">Pending Value</span><span class="value" style="color:#fbbf24;">$${offerStats.pendingValue.toFixed(2)}</span></div>
+                    <h6 class="text-muted">🔗 Quick Links</h6>
+                    <div class="info-row" style="padding:12px 0;display:flex;justify-content:space-between;align-items:center;">
+                        <span class="label"><i class="bi bi-trophy-fill" style="color:#fbbf24;"></i> Rank Reward</span>
+                        <a href="rank-reward-admin.html" class="btn-rank-reward" style="padding:6px 14px;font-size:0.75rem;">Open →</a>
+                    </div>
+                    <div class="info-row" style="padding:12px 0;display:flex;justify-content:space-between;align-items:center;">
+                        <span class="label"><i class="bi bi-gift-fill" style="color:#a78bfa;"></i> Direct Offer</span>
+                        <a href="direct-offer-admin.html" class="btn-direct-offer" style="padding:6px 14px;font-size:0.75rem;">Open →</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2395,7 +1562,6 @@ function renderSettingsTab() {
 // ============================================================
 window.switchTab = function(tab) {
     currentTab = tab;
-    directOfferSelectedTier = null;
     renderDashboard();
 };
 
