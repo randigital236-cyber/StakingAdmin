@@ -26,6 +26,44 @@
             font-size: 0.65rem; color: #f87171; font-weight: 600;
         }
 
+        /* ============================================================
+           🆕 STEP 1: RANK REWARD + DIRECT OFFER NAV BUTTONS
+           ============================================================ */
+        .btn-rank-reward {
+            background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(245,158,11,0.1));
+            border: 1.5px solid rgba(251,191,36,0.35);
+            color: #fbbf24; padding: 7px 16px;
+            border-radius: 10px; font-weight: 600;
+            font-size: 0.8rem; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: all 0.3s ease; white-space: nowrap;
+        }
+        .btn-rank-reward:hover {
+            background: linear-gradient(135deg, rgba(251,191,36,0.25), rgba(245,158,11,0.18));
+            border-color: #fbbf24; color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(251,191,36,0.25);
+        }
+
+        .btn-direct-offer {
+            background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(139,92,246,0.1));
+            border: 1.5px solid rgba(167,139,250,0.35);
+            color: #a78bfa; padding: 7px 16px;
+            border-radius: 10px; font-weight: 600;
+            font-size: 0.8rem; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: all 0.3s ease; white-space: nowrap;
+        }
+        .btn-direct-offer:hover {
+            background: linear-gradient(135deg, rgba(167,139,250,0.25), rgba(139,92,246,0.18));
+            border-color: #a78bfa; color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(167,139,250,0.25);
+        }
+        /* ============================================================
+           END STEP 1 BUTTONS
+           ============================================================ */
+
         .dashboard-container { padding: 20px; max-width: 1400px; margin: 0 auto; }
 
         .card-glass {
@@ -421,8 +459,23 @@
             .activity-card { padding: 12px; }
             .activity-icon { width: 36px; height: 36px; font-size: 1rem; }
             .wallet-cell { max-width: 140px; }
+
+            /* 🆕 मोबाइल पर 2 नए बटन छोटे */
+            .btn-rank-reward, .btn-direct-offer {
+                padding: 6px 10px; font-size: 0.72rem;
+            }
         }
-        @media (max-width: 480px) { .card-glass { padding: 1rem; } }
+        @media (max-width: 480px) {
+            .card-glass { padding: 1rem; }
+            /* 🆕 बहुत छोटे स्क्रीन पर सिर्फ icon दिखे */
+            .btn-rank-reward .nav-label,
+            .btn-direct-offer .nav-label {
+                display: none;
+            }
+            .btn-rank-reward, .btn-direct-offer {
+                padding: 6px 8px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -468,6 +521,16 @@
         <div class="d-flex align-items-center gap-3">
             <span id="dbStatus" class="db-status loading"><i class="bi bi-database"></i> Connecting...</span>
             <span id="userEmail" class="text-muted small"></span>
+
+            <!-- 🆕 STEP 1: RANK REWARD + DIRECT OFFER NAV BUTTONS -->
+            <a href="rank-reward-admin.html" class="btn-rank-reward" title="View all Rank Reward claims">
+                <i class="bi bi-trophy-fill"></i> <span class="nav-label">Rank Reward</span>
+            </a>
+            <a href="direct-offer-admin.html" class="btn-direct-offer" title="Manage Direct Offer withdrawals">
+                <i class="bi bi-gift-fill"></i> <span class="nav-label">Direct Offer</span>
+            </a>
+            <!-- 🆕 END STEP 1 BUTTONS -->
+
             <button class="btn btn-danger-custom btn-sm" id="logoutBtn">
                 <i class="bi bi-box-arrow-right"></i> Logout
             </button>
