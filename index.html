@@ -26,44 +26,6 @@
             font-size: 0.65rem; color: #f87171; font-weight: 600;
         }
 
-        /* ============================================================
-           🆕 STEP 1: RANK REWARD + DIRECT OFFER NAV BUTTONS
-           ============================================================ */
-        .btn-rank-reward {
-            background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(245,158,11,0.1));
-            border: 1.5px solid rgba(251,191,36,0.35);
-            color: #fbbf24; padding: 7px 16px;
-            border-radius: 10px; font-weight: 600;
-            font-size: 0.8rem; text-decoration: none;
-            display: inline-flex; align-items: center; gap: 6px;
-            transition: all 0.3s ease; white-space: nowrap;
-        }
-        .btn-rank-reward:hover {
-            background: linear-gradient(135deg, rgba(251,191,36,0.25), rgba(245,158,11,0.18));
-            border-color: #fbbf24; color: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(251,191,36,0.25);
-        }
-
-        .btn-direct-offer {
-            background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(139,92,246,0.1));
-            border: 1.5px solid rgba(167,139,250,0.35);
-            color: #a78bfa; padding: 7px 16px;
-            border-radius: 10px; font-weight: 600;
-            font-size: 0.8rem; text-decoration: none;
-            display: inline-flex; align-items: center; gap: 6px;
-            transition: all 0.3s ease; white-space: nowrap;
-        }
-        .btn-direct-offer:hover {
-            background: linear-gradient(135deg, rgba(167,139,250,0.25), rgba(139,92,246,0.18));
-            border-color: #a78bfa; color: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(167,139,250,0.25);
-        }
-        /* ============================================================
-           END STEP 1 BUTTONS
-           ============================================================ */
-
         .dashboard-container { padding: 20px; max-width: 1400px; margin: 0 auto; }
 
         .card-glass {
@@ -296,69 +258,6 @@
             text-transform: uppercase; letter-spacing: 0.3px;
         }
 
-        /* 🔥 TIER CARDS (Amount-wise breakdown) */
-        .tier-detail-card {
-            background: linear-gradient(135deg, rgba(251,191,36,0.06), rgba(251,191,36,0.02));
-            border: 1.5px solid rgba(251,191,36,0.15);
-            border-radius: 16px; padding: 18px; cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative; overflow: hidden; height: 100%;
-            display: flex; flex-direction: column; gap: 10px;
-        }
-        .tier-detail-card:hover {
-            border-color: rgba(251,191,36,0.4);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(251,191,36,0.12);
-            background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.03));
-        }
-        .tier-detail-card::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #fbbf24, transparent);
-            opacity: 0; transition: opacity 0.3s ease;
-        }
-        .tier-detail-card:hover::before { opacity: 1; }
-        .tier-detail-header {
-            display: flex; align-items: center;
-            justify-content: space-between; gap: 10px;
-        }
-        .tier-detail-amount {
-            font-size: 1.8rem; font-weight: 900; color: #fbbf24;
-            line-height: 1; letter-spacing: -1px;
-        }
-        .tier-detail-count-badge {
-            background: rgba(251,191,36,0.15); color: #fbbf24;
-            padding: 4px 12px; border-radius: 20px;
-            font-size: 0.75rem; font-weight: 700;
-            border: 1px solid rgba(251,191,36,0.25);
-            white-space: nowrap;
-        }
-        .tier-detail-value { font-size: 0.85rem; color: #8899bb; }
-        .tier-detail-value strong { color: #34d399; font-weight: 700; font-size: 1rem; }
-        .tier-detail-status-row { display: flex; flex-wrap: wrap; gap: 6px; }
-        .tier-mini-badge {
-            font-size: 0.65rem; padding: 3px 9px;
-            border-radius: 12px; font-weight: 600; white-space: nowrap;
-        }
-        .tier-detail-footer {
-            display: flex; align-items: center;
-            justify-content: space-between;
-            padding-top: 10px; margin-top: auto;
-            border-top: 1px solid rgba(251,191,36,0.1);
-            font-size: 0.75rem; color: #8899bb;
-            font-weight: 500; transition: color 0.3s ease;
-        }
-        .tier-detail-card:hover .tier-detail-footer { color: #fbbf24; }
-        .tier-detail-footer i { transition: transform 0.3s ease; }
-        .tier-detail-card:hover .tier-detail-footer i { transform: translateX(4px); }
-
-        /* VIEW TOGGLE */
-        .view-toggle-btn {
-            border-radius: 10px; font-size: 0.8rem;
-            padding: 6px 16px; font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
         /* FORM */
         .form-control-custom {
             background: rgba(8,14,26,0.8) !important;
@@ -393,6 +292,58 @@
         .nav-tabs-custom .nav-link:hover { color: #fff; background: rgba(46,204,113,0.05); }
         .nav-tabs-custom .nav-link.active { color: #2ecc71; background: rgba(46,204,113,0.1); }
         .nav-tabs-custom .nav-link i { margin-right: 8px; }
+
+        /* ============================================================
+           🆕 QUICK NAV BUTTONS (Rank Reward + Direct Offer)
+           Dashboard के ऊपर, tabs के साथ
+           ============================================================ */
+        .quick-nav-section {
+            display: flex; flex-wrap: wrap; gap: 12px;
+            margin-bottom: 20px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, rgba(251,191,36,0.04), rgba(167,139,250,0.04));
+            border: 1px solid rgba(251,191,36,0.12);
+            border-radius: 16px;
+            align-items: center;
+        }
+        .quick-nav-label {
+            color: #8899bb; font-size: 0.78rem;
+            font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.5px; margin-right: 8px;
+        }
+        .btn-rank-reward {
+            background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(245,158,11,0.1));
+            border: 1.5px solid rgba(251,191,36,0.35);
+            color: #fbbf24; padding: 9px 20px;
+            border-radius: 12px; font-weight: 600;
+            font-size: 0.85rem; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 8px;
+            transition: all 0.3s ease; white-space: nowrap;
+        }
+        .btn-rank-reward:hover {
+            background: linear-gradient(135deg, rgba(251,191,36,0.25), rgba(245,158,11,0.18));
+            border-color: #fbbf24; color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(251,191,36,0.25);
+        }
+        .btn-direct-offer {
+            background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(139,92,246,0.1));
+            border: 1.5px solid rgba(167,139,250,0.35);
+            color: #a78bfa; padding: 9px 20px;
+            border-radius: 12px; font-weight: 600;
+            font-size: 0.85rem; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 8px;
+            transition: all 0.3s ease; white-space: nowrap;
+        }
+        .btn-direct-offer:hover {
+            background: linear-gradient(135deg, rgba(167,139,250,0.25), rgba(139,92,246,0.18));
+            border-color: #a78bfa; color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(167,139,250,0.25);
+        }
+        /* ============================================================
+           END QUICK NAV BUTTONS
+           ============================================================ */
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px; }
         .toast-custom {
@@ -459,23 +410,13 @@
             .activity-card { padding: 12px; }
             .activity-icon { width: 36px; height: 36px; font-size: 1rem; }
             .wallet-cell { max-width: 140px; }
-
-            /* 🆕 मोबाइल पर 2 नए बटन छोटे */
             .btn-rank-reward, .btn-direct-offer {
-                padding: 6px 10px; font-size: 0.72rem;
+                padding: 8px 14px; font-size: 0.78rem;
+                flex: 1; justify-content: center;
             }
+            .quick-nav-label { width: 100%; margin-bottom: 4px; }
         }
-        @media (max-width: 480px) {
-            .card-glass { padding: 1rem; }
-            /* 🆕 बहुत छोटे स्क्रीन पर सिर्फ icon दिखे */
-            .btn-rank-reward .nav-label,
-            .btn-direct-offer .nav-label {
-                display: none;
-            }
-            .btn-rank-reward, .btn-direct-offer {
-                padding: 6px 8px;
-            }
-        }
+        @media (max-width: 480px) { .card-glass { padding: 1rem; } }
     </style>
 </head>
 <body>
@@ -521,16 +462,6 @@
         <div class="d-flex align-items-center gap-3">
             <span id="dbStatus" class="db-status loading"><i class="bi bi-database"></i> Connecting...</span>
             <span id="userEmail" class="text-muted small"></span>
-
-            <!-- 🆕 STEP 1: RANK REWARD + DIRECT OFFER NAV BUTTONS -->
-            <a href="rank-reward-admin.html" class="btn-rank-reward" title="View all Rank Reward claims">
-                <i class="bi bi-trophy-fill"></i> <span class="nav-label">Rank Reward</span>
-            </a>
-            <a href="direct-offer-admin.html" class="btn-direct-offer" title="Manage Direct Offer withdrawals">
-                <i class="bi bi-gift-fill"></i> <span class="nav-label">Direct Offer</span>
-            </a>
-            <!-- 🆕 END STEP 1 BUTTONS -->
-
             <button class="btn btn-danger-custom btn-sm" id="logoutBtn">
                 <i class="bi bi-box-arrow-right"></i> Logout
             </button>
