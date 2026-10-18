@@ -103,6 +103,7 @@
         .stat-card .stat-icon.yellow { background: rgba(251,191,36,0.15); color: #fbbf24; }
         .stat-card .stat-icon.green { background: rgba(46,204,113,0.15); color: #2ecc71; }
         .stat-card .stat-icon.red { background: rgba(239,68,68,0.15); color: #f87171; }
+        .stat-card .stat-icon.blue { background: rgba(96,165,250,0.15); color: #60a5fa; }
         .stat-card .stat-number {
             font-size: 1.9rem; font-weight: 900; color: #fff;
             line-height: 1.1; letter-spacing: -0.5px;
@@ -111,6 +112,7 @@
         .stat-card .stat-number.yellow { color: #fbbf24; }
         .stat-card .stat-number.green { color: #2ecc71; }
         .stat-card .stat-number.red { color: #f87171; }
+        .stat-card .stat-number.blue { color: #60a5fa; }
         .stat-card .stat-label {
             color: #8899bb; font-size: 0.75rem; font-weight: 500;
             margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px;
@@ -140,8 +142,11 @@
             font-size: 0.7rem; font-weight: 700;
         }
         .custom-tab.active .badge-count { background: #a78bfa; color: #0b1120; }
-        .custom-tab.pending-tab .badge-count {
+        
+        /* Pending Withdrawals notification */
+        .custom-tab.withdrawals-tab .badge-count.pending-notify {
             background: rgba(251,191,36,0.2); color: #fbbf24;
+            border: 1px solid rgba(251,191,36,0.4);
             animation: pulseBadge 2s infinite;
         }
         @keyframes pulseBadge { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
@@ -161,7 +166,7 @@
         .card-title-text { display: flex; align-items: center; gap: 8px; }
         .card-title i { color: #a78bfa; margin-right: 4px; }
 
-        /* Withdrawal Card (Pending) */
+        /* Withdrawal Card */
         .withdrawal-card {
             background: rgba(8,14,26,0.6);
             border: 1.5px solid rgba(251,191,36,0.2);
@@ -281,6 +286,21 @@
         .status-badge.rejected { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
         .status-badge.paid { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
 
+        /* History Table */
+        .table-responsive { overflow-x: auto; border-radius: 12px; }
+        .table-custom { color: #f0f4ff; border-color: #1f334f; margin-bottom: 0; width: 100%; }
+        .table-custom thead th {
+            border-bottom: 2px solid rgba(167,139,250,0.2);
+            color: #a0b8d0; font-weight: 700; font-size: 0.72rem;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            padding: 12px 10px; white-space: nowrap;
+        }
+        .table-custom tbody td {
+            border-color: rgba(167,139,250,0.06);
+            vertical-align: middle; font-size: 0.85rem; padding: 14px 10px;
+        }
+        .table-custom tbody tr:hover { background: rgba(167,139,250,0.03); }
+
         /* Empty State */
         .empty-state { text-align: center; padding: 60px 20px; }
         .empty-state i { font-size: 4rem; color: #2a3a5a; margin-bottom: 20px; display: block; }
@@ -395,33 +415,25 @@
             </div>
             <div class="col-md-3 col-6">
                 <div class="stat-card">
-                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-                    <div class="stat-number green" id="totalApproved">0</div>
-                    <div class="stat-label">Approved / Paid</div>
+                    <div class="stat-icon blue"><i class="bi bi-cash-stack"></i></div>
+                    <div class="stat-number blue" id="totalWithdrawn">$0.00</div>
+                    <div class="stat-label">Total Withdrawn</div>
                 </div>
             </div>
             <div class="col-md-3 col-6">
                 <div class="stat-card">
-                    <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
-                    <div class="stat-number red" id="totalRejected">0</div>
-                    <div class="stat-label">Rejected</div>
+                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+                    <div class="stat-number green" id="totalApproved">0</div>
+                    <div class="stat-label">Approved / Paid</div>
                 </div>
             </div>
         </div>
 
         <!-- Tabs -->
         <div class="custom-tabs">
-            <button class="custom-tab pending-tab active" data-tab="pending">
-                <i class="bi bi-hourglass-split"></i> Pending
-                <span class="badge-count" id="pendingTabCount">0</span>
-            </button>
-            <button class="custom-tab" data-tab="approved">
-                <i class="bi bi-check-circle-fill"></i> Approved
-                <span class="badge-count" id="approvedTabCount">0</span>
-            </button>
-            <button class="custom-tab" data-tab="rejected">
-                <i class="bi bi-x-circle-fill"></i> Rejected
-                <span class="badge-count" id="rejectedTabCount">0</span>
+            <button class="custom-tab withdrawals-tab active" data-tab="withdrawals">
+                <i class="bi bi-cash-stack"></i> Withdrawals
+                <span class="badge-count pending-notify" id="tabPendingCount">0</span>
             </button>
             <button class="custom-tab" data-tab="all">
                 <i class="bi bi-list-ul"></i> All Records
@@ -438,14 +450,68 @@
             </div>
         </div>
 
-        <!-- List Container -->
-        <div id="withdrawalsList"></div>
+        <!-- WITHDRAWALS SECTION (Pending Cards + History) -->
+        <div id="withdrawalsSection">
+            <!-- Pending Cards Container -->
+            <div id="pendingCardsContainer"></div>
+            <!-- Pending Empty State -->
+            <div id="pendingEmptyState" class="empty-state" style="display: none;">
+                <i class="bi bi-check2-circle" style="color: #2ecc71;"></i>
+                <h5>No Pending Withdrawals</h5>
+                <p>All caught up! No pending requests right now.</p>
+            </div>
 
-        <!-- Empty State -->
-        <div id="emptyState" class="empty-state" style="display: none;">
-            <i class="bi bi-inbox"></i>
-            <h5>No records found</h5>
-            <p>Nothing to show here right now</p>
+            <!-- History Section -->
+            <div class="card-glass mt-4">
+                <div class="card-title">
+                    <div class="card-title-text">
+                        <i class="bi bi-clock-history"></i> Withdrawal History
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>User</th>
+                                <th>Amount</th>
+                                <th>Wallet Address</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- Filled by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALL RECORDS SECTION (Overview Data) -->
+        <div id="allRecordsSection" style="display: none;">
+            <div class="card-glass">
+                <div class="card-title">
+                    <div class="card-title-text">
+                        <i class="bi bi-list-ul"></i> All Direct Offer Records
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Refs</th>
+                                <th>Reward</th>
+                                <th>Status</th>
+                                <th>Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allRecordsTableBody">
+                            <!-- Filled by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
     </div>
