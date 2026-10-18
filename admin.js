@@ -11,6 +11,9 @@
 //   - Statistics deduplication
 //   - 🔥 v7: Referral commission transactions show in Live Activity
 // ============================================================
+// ⚠️ STEP 1: Navbar में Rank Reward + Direct Offer buttons जोड़े गए
+// ⚠️ इस JavaScript फाइल में कोई बदलाव नहीं — बटन HTML में हैं
+// ============================================================
 
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
