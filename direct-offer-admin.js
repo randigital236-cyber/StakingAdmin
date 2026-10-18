@@ -1,13 +1,14 @@
 // ============================================================
-// DIRECT OFFER ADMIN — JavaScript
+// DIRECT OFFER ADMIN — JavaScript (v2 with Withdrawals Section)
 // ============================================================
-// ⚠️ STANDALONE FILE — does NOT modify admin.js or rank-reward-admin.js
+// ⚠️ STANDALONE FILE
 // Features:
-//   - Copy full BEP-20 wallet address (with verification)
-//   - Approve → status becomes 'paid' → user website shows "Payment Sent"
-//   - Reject → status becomes 'rejected' → reward refunded to available
-//   - Atomic multi-location sync (campaign_rewards + admin/withdrawals + user tx + global tx)
-//   - Duplicate processing protection (status guards)
+//   - Two main sections: Overview & Withdrawals
+//   - Withdrawals section has sub-tabs: Pending / Approved / Rejected / All
+//   - Copy full BEP-20 wallet address
+//   - Approve (directly marks as 'paid' so user sees "Payment Sent")
+//   - Reject (with reason + auto-refund)
+//   - Atomic multi-location sync
 // ============================================================
 
 import { initializeApp } from "firebase/app";
@@ -33,25 +34,27 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 
 // ============================================================
-// CAMPAIGN CONFIG
+// CAMPAIGN IDs (Auto-detect supported)
 // ============================================================
-// यहाँ दोनों Campaign IDs supported हैं — auto-detect करेगा
 const POSSIBLE_CAMPAIGN_IDS = [
-    'direct_offer_50pack_oct2026',  // यूजर फाइल से (active campaign)
-    'direct_offer_2026'              // पुरानी admin फाइल से
+    'direct_offer_50pack_oct2026',  // new active campaign
+    'direct_offer_2026'              // old campaign
 ];
 
 // ============================================================
 // GLOBAL STATE
 // ============================================================
 let allUsers = {};
-let allCampaignRewards = {};      // { uid: { campaignId: {...} } }
-let allAdminWithdrawals = {};     // { withdrawalId: {...} }
-let allRecords = [];              // Flattened
-let filteredRecords = [];
-let activeTab = 'pending';
+let allCampaignRewards = {};
+let allAdminWithdrawals = {};
+let allOverviewRecords = [];  // for Overview tab
+let allWithdrawalRecords = []; // for Withdrawals tab (only those with withdrawal requests)
+let filteredWithdrawals = [];
+
+let activeMainTab = 'overview';
+let activeSubTab = 'pending';
 let searchQuery = '';
-let isProcessingAction = new Set(); // Track uid::wid currently processing
+let isProcessingAction = new Set();
 
 let usersOff = null;
 let rewardsOff = null;
@@ -105,17 +108,14 @@ function showToast(message, type = 'success') {
 }
 
 // ============================================================
-// COPY WALLET ADDRESS (Full, verified)
+// COPY WALLET ADDRESS
 // ============================================================
 window.copyWalletAddress = async function(address, btnEl) {
     if (!address || address === 'N/A' || !address.trim()) {
         showToast('❌ No wallet address to copy', 'error');
         return;
     }
-
     const fullAddress = String(address).trim();
-
-    // Verify BEP-20 format (loose check — 0x + 40 hex)
     const isValidBEP20 = /^0x[a-fA-F0-9]{40}$/.test(fullAddress);
     if (!isValidBEP20) {
         showToast('⚠️ Warning: Address may not be valid BEP-20 format', 'warning');
@@ -126,7 +126,6 @@ window.copyWalletAddress = async function(address, btnEl) {
             if (navigator.clipboard && window.isSecureContext) {
                 await navigator.clipboard.writeText(fullAddress);
             } else {
-                // Fallback
                 const ta = document.createElement('textarea');
                 ta.value = fullAddress;
                 ta.style.position = 'fixed';
@@ -137,7 +136,6 @@ window.copyWalletAddress = async function(address, btnEl) {
                 document.body.removeChild(ta);
             }
 
-            // Visual feedback on button
             if (btnEl) {
                 const orig = btnEl.innerHTML;
                 btnEl.classList.add('copied');
@@ -147,25 +145,25 @@ window.copyWalletAddress = async function(address, btnEl) {
                     btnEl.innerHTML = orig;
                 }, 2000);
             }
-
-            showToast('✅ Full wallet address copied to clipboard', 'success');
+            showToast('✅ Full wallet address copied', 'success');
         } catch (err) {
             console.error('Copy error:', err);
             showToast('❌ Copy failed — please copy manually', 'error');
         }
     };
-
     doCopy();
 };
 
 // ============================================================
-// BUILD FLAT RECORDS
+// BUILD DATA
 // ============================================================
-function buildRecords(users, campaignRewards, adminWithdrawals) {
-    const records = [];
-    const seenWithdrawalIds = new Set();
+function buildData(users, campaignRewards, adminWithdrawals) {
+    const overview = [];
+    const withdrawals = [];
+    const seenWid = new Set();
+    const seenOverview = new Set();
 
-    // 1. From campaign_rewards (primary source)
+    // 1. Campaign Rewards
     for (const uid in campaignRewards) {
         const campaigns = campaignRewards[uid] || {};
         for (const cid in campaigns) {
@@ -173,61 +171,70 @@ function buildRecords(users, campaignRewards, adminWithdrawals) {
             if (!r || typeof r !== 'object') continue;
 
             const status = String(r.status || 'available').toLowerCase();
-
-            // Only show records that have a withdrawal request
-            // (pending, approved, paid, rejected)
-            if (!['pending', 'approved', 'paid', 'rejected'].includes(status)) continue;
-
-            const wid = r.withdrawalId || '';
-            if (wid) {
-                if (seenWithdrawalIds.has(wid)) continue;
-                seenWithdrawalIds.add(wid);
+            const user = users[uid] || { name: 'Unknown', username: 'N/A', email: 'N/A' };
+            const amount = Number(r.finalReward ?? r.currentReward ?? 0);
+            const refs = Number(r.finalDirectCount ?? r.currentDirectCount ?? 0);
+            
+            // Overview records (all finalized/completed)
+            const ovKey = `${uid}::${cid}`;
+            if (!seenOverview.has(ovKey) && (r.isFinalized === true || amount > 0 || refs > 0)) {
+                seenOverview.add(ovKey);
+                overview.push({
+                    uid, campaignId: cid,
+                    userName: user.name, userUsername: user.username, userEmail: user.email,
+                    refs, amount, status,
+                    walletAddress: r.walletAddress || '',
+                    updatedAt: r.updatedAt || r.snapshotAt || 0
+                });
             }
 
-            const user = users[uid] || { name: 'Unknown', username: 'N/A', email: 'N/A' };
-
-            records.push({
-                uid: uid,
-                campaignId: cid,
-                withdrawalId: wid,
-                status: status,
-                amount: Number(r.finalReward ?? r.currentReward ?? 0),
-                walletAddress: r.walletAddress || '',
-                userName: user.name || 'Unknown',
-                userUsername: user.username || user.referralCode || 'N/A',
-                userEmail: user.email || 'N/A',
-                requestedAt: r.requestedAt || r.updatedAt || r.snapshotAt || 0,
-                approvedAt: r.approvedAt || 0,
-                paidAt: r.paidAt || 0,
-                rejectedAt: r.rejectedAt || 0,
-                rejectReason: r.rejectReason || '',
-                txHash: r.txHash || '',
-                network: r.network || 'BEP-20',
-                source: 'campaign_rewards'
-            });
+            // Withdrawals records (only if there's a withdrawalId or status is pending/approved/paid/rejected)
+            const hasWithdrawal = r.withdrawalId || ['pending', 'approved', 'paid', 'rejected'].includes(status);
+            if (hasWithdrawal) {
+                const wid = r.withdrawalId || `__no_wid_${uid}_${cid}`;
+                if (!seenWid.has(wid)) {
+                    seenWid.add(wid);
+                    withdrawals.push({
+                        uid, campaignId: cid,
+                        withdrawalId: r.withdrawalId || '',
+                        status,
+                        amount,
+                        walletAddress: r.walletAddress || '',
+                        userName: user.name, userUsername: user.username, userEmail: user.email,
+                        requestedAt: r.requestedAt || r.updatedAt || r.snapshotAt || 0,
+                        approvedAt: r.approvedAt || 0,
+                        paidAt: r.paidAt || 0,
+                        rejectedAt: r.rejectedAt || 0,
+                        rejectReason: r.rejectReason || '',
+                        txHash: r.txHash || '',
+                        network: r.network || 'BEP-20',
+                        source: 'campaign_rewards'
+                    });
+                }
+            }
         }
     }
 
-    // 2. From admin/withdrawals (supplement — for withdrawals created via admin panel)
+    // 2. Admin Withdrawals
     for (const wid in adminWithdrawals) {
         const w = adminWithdrawals[wid];
         if (!w || typeof w !== 'object') continue;
         if (w.type !== 'direct_offer_withdrawal' && !w.campaignId) continue;
 
         const realWid = w.withdrawalId || wid;
-        if (seenWithdrawalIds.has(realWid)) continue;
-        seenWithdrawalIds.add(realWid);
+        if (seenWid.has(realWid)) continue;
+        seenWid.add(realWid);
 
         const status = String(w.status || 'pending').toLowerCase();
         if (!['pending', 'approved', 'paid', 'rejected'].includes(status)) continue;
 
-        const user = users[w.userId || w.uid] || { name: 'Unknown', username: 'N/A', email: 'N/A' };
+        const uid = w.userId || w.uid;
+        const user = users[uid] || { name: 'Unknown', username: 'N/A', email: 'N/A' };
 
-        records.push({
-            uid: w.userId || w.uid,
-            campaignId: w.campaignId || '',
+        withdrawals.push({
+            uid, campaignId: w.campaignId || '',
             withdrawalId: realWid,
-            status: status,
+            status,
             amount: Number(w.amount || 0),
             walletAddress: w.walletAddress || w.wallet || '',
             userName: user.name || w.username || 'Unknown',
@@ -244,89 +251,133 @@ function buildRecords(users, campaignRewards, adminWithdrawals) {
         });
     }
 
-    // Sort: pending first → most recent
-    records.sort((a, b) => {
-        const priority = { pending: 0, approved: 1, paid: 2, rejected: 3 };
+    // Sort overview (recent first)
+    overview.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    
+    // Sort withdrawals (pending first, then recent)
+    const priority = { pending: 0, approved: 1, paid: 2, rejected: 3 };
+    withdrawals.sort((a, b) => {
         const pA = priority[a.status] ?? 9;
         const pB = priority[b.status] ?? 9;
         if (pA !== pB) return pA - pB;
         return (b.requestedAt || 0) - (a.requestedAt || 0);
     });
 
-    return records;
+    return { overview, withdrawals };
 }
 
 // ============================================================
-// UPDATE SUMMARY & TAB COUNTS
+// UPDATE SUMMARY
 // ============================================================
 function updateSummary() {
-    const participants = new Set(allRecords.map(r => r.uid)).size;
-    const pending = allRecords.filter(r => r.status === 'pending').length;
-    const approved = allRecords.filter(r => r.status === 'approved' || r.status === 'paid').length;
-    const rejected = allRecords.filter(r => r.status === 'rejected').length;
+    // Overview
+    const participants = new Set(allOverviewRecords.map(r => r.uid)).size;
+    const completed = allOverviewRecords.filter(r => r.amount > 0).length;
+    const paidTotal = allWithdrawalRecords
+        .filter(r => r.status === 'paid' || r.status === 'approved')
+        .reduce((sum, r) => sum + (r.amount || 0), 0);
+    const rejected = allWithdrawalRecords.filter(r => r.status === 'rejected').length;
 
     document.getElementById('totalParticipants').textContent = participants;
-    document.getElementById('totalPending').textContent = pending;
-    document.getElementById('totalApproved').textContent = approved;
+    document.getElementById('totalCompleted').textContent = completed;
+    document.getElementById('totalPaid').textContent = formatCurrency(paidTotal);
     document.getElementById('totalRejected').textContent = rejected;
 
-    document.getElementById('pendingTabCount').textContent = pending;
-    document.getElementById('approvedTabCount').textContent = approved;
-    document.getElementById('rejectedTabCount').textContent = rejected;
-    document.getElementById('allTabCount').textContent = allRecords.length;
+    // Withdrawals counts
+    const pending = allWithdrawalRecords.filter(r => r.status === 'pending').length;
+    const approved = allWithdrawalRecords.filter(r => r.status === 'approved' || r.status === 'paid').length;
+    const rej = allWithdrawalRecords.filter(r => r.status === 'rejected').length;
+
+    document.getElementById('mainPendingCount').textContent = pending;
+    document.getElementById('subPendingCount').textContent = pending;
+    document.getElementById('subApprovedCount').textContent = approved;
+    document.getElementById('subRejectedCount').textContent = rej;
+    document.getElementById('subAllCount').textContent = allWithdrawalRecords.length;
 }
 
 // ============================================================
-// APPLY FILTERS (Tab + Search)
+// RENDER OVERVIEW TABLE
 // ============================================================
-function applyFilters() {
-    let list = allRecords.slice();
+function renderOverview() {
+    const tbody = document.getElementById('overviewTableBody');
+    if (allOverviewRecords.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: #556688;">No records found</td></tr>`;
+        return;
+    }
 
-    // Tab filter
-    if (activeTab === 'pending') {
+    tbody.innerHTML = allOverviewRecords.map(r => {
+        const status = r.status === 'paid' || r.status === 'approved' ? 'success' :
+                       r.status === 'pending' ? 'warning' : 'error';
+        const statusText = r.status === 'paid' ? 'Paid' :
+                           r.status === 'approved' ? 'Approved' :
+                           r.status === 'pending' ? 'Pending' :
+                           r.status === 'rejected' ? 'Rejected' : r.status;
+        const statusClass = r.status === 'paid' ? 'paid' :
+                           r.status === 'approved' ? 'approved' :
+                           r.status === 'pending' ? 'pending' : 'rejected';
+
+        const date = formatDateTime(r.updatedAt);
+
+        return `
+            <tr>
+                <td>
+                    <div class="wc-user" style="min-width: auto;">
+                        <div class="wc-avatar" style="width: 34px; height: 34px; font-size: 0.8rem;">${escapeHtml((r.userName||'U').charAt(0).toUpperCase())}</div>
+                        <div class="wc-user-info">
+                            <div class="wc-name" style="font-size: 0.85rem;">${escapeHtml(r.userName)}</div>
+                            <div class="wc-username" style="font-size: 0.72rem;">@${escapeHtml(r.userUsername)}</div>
+                        </div>
+                    </div>
+                </td>
+                <td style="font-weight: 700; color: #2ecc71;">${r.refs}</td>
+                <td style="font-weight: 800; color: #fbbf24;">${formatCurrency(r.amount)}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td style="font-size: 0.75rem; color: #8899bb;">${escapeHtml(date.date)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ============================================================
+// RENDER WITHDRAWALS LIST
+// ============================================================
+function renderWithdrawals() {
+    let list = allWithdrawalRecords.slice();
+
+    // Sub-tab filter
+    if (activeSubTab === 'pending') {
         list = list.filter(r => r.status === 'pending');
-    } else if (activeTab === 'approved') {
+    } else if (activeSubTab === 'approved') {
         list = list.filter(r => r.status === 'approved' || r.status === 'paid');
-    } else if (activeTab === 'rejected') {
+    } else if (activeSubTab === 'rejected') {
         list = list.filter(r => r.status === 'rejected');
     }
-    // 'all' → no filter
 
-    // Search filter
+    // Search
     const q = searchQuery.trim().toLowerCase();
     if (q) {
         list = list.filter(r => {
-            const hay = [
-                r.userName, r.userUsername, r.userEmail,
-                r.walletAddress, r.withdrawalId, r.txHash
-            ].join(' ').toLowerCase();
+            const hay = [r.userName, r.userUsername, r.userEmail, r.walletAddress, r.withdrawalId, r.txHash].join(' ').toLowerCase();
             return hay.includes(q);
         });
     }
 
-    filteredRecords = list;
-    renderList();
-}
-
-// ============================================================
-// RENDER LIST
-// ============================================================
-function renderList() {
+    filteredWithdrawals = list;
     const container = document.getElementById('withdrawalsList');
     const emptyState = document.getElementById('emptyState');
 
-    if (filteredRecords.length === 0) {
+    if (list.length === 0) {
         container.innerHTML = '';
         emptyState.style.display = 'block';
         return;
     }
 
     emptyState.style.display = 'none';
-    container.innerHTML = filteredRecords.map(record => renderRecordCard(record)).join('');
+    container.innerHTML = list.map(r => renderRecordCard(r)).join('');
 }
 
 // ============================================================
-// RENDER SINGLE CARD
+// RENDER SINGLE WITHDRAWAL CARD
 // ============================================================
 function renderRecordCard(r) {
     const date = formatDateTime(r.requestedAt);
@@ -345,7 +396,6 @@ function renderRecordCard(r) {
         statusBadgeHtml = `<span class="status-badge rejected"><i class="bi bi-x-circle-fill"></i> Rejected</span>`;
     }
 
-    // Action buttons only if pending
     const actionsHtml = isPending ? `
         <div class="wc-actions">
             <button class="btn-reject" 
@@ -363,7 +413,6 @@ function renderRecordCard(r) {
         </div>
     ` : '';
 
-    // Wallet display
     const walletHtml = r.walletAddress ? `
         <div class="wallet-box">
             <div class="wallet-label">
@@ -386,18 +435,19 @@ function renderRecordCard(r) {
         </div>
     `;
 
-    // Extra info for non-pending
     let extraInfoHtml = '';
     if (r.status === 'rejected' && r.rejectReason) {
         extraInfoHtml = `
-            <div class="tx-info-row" style="border-top-color: rgba(239,68,68,0.2);">
-                <span><i class="bi bi-info-circle"></i> Reason: <strong style="color: #f87171;">${escapeHtml(r.rejectReason)}</strong></span>
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(239,68,68,0.2); font-size: 0.78rem;">
+                <span style="color: #8899bb;"><i class="bi bi-info-circle"></i> Reason:</span>
+                <strong style="color: #f87171; margin-left: 6px;">${escapeHtml(r.rejectReason)}</strong>
             </div>
         `;
     } else if ((r.status === 'approved' || r.status === 'paid') && r.txHash) {
         extraInfoHtml = `
-            <div class="tx-info-row">
-                <span><i class="bi bi-hash"></i> TX Hash: <span class="tx-id-val">${escapeHtml(r.txHash)}</span></span>
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(46,204,113,0.2); font-size: 0.78rem;">
+                <span style="color: #8899bb;"><i class="bi bi-hash"></i> TX Hash:</span>
+                <span style="color: #a78bfa; margin-left: 6px; font-family: monospace;">${escapeHtml(r.txHash)}</span>
             </div>
         `;
     }
@@ -424,8 +474,8 @@ function renderRecordCard(r) {
 
             ${walletHtml}
 
-            <div class="tx-info-row">
-                <span><i class="bi bi-receipt"></i> Withdrawal ID: <span class="tx-id-val">${escapeHtml(r.withdrawalId || 'N/A')}</span></span>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(167,139,250,0.1); font-size: 0.75rem; color: #8899bb;">
+                <span><i class="bi bi-receipt"></i> ID: <span style="font-family: monospace; color: #a78bfa;">${escapeHtml(r.withdrawalId || 'N/A')}</span></span>
                 <span><i class="bi bi-diagram-3"></i> ${escapeHtml(r.network)}</span>
             </div>
 
@@ -436,12 +486,11 @@ function renderRecordCard(r) {
 }
 
 // ============================================================
-// ATOMIC MULTI-LOCATION SYNC (matches your original admin logic)
+// ATOMIC SYNC
 // ============================================================
 async function atomicSync(uid, withdrawalId, campaignId, updates) {
     const rootUpdates = {};
 
-    // 1. Update admin/withdrawals (find matching record)
     try {
         const adminSnap = await get(ref(db, 'admin/withdrawals'));
         if (adminSnap.exists()) {
@@ -460,11 +509,8 @@ async function atomicSync(uid, withdrawalId, campaignId, updates) {
                 }
             }
         }
-    } catch (err) {
-        console.warn('admin/withdrawals sync warning:', err);
-    }
+    } catch (err) { console.warn('admin/withdrawals sync warning:', err); }
 
-    // 2. Update user's transaction record
     try {
         const userSnap = await get(ref(db, `users/${uid}/transactions`));
         if (userSnap.exists()) {
@@ -483,11 +529,8 @@ async function atomicSync(uid, withdrawalId, campaignId, updates) {
                 }
             }
         }
-    } catch (err) {
-        console.warn('users/transactions sync warning:', err);
-    }
+    } catch (err) { console.warn('users/transactions sync warning:', err); }
 
-    // 3. Update global transactions
     try {
         const globalSnap = await get(ref(db, 'transactions'));
         if (globalSnap.exists()) {
@@ -506,186 +549,124 @@ async function atomicSync(uid, withdrawalId, campaignId, updates) {
                 }
             }
         }
-    } catch (err) {
-        console.warn('transactions sync warning:', err);
-    }
+    } catch (err) { console.warn('transactions sync warning:', err); }
 
-    // Apply all updates atomically
     if (Object.keys(rootUpdates).length > 0) {
         await update(ref(db), rootUpdates);
     }
 }
 
 // ============================================================
-// APPROVE
+// APPROVE HANDLER
 // ============================================================
 window.handleApprove = async function(uid, withdrawalId, campaignId, amount) {
     const key = uid + '::' + withdrawalId;
-
     if (isProcessingAction.has(key)) return;
 
-    // Confirmation dialog
     const confirmed = confirm(
         `✅ CONFIRM APPROVAL\n\n` +
-        `User UID: ${uid}\n` +
         `Amount: $${Number(amount).toFixed(2)} USDT\n` +
         `Withdrawal ID: ${withdrawalId}\n\n` +
         `⚠️ क्या आपने इस यूजर के wallet address पर ` +
         `$${Number(amount).toFixed(2)} USDT (BEP-20) भेज दिया है?\n\n` +
         `OK = हाँ, Approved कर दो\nCancel = रुको`
     );
-
     if (!confirmed) return;
 
     isProcessingAction.add(key);
-    renderList(); // Show spinner
+    renderWithdrawals();
 
     try {
-        // Auto-detect campaign ID if not provided
         let realCampaignId = campaignId;
         if (!realCampaignId) {
             const userCampaigns = allCampaignRewards[uid] || {};
             for (const possibleCid of POSSIBLE_CAMPAIGN_IDS) {
-                if (userCampaigns[possibleCid]) {
-                    realCampaignId = possibleCid;
-                    break;
-                }
+                if (userCampaigns[possibleCid]) { realCampaignId = possibleCid; break; }
             }
-            if (!realCampaignId) {
-                realCampaignId = Object.keys(userCampaigns)[0];
-            }
+            if (!realCampaignId) realCampaignId = Object.keys(userCampaigns)[0];
         }
-
-        if (!realCampaignId) {
-            throw new Error('Campaign ID not found for this user');
-        }
+        if (!realCampaignId) throw new Error('Campaign ID not found');
 
         const campaignRef = ref(db, `campaign_rewards/${uid}/${realCampaignId}`);
 
-        // Atomic lock: only approve if still pending
         const lockResult = await runTransaction(campaignRef, (current) => {
             if (!current) return current;
-            const status = String(current.status || '').toLowerCase();
-            if (status !== 'pending') return current; // Abort
-
+            if (String(current.status || '').toLowerCase() !== 'pending') return current;
             const now = Date.now();
             return {
                 ...current,
-                status: 'paid',           // Directly to 'paid' so user sees "Payment Sent"
-                approvedAt: now,
-                paidAt: now,
-                updatedAt: now,
-                isProcessed: true,
-                isPaidFinal: true
+                status: 'paid',
+                approvedAt: now, paidAt: now, updatedAt: now,
+                isProcessed: true, isPaidFinal: true
             };
         });
 
-        if (!lockResult.committed) {
-            throw new Error('Withdrawal is not in pending state — may have been processed already');
-        }
+        if (!lockResult.committed) throw new Error('Not pending — may have been processed');
 
         const now = Date.now();
-
-        // Sync across all locations
         try {
             await atomicSync(uid, withdrawalId, realCampaignId, {
-                status: 'paid',
-                approvedAt: now,
-                paidAt: now,
-                updatedAt: now
+                status: 'paid', approvedAt: now, paidAt: now, updatedAt: now
             });
         } catch (syncErr) {
-            console.error('Multi-location sync failed:', syncErr);
-            // Rollback
+            console.error('Sync failed:', syncErr);
             try {
-                await update(campaignRef, {
-                    status: 'pending',
-                    approvedAt: null,
-                    paidAt: null,
-                    updatedAt: Date.now(),
-                    isProcessed: false,
-                    isPaidFinal: false
-                });
-            } catch (rollbackErr) {
-                console.error('CRITICAL: Rollback failed', rollbackErr);
-            }
+                await update(campaignRef, { status: 'pending', approvedAt: null, paidAt: null, updatedAt: Date.now(), isProcessed: false, isPaidFinal: false });
+            } catch (rErr) { console.error('Rollback failed:', rErr); }
             throw new Error('Sync failed — rolled back');
         }
 
-        showToast(`✅ Approved! User will see "Payment Sent" on their website now.`, 'success');
-
+        showToast(`✅ Approved! User sees "Payment Sent" now.`, 'success');
     } catch (err) {
         console.error('Approve error:', err);
         showToast('❌ ' + (err.message || 'Failed to approve'), 'error');
     } finally {
         isProcessingAction.delete(key);
-        renderList();
+        renderWithdrawals();
     }
 };
 
 // ============================================================
-// REJECT
+// REJECT HANDLER
 // ============================================================
 window.handleReject = async function(uid, withdrawalId, campaignId) {
     const key = uid + '::' + withdrawalId;
-
     if (isProcessingAction.has(key)) return;
 
     const reason = prompt(
-        `❌ REJECT WITHDRAWAL\n\n` +
-        `User UID: ${uid}\n` +
-        `Withdrawal ID: ${withdrawalId}\n\n` +
-        `Rejection reason (optional):\n` +
-        `(यूजर को यह कारण दिखेगा)`,
+        `❌ REJECT WITHDRAWAL\n\nWithdrawal ID: ${withdrawalId}\n\nRejection reason (optional):`,
         ''
     );
-
-    // If user clicked Cancel on prompt, reason === null → abort
     if (reason === null) return;
 
     isProcessingAction.add(key);
-    renderList();
+    renderWithdrawals();
 
     try {
         let realCampaignId = campaignId;
         if (!realCampaignId) {
             const userCampaigns = allCampaignRewards[uid] || {};
             for (const possibleCid of POSSIBLE_CAMPAIGN_IDS) {
-                if (userCampaigns[possibleCid]) {
-                    realCampaignId = possibleCid;
-                    break;
-                }
+                if (userCampaigns[possibleCid]) { realCampaignId = possibleCid; break; }
             }
-            if (!realCampaignId) {
-                realCampaignId = Object.keys(userCampaigns)[0];
-            }
+            if (!realCampaignId) realCampaignId = Object.keys(userCampaigns)[0];
         }
-
-        if (!realCampaignId) {
-            throw new Error('Campaign ID not found for this user');
-        }
+        if (!realCampaignId) throw new Error('Campaign ID not found');
 
         const campaignRef = ref(db, `campaign_rewards/${uid}/${realCampaignId}`);
 
         const lockResult = await runTransaction(campaignRef, (current) => {
             if (!current) return current;
-            const status = String(current.status || '').toLowerCase();
-            if (status !== 'pending') return current;
-
+            if (String(current.status || '').toLowerCase() !== 'pending') return current;
             const now = Date.now();
-            const wasDeducted = current.deducted === true;
-            const deductedAmount = Number(current.deductedAmount || 0);
-
             const updateObj = {
                 ...current,
                 status: 'rejected',
                 rejectReason: reason || '',
-                rejectedAt: now,
-                updatedAt: now,
-                isProcessed: true
+                rejectedAt: now, updatedAt: now, isProcessed: true
             };
-
-            // Refund logic
+            const wasDeducted = current.deducted === true;
+            const deductedAmount = Number(current.deductedAmount || 0);
             if (wasDeducted && deductedAmount > 0 && isFinite(deductedAmount)) {
                 updateObj.refundPending = true;
                 updateObj.refundAmount = deductedAmount;
@@ -693,105 +674,102 @@ window.handleReject = async function(uid, withdrawalId, campaignId) {
                 updateObj.refundPending = false;
                 updateObj.refundAmount = 0;
             }
-
             return updateObj;
         });
 
-        if (!lockResult.committed) {
-            throw new Error('Withdrawal is not in pending state — may have been processed already');
-        }
+        if (!lockResult.committed) throw new Error('Not pending — may have been processed');
 
         const rejectedData = lockResult.snapshot.val();
         const now = Date.now();
-
         try {
             await atomicSync(uid, withdrawalId, realCampaignId, {
-                status: 'rejected',
-                rejectedAt: now,
-                updatedAt: now,
-                rejectReason: reason || ''
+                status: 'rejected', rejectedAt: now, updatedAt: now, rejectReason: reason || ''
             });
         } catch (syncErr) {
-            console.error('Multi-location sync failed:', syncErr);
+            console.error('Sync failed:', syncErr);
             try {
-                await update(campaignRef, {
-                    status: 'pending',
-                    updatedAt: Date.now(),
-                    isProcessed: false,
-                    refundPending: false
-                });
-            } catch (rollbackErr) {
-                console.error('CRITICAL: Rollback failed', rollbackErr);
-            }
+                await update(campaignRef, { status: 'pending', updatedAt: Date.now(), isProcessed: false, refundPending: false });
+            } catch (rErr) { console.error('Rollback failed:', rErr); }
             throw new Error('Sync failed — rolled back');
         }
 
-        const refundMsg = rejectedData.refundPending
-            ? ' + reward refunded to user (available again)'
-            : '';
+        const refundMsg = rejectedData.refundPending ? ' + reward refunded' : '';
         showToast(`❌ Rejected${refundMsg}`, 'success');
-
     } catch (err) {
         console.error('Reject error:', err);
         showToast('❌ ' + (err.message || 'Failed to reject'), 'error');
     } finally {
         isProcessingAction.delete(key);
-        renderList();
+        renderWithdrawals();
     }
 };
 
 // ============================================================
-// TAB SWITCHING
+// TAB HANDLERS
 // ============================================================
 function setupTabs() {
-    document.querySelectorAll('.custom-tab').forEach(tab => {
+    document.querySelectorAll('.main-tab-btn').forEach(tab => {
         tab.addEventListener('click', () => {
-            document.querySelectorAll('.custom-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.main-tab-btn').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            activeTab = tab.getAttribute('data-tab');
-            applyFilters();
+            activeMainTab = tab.getAttribute('data-main-tab');
+
+            document.getElementById('overviewSection').style.display = activeMainTab === 'overview' ? 'block' : 'none';
+            document.getElementById('withdrawalsSection').style.display = activeMainTab === 'withdrawals' ? 'block' : 'none';
+
+            if (activeMainTab === 'withdrawals') renderWithdrawals();
+        });
+    });
+
+    document.querySelectorAll('.sub-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            activeSubTab = tab.getAttribute('data-sub-tab');
+            renderWithdrawals();
         });
     });
 }
 
-// ============================================================
-// SEARCH
-// ============================================================
 function setupSearch() {
     document.getElementById('searchInput').addEventListener('input', (e) => {
         searchQuery = e.target.value;
-        applyFilters();
+        renderWithdrawals();
     });
 }
 
 // ============================================================
-// MAIN DATA LOADING
+// MAIN LOADING
 // ============================================================
 function loadData() {
-    let usersLoaded = false;
-    let rewardsLoaded = false;
-    let adminWdsLoaded = false;
+    let usersLoaded = false, rewardsLoaded = false, adminWdsLoaded = false;
 
     const checkReady = () => {
         if (usersLoaded && rewardsLoaded && adminWdsLoaded) {
             dataReady = true;
-            allRecords = buildRecords(allUsers, allCampaignRewards, allAdminWithdrawals);
+            const { overview, withdrawals } = buildData(allUsers, allCampaignRewards, allAdminWithdrawals);
+            allOverviewRecords = overview;
+            allWithdrawalRecords = withdrawals;
+
             document.getElementById('loadingContainer').style.display = 'none';
             document.getElementById('contentContainer').style.display = 'block';
 
             updateSummary();
-            applyFilters();
+            renderOverview();
+            renderWithdrawals();
         }
     };
 
     const refresh = () => {
         if (!dataReady) return;
-        allRecords = buildRecords(allUsers, allCampaignRewards, allAdminWithdrawals);
+        const { overview, withdrawals } = buildData(allUsers, allCampaignRewards, allAdminWithdrawals);
+        allOverviewRecords = overview;
+        allWithdrawalRecords = withdrawals;
         updateSummary();
-        applyFilters();
+        renderOverview();
+        renderWithdrawals();
     };
 
-    // Users
     usersOff = onValue(ref(db, 'users'), (snap) => {
         allUsers = snap.exists() ? snap.val() : {};
         usersLoaded = true;
@@ -801,48 +779,39 @@ function loadData() {
         showToast('Failed to load users: ' + err.message, 'error');
     });
 
-    // Campaign rewards
     rewardsOff = onValue(ref(db, 'campaign_rewards'), (snap) => {
         allCampaignRewards = snap.exists() ? snap.val() : {};
         rewardsLoaded = true;
         if (dataReady) refresh(); else checkReady();
     }, (err) => {
-        console.error('Campaign rewards load error:', err);
+        console.error('Rewards load error:', err);
         showToast('Failed to load rewards: ' + err.message, 'error');
     });
 
-    // Admin withdrawals
     adminWdsOff = onValue(ref(db, 'admin/withdrawals'), (snap) => {
         allAdminWithdrawals = snap.exists() ? snap.val() : {};
         adminWdsLoaded = true;
         if (dataReady) refresh(); else checkReady();
     }, (err) => {
-        console.error('Admin withdrawals load error:', err);
+        console.error('Withdrawals load error:', err);
         showToast('Failed to load withdrawals: ' + err.message, 'error');
     });
 }
 
 // ============================================================
-// AUTH CHECK
+// AUTH
 // ============================================================
 onAuthStateChanged(auth, (user) => {
     if (!user) {
-        showToast('Not authenticated — redirecting to admin login...', 'warning');
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 1500);
+        showToast('Not authenticated — redirecting...', 'warning');
+        setTimeout(() => { window.location.href = 'index.html'; }, 1500);
         return;
     }
-
     if (user.email && !user.email.includes('admin')) {
         showToast('Access denied — admin only', 'error');
-        setTimeout(() => {
-            signOut(auth);
-            window.location.href = 'index.html';
-        }, 2000);
+        setTimeout(() => { signOut(auth); window.location.href = 'index.html'; }, 2000);
         return;
     }
-
     setupTabs();
     setupSearch();
     loadData();
@@ -857,10 +826,4 @@ window.addEventListener('beforeunload', () => {
     if (adminWdsOff) { try { adminWdsOff(); } catch (e) {} }
 });
 
-// ============================================================
-// BOOT LOG
-// ============================================================
-console.log('%c🎁 Direct Offer Admin — Live Management', 'color: #a78bfa; font-size: 14px; font-weight: bold;');
-console.log('%c💸 Approve → status becomes "paid" (user sees "Payment Sent")', 'color: #2ecc71; font-size: 11px;');
-console.log('%c❌ Reject → status becomes "rejected" (refund auto-applied)', 'color: #f87171; font-size: 11px;');
-console.log('%c📋 Copy button copies FULL BEP-20 address', 'color: #60a5fa; font-size: 11px;');
+console.log('%c🎁 Direct Offer Admin — v2 with Withdrawals Tab', 'color: #a78bfa; font-size: 14px; font-weight: bold;');
