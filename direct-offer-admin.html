@@ -61,6 +61,7 @@
         .page-header {
             margin-bottom: 24px; padding-bottom: 16px;
             border-bottom: 1px solid rgba(167,139,250,0.1);
+            display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 15px;
         }
         .page-header h2 {
             font-weight: 900; font-size: 1.8rem;
@@ -83,11 +84,28 @@
             50% { opacity: 0.5; transform: scale(0.85); }
         }
 
+        /* 🆕 Campaign Selector */
+        .campaign-selector-wrap {
+            background: rgba(19,34,55,0.8);
+            border: 1.5px solid rgba(167,139,250,0.3);
+            border-radius: 14px; padding: 10px 16px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .campaign-selector-wrap i { color: #a78bfa; font-size: 1.2rem; }
+        .campaign-selector-wrap select {
+            background: transparent; border: none; color: #fff;
+            font-weight: 700; font-size: 0.95rem; cursor: pointer;
+            outline: none; width: 100%;
+        }
+        .campaign-selector-wrap select option {
+            background: #0f1f3a; color: #fff; font-weight: 500;
+        }
+
         /* Summary Cards */
         .stat-card {
             background: rgba(19,34,55,0.7);
             border: 1px solid rgba(167,139,250,0.1);
-            border-radius: 18px; padding: 1.4rem;
+            border-radius: 18px; padding: 1.2rem;
             transition: all 0.3s ease; text-align: center; height: 100%;
         }
         .stat-card:hover {
@@ -95,27 +113,27 @@
             box-shadow: 0 12px 30px rgba(167,139,250,0.08);
         }
         .stat-card .stat-icon {
-            width: 52px; height: 52px; border-radius: 14px;
+            width: 44px; height: 44px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.4rem; margin: 0 auto 12px;
+            font-size: 1.2rem; margin: 0 auto 10px;
         }
         .stat-card .stat-icon.purple { background: rgba(167,139,250,0.15); color: #a78bfa; }
         .stat-card .stat-icon.yellow { background: rgba(251,191,36,0.15); color: #fbbf24; }
         .stat-card .stat-icon.green { background: rgba(46,204,113,0.15); color: #2ecc71; }
-        .stat-card .stat-icon.red { background: rgba(239,68,68,0.15); color: #f87171; }
         .stat-card .stat-icon.blue { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        .stat-card .stat-icon.teal { background: rgba(52,211,153,0.15); color: #34d399; }
         .stat-card .stat-number {
-            font-size: 1.9rem; font-weight: 900; color: #fff;
+            font-size: 1.5rem; font-weight: 900; color: #fff;
             line-height: 1.1; letter-spacing: -0.5px;
         }
         .stat-card .stat-number.purple { color: #a78bfa; }
         .stat-card .stat-number.yellow { color: #fbbf24; }
         .stat-card .stat-number.green { color: #2ecc71; }
-        .stat-card .stat-number.red { color: #f87171; }
         .stat-card .stat-number.blue { color: #60a5fa; }
+        .stat-card .stat-number.teal { color: #34d399; }
         .stat-card .stat-label {
-            color: #8899bb; font-size: 0.75rem; font-weight: 500;
-            margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+            color: #8899bb; font-size: 0.72rem; font-weight: 500;
+            margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;
         }
 
         /* Tabs */
@@ -142,8 +160,6 @@
             font-size: 0.7rem; font-weight: 700;
         }
         .custom-tab.active .badge-count { background: #a78bfa; color: #0b1120; }
-        
-        /* Pending Withdrawals notification */
         .custom-tab.withdrawals-tab .badge-count.pending-notify {
             background: rgba(251,191,36,0.2); color: #fbbf24;
             border: 1px solid rgba(251,191,36,0.4);
@@ -183,10 +199,6 @@
             box-shadow: 0 8px 25px rgba(251,191,36,0.08);
             transform: translateY(-2px);
         }
-        .withdrawal-card.rejected { border-color: rgba(239,68,68,0.3); }
-        .withdrawal-card.rejected::before { background: linear-gradient(180deg, #ef4444, #dc2626); }
-        .withdrawal-card.approved, .withdrawal-card.paid { border-color: rgba(46,204,113,0.3); }
-        .withdrawal-card.approved::before, .withdrawal-card.paid::before { background: linear-gradient(180deg, #2ecc71, #27ae60); }
 
         /* Card Header */
         .wc-header {
@@ -213,7 +225,7 @@
         .wc-amount .currency { font-size: 0.75rem; color: #8899bb; font-weight: 500; margin-left: 4px; }
         .wc-date { color: #8899bb; font-size: 0.72rem; margin-top: 6px; }
 
-        /* Wallet Address Box */
+        /* Wallet Box */
         .wallet-box {
             background: rgba(96,165,250,0.06);
             border: 1px solid rgba(96,165,250,0.2);
@@ -248,7 +260,7 @@
             border-color: rgba(46,204,113,0.5); color: #2ecc71;
         }
 
-        /* Action Buttons */
+        /* Actions */
         .wc-actions {
             display: flex; gap: 10px; justify-content: flex-end;
             margin-top: 16px; flex-wrap: wrap;
@@ -285,8 +297,9 @@
         .status-badge.approved { background: rgba(46,204,113,0.15); color: #2ecc71; border: 1px solid rgba(46,204,113,0.3); }
         .status-badge.rejected { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
         .status-badge.paid { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+        .status-badge.available { background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
 
-        /* History Table */
+        /* Tables */
         .table-responsive { overflow-x: auto; border-radius: 12px; }
         .table-custom { color: #f0f4ff; border-color: #1f334f; margin-bottom: 0; width: 100%; }
         .table-custom thead th {
@@ -341,8 +354,8 @@
             .page-header h2 { font-size: 1.4rem; }
             .page-header h2 i { font-size: 1.4rem; }
             .stat-card { padding: 1rem; }
-            .stat-card .stat-number { font-size: 1.5rem; }
-            .stat-card .stat-icon { width: 42px; height: 42px; font-size: 1.1rem; }
+            .stat-card .stat-number { font-size: 1.3rem; }
+            .stat-card .stat-icon { width: 36px; height: 36px; font-size: 1rem; }
             .card-glass { padding: 1rem; }
             .withdrawal-card { padding: 15px; }
             .wc-amount { font-size: 1.3rem; }
@@ -353,6 +366,7 @@
             .custom-tabs { overflow-x: auto; }
             .custom-tab { padding: 10px 14px; font-size: 0.82rem; }
             .wallet-address { font-size: 0.72rem; }
+            .campaign-selector-wrap { width: 100%; margin-top: 10px; }
         }
     </style>
 </head>
@@ -360,7 +374,6 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- Navbar -->
 <nav class="navbar-custom">
     <div class="container-fluid px-3">
         <a class="navbar-brand" href="#">
@@ -374,10 +387,8 @@
     </div>
 </nav>
 
-<!-- Main Content -->
 <div class="dashboard-container">
 
-    <!-- Loading -->
     <div class="loading-container" id="loadingContainer">
         <div class="loading-spinner"></div>
         <div class="loading-text">
@@ -385,46 +396,69 @@
         </div>
     </div>
 
-    <!-- Content -->
     <div id="contentContainer" style="display: none;">
 
-        <!-- Page Header -->
+        <!-- Page Header + Campaign Selector -->
         <div class="page-header">
-            <h2><i class="bi bi-gift-fill"></i> Direct Offer Admin</h2>
-            <p>
-                <span class="live-dot"></span>
-                Live • Manage all records and pending withdrawal requests
-            </p>
+            <div>
+                <h2><i class="bi bi-gift-fill"></i> Direct Offer Admin</h2>
+                <p>
+                    <span class="live-dot"></span>
+                    Live • Manage all records and pending withdrawal requests
+                </p>
+            </div>
+            
+            <!-- 🆕 Dynamic Campaign Selector -->
+            <div class="campaign-selector-wrap">
+                <i class="bi bi-funnel-fill"></i>
+                <select id="campaignSelector" onchange="window.changeCampaign(this.value)">
+                    <option value="">Loading campaigns...</option>
+                </select>
+            </div>
         </div>
 
         <!-- Summary Cards -->
         <div class="row g-3 mb-4">
-            <div class="col-md-3 col-6">
+            <div class="col-md-2 col-6">
                 <div class="stat-card">
                     <div class="stat-icon purple"><i class="bi bi-people-fill"></i></div>
                     <div class="stat-number purple" id="totalParticipants">0</div>
                     <div class="stat-label">Participants</div>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
+            <div class="col-md-2 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="bi bi-trophy-fill"></i></div>
+                    <div class="stat-number green" id="totalCompleted">0</div>
+                    <div class="stat-label">Offer Completed</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon teal"><i class="bi bi-cash-coin"></i></div>
+                    <div class="stat-number teal" id="totalEarned">$0.00</div>
+                    <div class="stat-label">Total Reward Generated</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-6">
                 <div class="stat-card">
                     <div class="stat-icon yellow"><i class="bi bi-hourglass-split"></i></div>
                     <div class="stat-number yellow" id="totalPending">0</div>
                     <div class="stat-label">Pending Withdrawals</div>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
+            <div class="col-md-2 col-6">
                 <div class="stat-card">
-                    <div class="stat-icon blue"><i class="bi bi-cash-stack"></i></div>
+                    <div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div>
                     <div class="stat-number blue" id="totalWithdrawn">$0.00</div>
-                    <div class="stat-label">Total Withdrawn</div>
+                    <div class="stat-label">Total Withdrawn (Paid)</div>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
+            <div class="col-md-2 col-6">
                 <div class="stat-card">
-                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-                    <div class="stat-number green" id="totalApproved">0</div>
-                    <div class="stat-label">Approved / Paid</div>
+                    <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
+                    <div class="stat-number red" id="totalRejected">0</div>
+                    <div class="stat-label">Rejected</div>
                 </div>
             </div>
         </div>
@@ -450,18 +484,15 @@
             </div>
         </div>
 
-        <!-- WITHDRAWALS SECTION (Pending Cards + History) -->
+        <!-- WITHDRAWALS SECTION -->
         <div id="withdrawalsSection">
-            <!-- Pending Cards Container -->
             <div id="pendingCardsContainer"></div>
-            <!-- Pending Empty State -->
             <div id="pendingEmptyState" class="empty-state" style="display: none;">
                 <i class="bi bi-check2-circle" style="color: #2ecc71;"></i>
                 <h5>No Pending Withdrawals</h5>
-                <p>All caught up! No pending requests right now.</p>
+                <p>All caught up! No pending requests for this campaign.</p>
             </div>
 
-            <!-- History Section -->
             <div class="card-glass mt-4">
                 <div class="card-title">
                     <div class="card-title-text">
@@ -479,15 +510,13 @@
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody id="historyTableBody">
-                            <!-- Filled by JS -->
-                        </tbody>
+                        <tbody id="historyTableBody"></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- ALL RECORDS SECTION (Overview Data) -->
+        <!-- ALL RECORDS SECTION -->
         <div id="allRecordsSection" style="display: none;">
             <div class="card-glass">
                 <div class="card-title">
@@ -506,19 +535,15 @@
                                 <th>Updated</th>
                             </tr>
                         </thead>
-                        <tbody id="allRecordsTableBody">
-                            <!-- Filled by JS -->
-                        </tbody>
+                        <tbody id="allRecordsTableBody"></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
     </div>
-
 </div>
 
-<!-- Firebase Import Map -->
 <script type="importmap">
 {
     "imports": {
@@ -529,7 +554,6 @@
 }
 </script>
 
-<!-- External JS -->
 <script type="module" src="direct-offer-admin.js"></script>
 
 </body>
