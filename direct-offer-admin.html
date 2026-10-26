@@ -2,559 +2,351 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Direct Offer — Admin Panel | RND Staking</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Diwali Direct Offer</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        * { font-family: 'Inter', sans-serif; }
         body { background: #080e1a; color: #f0f4ff; min-height: 100vh; }
-
-        /* Navbar */
-        .navbar-custom {
-            background: rgba(8,14,26,0.95);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(167,139,250,0.15);
-            padding: 10px 0; position: sticky; top: 0; z-index: 1050;
+        
+        .navbar-custom { 
+            background: rgba(8,14,26,0.95); backdrop-filter: blur(20px); 
+            border-bottom: 1px solid rgba(46,204,113,0.15); padding: 15px 0; 
+            position: sticky; top: 0; z-index: 1050; 
         }
-        .navbar-custom .navbar-brand {
-            font-weight: 800; font-size: 1.2rem; color: #fff !important;
-            display: flex; align-items: center; gap: 8px;
+        .navbar-custom .navbar-brand { font-weight: 800; color: #fff !important; }
+        
+        .dashboard-container { padding: 30px 20px; max-width: 1400px; margin: 0 auto; }
+        
+        .card-glass { 
+            background: rgba(19,34,55,0.8); backdrop-filter: blur(10px); 
+            border: 1px solid rgba(46,204,113,0.1); border-radius: 20px; 
+            padding: 1.5rem; margin-bottom: 20px; 
         }
-        .navbar-custom .navbar-brand i { color: #a78bfa; font-size: 1.4rem; }
-        .admin-badge {
-            background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.2);
-            border-radius: 30px; padding: 4px 14px;
-            font-size: 0.65rem; color: #f87171; font-weight: 600;
+        .card-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 15px; border-bottom: 1px solid rgba(46,204,113,0.1); padding-bottom: 10px; }
+        
+        .stat-card { 
+            background: rgba(19,34,55,0.6); border: 1px solid rgba(46,204,113,0.08); 
+            border-radius: 16px; padding: 1.5rem; text-align: center; 
         }
-        .btn-back {
-            background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.25);
-            color: #2ecc71; padding: 7px 16px; border-radius: 10px;
-            font-weight: 600; font-size: 0.8rem; text-decoration: none;
-            display: inline-flex; align-items: center; gap: 6px;
-            transition: all 0.3s ease; white-space: nowrap;
+        .stat-card .stat-number { font-size: 2rem; font-weight: 800; color: #fff; }
+        .stat-card .stat-label { color: #8899bb; font-size: 0.85rem; font-weight: 500; margin-top: 5px; }
+        
+        .table-custom { color: #f0f4ff; border-color: #1f334f; margin-bottom: 0; }
+        .table-custom th { border-bottom: 2px solid #2a3a5a; color: #a0b8d0; font-weight: 600; font-size: 0.85rem; background: rgba(19,34,55,0.9); }
+        .table-custom td { border-color: #1f334f; vertical-align: middle; font-size: 0.85rem; }
+        
+        .badge-pending { background: rgba(251,191,36,0.15); color: #fbbf24; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem;}
+        .badge-approved { background: rgba(46,204,113,0.15); color: #2ecc71; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem;}
+        .badge-rejected { background: rgba(239,68,68,0.15); color: #f87171; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem;}
+        
+        .btn-copy { 
+            background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.2); 
+            color: #2ecc71; padding: 4px 10px; border-radius: 6px; 
+            cursor: pointer; transition: all 0.2s; font-size: 0.75rem;
         }
-        .btn-back:hover {
-            background: rgba(46,204,113,0.2); border-color: #2ecc71;
-            color: #fff; transform: translateY(-2px);
+        .btn-copy:hover { background: rgba(46,204,113,0.2); }
+        
+        .wallet-address { 
+            font-family: monospace; font-size: 0.8rem; color: #60a5fa; 
+            background: rgba(96,165,250,0.1); padding: 4px 8px; 
+            border-radius: 6px; max-width: 200px; display: inline-block;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-
-        /* Container */
-        .dashboard-container { padding: 20px; max-width: 1400px; margin: 0 auto; }
-
-        /* Loading */
-        .loading-container {
-            display: flex; flex-direction: column; align-items: center;
-            justify-content: center; min-height: 70vh; text-align: center;
-        }
-        .loading-spinner {
-            width: 60px; height: 60px;
-            border: 4px solid rgba(167,139,250,0.15);
-            border-top-color: #a78bfa; border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-text { color: #8899bb; font-size: 0.95rem; }
-
-        /* Header */
-        .page-header {
-            margin-bottom: 24px; padding-bottom: 16px;
-            border-bottom: 1px solid rgba(167,139,250,0.1);
-            display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 15px;
-        }
-        .page-header h2 {
-            font-weight: 900; font-size: 1.8rem;
-            background: linear-gradient(135deg, #a78bfa, #8b5cf6);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text; display: flex; align-items: center;
-            gap: 12px; margin-bottom: 6px;
-        }
-        .page-header h2 i { -webkit-text-fill-color: #a78bfa; color: #a78bfa; font-size: 1.8rem; }
-        .page-header p {
-            color: #8899bb; font-size: 0.9rem; display: flex;
-            align-items: center; gap: 8px; margin: 0;
-        }
-        .page-header .live-dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: #2ecc71; display: inline-block; animation: pulseDot 2s infinite;
-        }
-        @keyframes pulseDot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.85); }
-        }
-
-        /* 🆕 Campaign Selector */
-        .campaign-selector-wrap {
-            background: rgba(19,34,55,0.8);
-            border: 1.5px solid rgba(167,139,250,0.3);
-            border-radius: 14px; padding: 10px 16px;
-            display: flex; align-items: center; gap: 10px;
-        }
-        .campaign-selector-wrap i { color: #a78bfa; font-size: 1.2rem; }
-        .campaign-selector-wrap select {
-            background: transparent; border: none; color: #fff;
-            font-weight: 700; font-size: 0.95rem; cursor: pointer;
-            outline: none; width: 100%;
-        }
-        .campaign-selector-wrap select option {
-            background: #0f1f3a; color: #fff; font-weight: 500;
-        }
-
-        /* Summary Cards */
-        .stat-card {
-            background: rgba(19,34,55,0.7);
-            border: 1px solid rgba(167,139,250,0.1);
-            border-radius: 18px; padding: 1.2rem;
-            transition: all 0.3s ease; text-align: center; height: 100%;
-        }
-        .stat-card:hover {
-            border-color: rgba(167,139,250,0.35); transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(167,139,250,0.08);
-        }
-        .stat-card .stat-icon {
-            width: 44px; height: 44px; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; margin: 0 auto 10px;
-        }
-        .stat-card .stat-icon.purple { background: rgba(167,139,250,0.15); color: #a78bfa; }
-        .stat-card .stat-icon.yellow { background: rgba(251,191,36,0.15); color: #fbbf24; }
-        .stat-card .stat-icon.green { background: rgba(46,204,113,0.15); color: #2ecc71; }
-        .stat-card .stat-icon.blue { background: rgba(96,165,250,0.15); color: #60a5fa; }
-        .stat-card .stat-icon.teal { background: rgba(52,211,153,0.15); color: #34d399; }
-        .stat-card .stat-number {
-            font-size: 1.5rem; font-weight: 900; color: #fff;
-            line-height: 1.1; letter-spacing: -0.5px;
-        }
-        .stat-card .stat-number.purple { color: #a78bfa; }
-        .stat-card .stat-number.yellow { color: #fbbf24; }
-        .stat-card .stat-number.green { color: #2ecc71; }
-        .stat-card .stat-number.blue { color: #60a5fa; }
-        .stat-card .stat-number.teal { color: #34d399; }
-        .stat-card .stat-label {
-            color: #8899bb; font-size: 0.72rem; font-weight: 500;
-            margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-
-        /* Tabs */
-        .custom-tabs {
-            display: flex; gap: 8px; margin-bottom: 20px;
-            border-bottom: 1px solid rgba(167,139,250,0.1);
-            padding-bottom: 0; flex-wrap: wrap;
-        }
-        .custom-tab {
-            background: transparent; border: none; color: #8899bb;
-            padding: 12px 20px; font-weight: 600; font-size: 0.9rem;
-            cursor: pointer; transition: all 0.3s;
-            border-bottom: 3px solid transparent;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .custom-tab:hover { color: #fff; background: rgba(167,139,250,0.05); }
-        .custom-tab.active {
-            color: #a78bfa; border-bottom-color: #a78bfa;
-            background: rgba(167,139,250,0.05);
-        }
-        .custom-tab .badge-count {
-            background: rgba(167,139,250,0.2); color: #a78bfa;
-            padding: 2px 8px; border-radius: 12px;
-            font-size: 0.7rem; font-weight: 700;
-        }
-        .custom-tab.active .badge-count { background: #a78bfa; color: #0b1120; }
-        .custom-tab.withdrawals-tab .badge-count.pending-notify {
-            background: rgba(251,191,36,0.2); color: #fbbf24;
-            border: 1px solid rgba(251,191,36,0.4);
-            animation: pulseBadge 2s infinite;
-        }
-        @keyframes pulseBadge { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-
-        /* Card Glass */
-        .card-glass {
-            background: rgba(19,34,55,0.75); backdrop-filter: blur(10px);
-            border: 1px solid rgba(167,139,250,0.1);
-            border-radius: 20px; padding: 1.5rem;
-            transition: all 0.3s ease; margin-bottom: 20px;
-        }
-        .card-title {
-            font-size: 1rem; font-weight: 700; color: #fff;
-            margin-bottom: 15px; display: flex; align-items: center;
-            justify-content: space-between; flex-wrap: wrap; gap: 10px;
-        }
-        .card-title-text { display: flex; align-items: center; gap: 8px; }
-        .card-title i { color: #a78bfa; margin-right: 4px; }
-
-        /* Withdrawal Card */
-        .withdrawal-card {
-            background: rgba(8,14,26,0.6);
-            border: 1.5px solid rgba(251,191,36,0.2);
-            border-radius: 16px; padding: 20px;
-            margin-bottom: 16px; transition: all 0.3s;
-            position: relative; overflow: hidden;
-        }
-        .withdrawal-card::before {
-            content: ''; position: absolute; top: 0; left: 0; bottom: 0;
-            width: 4px; background: linear-gradient(180deg, #fbbf24, #f59e0b);
-        }
-        .withdrawal-card:hover {
-            border-color: rgba(251,191,36,0.5);
-            box-shadow: 0 8px 25px rgba(251,191,36,0.08);
-            transform: translateY(-2px);
-        }
-
-        /* Card Header */
-        .wc-header {
-            display: flex; justify-content: space-between;
-            align-items: flex-start; gap: 15px;
-            margin-bottom: 16px; flex-wrap: wrap;
-        }
-        .wc-user {
-            display: flex; align-items: center; gap: 12px; flex: 1; min-width: 200px;
-        }
-        .wc-avatar {
-            width: 44px; height: 44px; border-radius: 12px;
-            background: linear-gradient(135deg, #a78bfa, #8b5cf6);
-            color: #fff; font-weight: 800; font-size: 1rem;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-        .wc-user-info { min-width: 0; }
-        .wc-name { color: #fff; font-weight: 700; font-size: 0.95rem; line-height: 1.2; }
-        .wc-username { color: #a78bfa; font-size: 0.8rem; margin-top: 2px; }
-        .wc-user-id { color: #556688; font-size: 0.7rem; margin-top: 2px; font-family: monospace; }
-        .wc-amount-wrap { text-align: right; }
-        .wc-amount { font-size: 1.6rem; font-weight: 900; color: #fbbf24; line-height: 1; }
-        .wc-amount .currency { font-size: 0.75rem; color: #8899bb; font-weight: 500; margin-left: 4px; }
-        .wc-date { color: #8899bb; font-size: 0.72rem; margin-top: 6px; }
-
-        /* Wallet Box */
-        .wallet-box {
-            background: rgba(96,165,250,0.06);
-            border: 1px solid rgba(96,165,250,0.2);
-            border-radius: 12px; padding: 14px; margin: 14px 0;
-        }
-        .wallet-label {
-            color: #60a5fa; font-size: 0.72rem; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.5px;
-            margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
-        }
-        .wallet-address-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        .wallet-address {
-            background: rgba(8,14,26,0.7);
-            border: 1px solid rgba(96,165,250,0.15);
-            border-radius: 8px; padding: 10px 14px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.8rem; color: #60a5fa;
-            word-break: break-all; flex: 1; min-width: 200px; user-select: all;
-        }
-        .btn-copy-wallet {
-            background: rgba(96,165,250,0.15);
-            border: 1px solid rgba(96,165,250,0.3);
-            color: #60a5fa; padding: 10px 18px;
-            border-radius: 8px; font-weight: 700;
-            font-size: 0.8rem; cursor: pointer;
-            transition: all 0.3s; white-space: nowrap;
-            display: inline-flex; align-items: center; gap: 6px;
-        }
-        .btn-copy-wallet:hover { background: rgba(96,165,250,0.25); color: #fff; }
-        .btn-copy-wallet.copied {
-            background: rgba(46,204,113,0.2);
-            border-color: rgba(46,204,113,0.5); color: #2ecc71;
-        }
-
-        /* Actions */
-        .wc-actions {
-            display: flex; gap: 10px; justify-content: flex-end;
-            margin-top: 16px; flex-wrap: wrap;
-        }
-        .btn-approve {
-            background: linear-gradient(135deg, #2ecc71, #27ae60);
-            border: none; color: #fff; padding: 12px 24px;
-            border-radius: 10px; font-weight: 700; font-size: 0.88rem;
-            cursor: pointer; transition: all 0.3s;
-            display: inline-flex; align-items: center; gap: 8px;
-            box-shadow: 0 4px 15px rgba(46,204,113,0.2);
-        }
-        .btn-approve:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(46,204,113,0.35); }
-        .btn-approve:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
-        .btn-reject {
-            background: rgba(239,68,68,0.1);
-            border: 1.5px solid rgba(239,68,68,0.35);
-            color: #f87171; padding: 12px 24px;
-            border-radius: 10px; font-weight: 700; font-size: 0.88rem;
-            cursor: pointer; transition: all 0.3s;
-            display: inline-flex; align-items: center; gap: 8px;
-        }
-        .btn-reject:hover { background: rgba(239,68,68,0.2); color: #fff; transform: translateY(-2px); }
-        .btn-reject:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
-
-        /* Status badges */
-        .status-badge {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 5px 14px; border-radius: 20px;
-            font-weight: 700; font-size: 0.72rem;
-            text-transform: uppercase; letter-spacing: 0.3px;
-        }
-        .status-badge.pending { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
-        .status-badge.approved { background: rgba(46,204,113,0.15); color: #2ecc71; border: 1px solid rgba(46,204,113,0.3); }
-        .status-badge.rejected { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-        .status-badge.paid { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
-        .status-badge.available { background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
-
-        /* Tables */
-        .table-responsive { overflow-x: auto; border-radius: 12px; }
-        .table-custom { color: #f0f4ff; border-color: #1f334f; margin-bottom: 0; width: 100%; }
-        .table-custom thead th {
-            border-bottom: 2px solid rgba(167,139,250,0.2);
-            color: #a0b8d0; font-weight: 700; font-size: 0.72rem;
-            text-transform: uppercase; letter-spacing: 0.5px;
-            padding: 12px 10px; white-space: nowrap;
-        }
-        .table-custom tbody td {
-            border-color: rgba(167,139,250,0.06);
-            vertical-align: middle; font-size: 0.85rem; padding: 14px 10px;
-        }
-        .table-custom tbody tr:hover { background: rgba(167,139,250,0.03); }
-
-        /* Empty State */
-        .empty-state { text-align: center; padding: 60px 20px; }
-        .empty-state i { font-size: 4rem; color: #2a3a5a; margin-bottom: 20px; display: block; }
-        .empty-state h5 { color: #a0b8d0; font-weight: 700; margin-bottom: 8px; }
-        .empty-state p { color: #556688; font-size: 0.88rem; margin: 0; }
-
-        /* Toast */
-        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px; }
-        .toast-custom {
-            background: rgba(19,34,55,0.95); backdrop-filter: blur(10px);
-            border: 1px solid rgba(167,139,250,0.25);
-            border-radius: 14px; padding: 14px 18px;
-            color: #f0f4ff; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-            display: flex; align-items: center; gap: 12px;
-            animation: slideIn 0.4s ease; margin-bottom: 10px; font-size: 0.88rem;
-        }
-        .toast-custom.success { border-left: 4px solid #2ecc71; }
-        .toast-custom.error { border-left: 4px solid #ef4444; }
-        .toast-custom.warning { border-left: 4px solid #fbbf24; }
-        .toast-custom i { font-size: 1.3rem; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-        /* Search */
-        .search-wrap { position: relative; max-width: 320px; flex: 1; }
-        .search-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #556688; }
-        .search-input {
-            background: rgba(8,14,26,0.7);
-            border: 1.5px solid rgba(167,139,250,0.15);
-            border-radius: 12px; padding: 10px 16px 10px 42px;
-            color: #f0f4ff; font-size: 0.9rem; width: 100%; transition: all 0.3s;
-        }
-        .search-input:focus { border-color: #a78bfa; outline: none; box-shadow: 0 0 0 3px rgba(167,139,250,0.1); }
-        .search-input::placeholder { color: #556688; }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .dashboard-container { padding: 15px; }
-            .page-header h2 { font-size: 1.4rem; }
-            .page-header h2 i { font-size: 1.4rem; }
-            .stat-card { padding: 1rem; }
-            .stat-card .stat-number { font-size: 1.3rem; }
-            .stat-card .stat-icon { width: 36px; height: 36px; font-size: 1rem; }
-            .card-glass { padding: 1rem; }
-            .withdrawal-card { padding: 15px; }
-            .wc-amount { font-size: 1.3rem; }
-            .navbar-custom .navbar-brand { font-size: 1rem; }
-            .btn-back span { display: none; }
-            .wc-actions { flex-direction: column-reverse; }
-            .wc-actions button { width: 100%; justify-content: center; }
-            .custom-tabs { overflow-x: auto; }
-            .custom-tab { padding: 10px 14px; font-size: 0.82rem; }
-            .wallet-address { font-size: 0.72rem; }
-            .campaign-selector-wrap { width: 100%; margin-top: 10px; }
-        }
+        
+        .user-info { display: flex; flex-direction: column; }
+        .user-name { font-weight: 700; color: #fff; }
+        .user-id { font-size: 0.7rem; color: #64748b; }
     </style>
 </head>
 <body>
 
-<div class="toast-container" id="toastContainer"></div>
-
-<nav class="navbar-custom">
-    <div class="container-fluid px-3">
-        <a class="navbar-brand" href="#">
-            <i class="bi bi-gift-fill"></i>
-            Direct Offer <span style="color: #8899bb; font-weight: 500; font-size: 0.9rem;">Admin</span>
-            <span class="admin-badge"><i class="bi bi-shield-lock"></i> Live</span>
-        </a>
-        <a href="index.html" class="btn-back">
-            <i class="bi bi-arrow-left"></i> <span>Back to Main Admin</span>
-        </a>
-    </div>
-</nav>
-
-<div class="dashboard-container">
-
-    <div class="loading-container" id="loadingContainer">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">
-            <i class="bi bi-gift"></i> Loading direct offer data...
+    <nav class="navbar navbar-custom">
+        <div class="container-fluid px-4 d-flex justify-content-between align-items-center">
+            <a class="navbar-brand" href="index.html"><i class="bi bi-arrow-left me-2"></i> Back to Main Admin</a>
+            <span class="text-success fw-bold"><i class="bi bi-gift me-1"></i> Diwali Direct Offer Panel</span>
         </div>
-    </div>
+    </nav>
 
-    <div id="contentContainer" style="display: none;">
-
-        <!-- Page Header + Campaign Selector -->
-        <div class="page-header">
-            <div>
-                <h2><i class="bi bi-gift-fill"></i> Direct Offer Admin</h2>
-                <p>
-                    <span class="live-dot"></span>
-                    Live • Manage all records and pending withdrawal requests
-                </p>
-            </div>
-            
-            <!-- 🆕 Dynamic Campaign Selector -->
-            <div class="campaign-selector-wrap">
-                <i class="bi bi-funnel-fill"></i>
-                <select id="campaignSelector" onchange="window.changeCampaign(this.value)">
-                    <option value="">Loading campaigns...</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Summary Cards -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-2 col-6">
+    <div class="dashboard-container">
+        
+        <!-- STATS ROW -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3 col-6">
                 <div class="stat-card">
-                    <div class="stat-icon purple"><i class="bi bi-people-fill"></i></div>
-                    <div class="stat-number purple" id="totalParticipants">0</div>
-                    <div class="stat-label">Participants</div>
+                    <div class="stat-number text-info" id="totalUsers">0</div>
+                    <div class="stat-label">Total Earning Users</div>
                 </div>
             </div>
-            <div class="col-md-2 col-6">
+            <div class="col-md-3 col-6">
                 <div class="stat-card">
-                    <div class="stat-icon green"><i class="bi bi-trophy-fill"></i></div>
-                    <div class="stat-number green" id="totalCompleted">0</div>
-                    <div class="stat-label">Offer Completed</div>
+                    <div class="stat-number text-success" id="totalRewardsDist">$0</div>
+                    <div class="stat-label">Total Rewards Generated</div>
                 </div>
             </div>
-            <div class="col-md-2 col-6">
+            <div class="col-md-3 col-6">
                 <div class="stat-card">
-                    <div class="stat-icon teal"><i class="bi bi-cash-coin"></i></div>
-                    <div class="stat-number teal" id="totalEarned">$0.00</div>
-                    <div class="stat-label">Total Reward Generated</div>
-                </div>
-            </div>
-            <div class="col-md-2 col-6">
-                <div class="stat-card">
-                    <div class="stat-icon yellow"><i class="bi bi-hourglass-split"></i></div>
-                    <div class="stat-number yellow" id="totalPending">0</div>
+                    <div class="stat-number text-warning" id="pendingWithdrawals">0</div>
                     <div class="stat-label">Pending Withdrawals</div>
                 </div>
             </div>
-            <div class="col-md-2 col-6">
+            <div class="col-md-3 col-6">
                 <div class="stat-card">
-                    <div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div>
-                    <div class="stat-number blue" id="totalWithdrawn">$0.00</div>
-                    <div class="stat-label">Total Withdrawn (Paid)</div>
-                </div>
-            </div>
-            <div class="col-md-2 col-6">
-                <div class="stat-card">
-                    <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
-                    <div class="stat-number red" id="totalRejected">0</div>
-                    <div class="stat-label">Rejected</div>
+                    <div class="stat-number text-primary" id="totalWithdrawn">$0</div>
+                    <div class="stat-label">Total Paid Withdrawals</div>
                 </div>
             </div>
         </div>
 
-        <!-- Tabs -->
-        <div class="custom-tabs">
-            <button class="custom-tab withdrawals-tab active" data-tab="withdrawals">
-                <i class="bi bi-cash-stack"></i> Withdrawals
-                <span class="badge-count pending-notify" id="tabPendingCount">0</span>
-            </button>
-            <button class="custom-tab" data-tab="all">
-                <i class="bi bi-list-ul"></i> All Records
-                <span class="badge-count" id="allTabCount">0</span>
-            </button>
-        </div>
-
-        <!-- Search -->
-        <div class="d-flex justify-content-end mb-3">
-            <div class="search-wrap">
-                <i class="bi bi-search"></i>
-                <input type="text" id="searchInput" class="search-input"
-                       placeholder="Search by name, username, or wallet address...">
+        <!-- USERS EARNINGS SECTION -->
+        <div class="card-glass">
+            <h4 class="card-title"><i class="bi bi-people-fill text-success me-2"></i>User Earnings Breakdown</h4>
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>User Details</th>
+                            <th>$50 IDs</th>
+                            <th>$100 IDs</th>
+                            <th>$200 IDs</th>
+                            <th>$500 IDs</th>
+                            <th>$1000 IDs</th>
+                            <th>Total Reward</th>
+                        </tr>
+                    </thead>
+                    <tbody id="earningsTableBody">
+                        <tr><td colspan="7" class="text-center py-4 text-muted">Loading data...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- WITHDRAWALS SECTION -->
-        <div id="withdrawalsSection">
-            <div id="pendingCardsContainer"></div>
-            <div id="pendingEmptyState" class="empty-state" style="display: none;">
-                <i class="bi bi-check2-circle" style="color: #2ecc71;"></i>
-                <h5>No Pending Withdrawals</h5>
-                <p>All caught up! No pending requests for this campaign.</p>
-            </div>
-
-            <div class="card-glass mt-4">
-                <div class="card-title">
-                    <div class="card-title-text">
-                        <i class="bi bi-clock-history"></i> Withdrawal History
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-custom">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>User</th>
-                                <th>Amount</th>
-                                <th>Wallet Address</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyTableBody"></tbody>
-                    </table>
-                </div>
+        <!-- WITHDRAWAL REQUESTS SECTION -->
+        <div class="card-glass">
+            <h4 class="card-title"><i class="bi bi-wallet2 text-success me-2"></i>Withdrawal Requests</h4>
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>User Details</th>
+                            <th>Reward Amount</th>
+                            <th>Requested On</th>
+                            <th>Wallet Address</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="withdrawalTableBody">
+                        <tr><td colspan="6" class="text-center py-4 text-muted">Loading data...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
-
-        <!-- ALL RECORDS SECTION -->
-        <div id="allRecordsSection" style="display: none;">
-            <div class="card-glass">
-                <div class="card-title">
-                    <div class="card-title-text">
-                        <i class="bi bi-list-ul"></i> All Direct Offer Records
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-custom">
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Refs</th>
-                                <th>Reward</th>
-                                <th>Status</th>
-                                <th>Updated</th>
-                            </tr>
-                        </thead>
-                        <tbody id="allRecordsTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
     </div>
-</div>
 
-<script type="importmap">
-{
-    "imports": {
-        "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-        "firebase/database": "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
-    }
-}
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-<script type="module" src="direct-offer-admin.js"></script>
+        // 🔥 LIVE FIREBASE CONFIG (RND2)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
+            authDomain: "rnd2-70080.firebaseapp.com",
+            databaseURL: "https://rnd2-70080-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "rnd2-70080",
+            storageBucket: "rnd2-70080.firebasestorage.app",
+            messagingSenderId: "468625887938",
+            appId: "1:468625887938:web:5cb4ddbcf31b6fc0a4615b",
+            measurementId: "G-ELVJD5NQKB"
+        };
 
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const CAMPAIGN_ID = "direct_diwali_offer_2026"; 
+
+        // ✅ कॉपी फंक्शन (पूरा एड्रेस कॉपी करने के लिए)
+        window.copyAddress = function(address) {
+            if (!address) return;
+            navigator.clipboard.writeText(address).then(() => { 
+                alert('✅ Full Wallet Address Copied!'); 
+            });
+        };
+
+        // 🟢 1. Rewards / Earnings Listener (हर यूजर का डेटा)
+        function loadEarningsData() {
+            const purchasesRef = ref(db, `${CAMPAIGN_ID}/purchases`);
+            const usersRef = ref(db, "users");
+
+            onValue(purchasesRef, async (snapshot) => {
+                const tbody = document.getElementById('earningsTableBody');
+                tbody.innerHTML = '';
+                
+                if (!snapshot.exists()) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No earnings yet.</td></tr>';
+                    document.getElementById('totalUsers').innerText = "0";
+                    document.getElementById('totalRewardsDist').innerText = "$0.00";
+                    return;
+                }
+
+                const purchases = snapshot.val();
+                
+                // Fetch user details for names
+                const usersSnap = await get(usersRef);
+                const allUsers = usersSnap.exists() ? usersSnap.val() : {};
+
+                // Group data by Referrer
+                const groupedData = {};
+                let totalRewards = 0;
+
+                for (let pId in purchases) {
+                    const p = purchases[pId];
+                    const rUid = p.directReferrerUid;
+                    const amt = p.packageAmount || 0;
+                    const rAmt = p.rewardAmount || 0;
+
+                    if (!groupedData[rUid]) {
+                        groupedData[rUid] = { counts: {50:0, 100:0, 200:0, 500:0, 1000:0}, total: 0 };
+                    }
+                    if (groupedData[rUid].counts[amt] !== undefined) {
+                        groupedData[rUid].counts[amt]++;
+                    }
+                    groupedData[rUid].total += rAmt;
+                    totalRewards += rAmt;
+                }
+
+                // Render HTML
+                let html = '';
+                for (let uid in groupedData) {
+                    const data = groupedData[uid];
+                    const uData = allUsers[uid] || { name: 'Unknown', username: 'N/A' };
+                    
+                    html += `
+                        <tr>
+                            <td>
+                                <div class="user-info">
+                                    <span class="user-name">${uData.name || 'Unknown'}</span>
+                                    <span class="user-id">@${uData.username || uid}</span>
+                                </div>
+                            </td>
+                            <td>${data.counts[50] > 0 ? `<span class="text-info fw-bold">${data.counts[50]}x</span>` : '-'}</td>
+                            <td>${data.counts[100] > 0 ? `<span class="text-info fw-bold">${data.counts[100]}x</span>` : '-'}</td>
+                            <td>${data.counts[200] > 0 ? `<span class="text-info fw-bold">${data.counts[200]}x</span>` : '-'}</td>
+                            <td>${data.counts[500] > 0 ? `<span class="text-info fw-bold">${data.counts[500]}x</span>` : '-'}</td>
+                            <td>${data.counts[1000] > 0 ? `<span class="text-info fw-bold">${data.counts[1000]}x</span>` : '-'}</td>
+                            <td><strong class="text-success">$${data.total.toFixed(2)}</strong></td>
+                        </tr>
+                    `;
+                }
+
+                tbody.innerHTML = html;
+                document.getElementById('totalUsers').innerText = Object.keys(groupedData).length;
+                document.getElementById('totalRewardsDist').innerText = `$${totalRewards.toFixed(2)}`;
+            });
+        }
+
+        // 🟢 2. Withdrawals Listener (विड्रॉल रिक्वेस्ट)
+        function loadWithdrawalData() {
+            const withdrawRef = ref(db, `${CAMPAIGN_ID}/withdrawals`);
+            const usersRef = ref(db, "users");
+
+            onValue(withdrawRef, async (snapshot) => {
+                const tbody = document.getElementById('withdrawalTableBody');
+                tbody.innerHTML = '';
+                let pendingCount = 0;
+                let paidTotal = 0;
+
+                if (!snapshot.exists()) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No withdrawal requests found.</td></tr>';
+                    document.getElementById('pendingWithdrawals').innerText = "0";
+                    document.getElementById('totalWithdrawn').innerText = "$0.00";
+                    return;
+                }
+
+                const usersSnap = await get(usersRef);
+                const allUsers = usersSnap.exists() ? usersSnap.val() : {};
+
+                const data = snapshot.val();
+                const entries = Object.values(data).sort((a, b) => b.requestedAt - a.requestedAt);
+
+                let html = '';
+                entries.forEach(item => {
+                    if (item.status === 'pending') pendingCount++;
+                    if (item.status === 'paid' || item.status === 'approved') paidTotal += (item.amount || 0);
+
+                    const date = new Date(item.requestedAt).toLocaleString();
+                    let statusBadge = '';
+                    if(item.status === 'pending') statusBadge = '<span class="badge-pending">Pending</span>';
+                    else if(item.status === 'approved') statusBadge = '<span class="badge-approved">Approved</span>';
+                    else if(item.status === 'paid') statusBadge = '<span class="badge-approved">Paid</span>';
+                    else statusBadge = '<span class="badge-rejected">Rejected</span>';
+
+                    let actionBtn = '';
+                    if (item.status === 'pending') {
+                        actionBtn = `
+                            <button class="btn btn-sm btn-success me-1" onclick="approveWithdrawal('${item.withdrawalId}')">Approve</button>
+                            <button class="btn btn-sm btn-danger" onclick="rejectWithdrawal('${item.withdrawalId}')">Reject</button>
+                        `;
+                    } else if (item.status === 'approved') {
+                        actionBtn = `<button class="btn btn-sm btn-primary" onclick="markAsPaid('${item.withdrawalId}')">Mark as Paid</button>`;
+                    } else {
+                        actionBtn = `<span class="text-success"><i class="bi bi-check-circle"></i></span>`;
+                    }
+
+                    const uData = allUsers[item.userId] || { name: 'Unknown', username: item.username || 'N/A' };
+
+                    html += `
+                        <tr>
+                            <td>
+                                <div class="user-info">
+                                    <span class="user-name">${uData.name || 'Unknown'}</span>
+                                    <span class="user-id">@${uData.username || item.userId}</span>
+                                </div>
+                            </td>
+                            <td><strong class="text-warning">$${(item.amount || 0).toFixed(2)} USDT</strong></td>
+                            <td style="font-size:0.8rem;color:#8899bb;">${date}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="wallet-address" title="${item.walletAddress}">${item.walletAddress}</span>
+                                    <button class="btn-copy" onclick="copyAddress('${item.walletAddress}')"><i class="bi bi-clipboard"></i></button>
+                                </div>
+                            </td>
+                            <td>${statusBadge}</td>
+                            <td>${actionBtn}</td>
+                        </tr>
+                    `;
+                });
+
+                tbody.innerHTML = html;
+                document.getElementById('pendingWithdrawals').innerText = pendingCount;
+                document.getElementById('totalWithdrawn').innerText = `$${paidTotal.toFixed(2)}`;
+            });
+        }
+
+        // 🟢 Actions (Approve, Reject, Mark Paid)
+        window.approveWithdrawal = async function(withdrawalId) {
+            if(!confirm("Are you sure you want to APPROVE this withdrawal?")) return;
+            await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${withdrawalId}`), { status: 'approved' });
+            alert('✅ Approved!');
+        };
+
+        window.rejectWithdrawal = async function(withdrawalId) {
+            if(!confirm("Are you sure you want to REJECT this withdrawal?")) return;
+            await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${withdrawalId}`), { status: 'rejected' });
+            alert('❌ Rejected!');
+        };
+
+        window.markAsPaid = async function(withdrawalId) {
+            if(!confirm("Have you sent the USDT? Mark as PAID?")) return;
+            await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${withdrawalId}`), { status: 'paid', paidAt: Date.now() });
+            alert('💰 Marked as Paid!');
+        };
+
+        // 🟢 Initialize Both
+        loadEarningsData();
+        loadWithdrawalData();
+    </script>
 </body>
 </html>
