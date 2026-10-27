@@ -1,353 +1,261 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Diwali Direct Offer</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        * { font-family: 'Inter', sans-serif; }
-        body { background: #080e1a; color: #f0f4ff; min-height: 100vh; }
-        
-        .navbar-custom { 
-            background: rgba(8,14,26,0.95); backdrop-filter: blur(20px); 
-            border-bottom: 1px solid rgba(46,204,113,0.15); padding: 15px 0; 
-            position: sticky; top: 0; z-index: 1050; 
-        }
-        .navbar-custom .navbar-brand { font-weight: 800; color: #fff !important; }
-        
-        .dashboard-container { padding: 30px 20px; max-width: 1400px; margin: 0 auto; }
-        
-        .card-glass { 
-            background: rgba(19,34,55,0.8); backdrop-filter: blur(10px); 
-            border: 1px solid rgba(46,204,113,0.1); border-radius: 20px; 
-            padding: 1.5rem; margin-bottom: 20px; 
-        }
-        .card-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 15px; border-bottom: 1px solid rgba(46,204,113,0.1); padding-bottom: 10px; }
-        
-        .stat-card { 
-            background: rgba(19,34,55,0.6); border: 1px solid rgba(46,204,113,0.08); 
-            border-radius: 16px; padding: 1.5rem; text-align: center; 
-        }
-        .stat-card .stat-number { font-size: 2rem; font-weight: 800; color: #fff; }
-        .stat-card .stat-label { color: #8899bb; font-size: 0.85rem; font-weight: 500; margin-top: 5px; }
-        
-        .table-custom { color: #f0f4ff; border-color: #1f334f; margin-bottom: 0; }
-        .table-custom th { border-bottom: 2px solid #2a3a5a; color: #a0b8d0; font-weight: 600; font-size: 0.85rem; background: rgba(19,34,55,0.9); }
-        .table-custom td { border-color: #1f334f; vertical-align: middle; font-size: 0.85rem; }
-        
-        .badge-pending { background: rgba(251,191,36,0.15); color: #fbbf24; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem;}
-        .badge-approved { background: rgba(46,204,113,0.15); color: #2ecc71; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem;}
-        .badge-rejected { background: rgba(239,68,68,0.15); color: #f87171; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem;}
-        
-        .btn-copy { 
-            background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.2); 
-            color: #2ecc71; padding: 4px 10px; border-radius: 6px; 
-            cursor: pointer; transition: all 0.2s; font-size: 0.75rem;
-        }
-        .btn-copy:hover { background: rgba(46,204,113,0.2); }
-        
-        .wallet-address { 
-            font-family: monospace; font-size: 0.8rem; color: #60a5fa; 
-            background: rgba(96,165,250,0.1); padding: 4px 8px; 
-            border-radius: 6px; max-width: 200px; display: inline-block;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        
-        .user-info { display: flex; flex-direction: column; }
-        .user-name { font-weight: 700; color: #fff; }
-        .user-id { font-size: 0.7rem; color: #64748b; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diwali Direct Offer — Admin Panel</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#080e1a;--panel:#132237;--line:#263b58;--muted:#93a4bd;--green:#2ecc71}
+*{box-sizing:border-box;font-family:Inter,system-ui,sans-serif}body{background:var(--bg);color:#edf3ff;min-height:100vh}
+.navbar-custom{background:#0b1424;border-bottom:1px solid #263b58;position:sticky;top:0;z-index:10}
+.wrap{max-width:1600px;margin:auto;padding:24px 16px}.panel,.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:20px}
+.stat{height:100%;text-align:center}.stat-num{font-weight:800;font-size:clamp(1.35rem,2vw,2rem);overflow-wrap:anywhere}.stat-label{color:var(--muted);font-size:.8rem;margin-top:5px}
+.section-title{font-size:1.05rem;font-weight:800;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px}
+.table-responsive{max-height:65vh}.table{--bs-table-bg:transparent;--bs-table-color:#edf3ff;--bs-table-border-color:#263b58;margin:0}.table thead th{position:sticky;top:0;background:#14243a;color:#b9c8df;white-space:nowrap;z-index:1;font-size:.78rem}.table td{vertical-align:middle;font-size:.82rem}.muted{color:var(--muted)}.mono{font-family:ui-monospace,SFMono-Regular,monospace!important;overflow-wrap:anywhere}.wallet{max-width:270px;display:inline-block;white-space:normal;word-break:break-all;color:#8dc5ff}
+.status{display:inline-block;border-radius:30px;padding:4px 10px;font-size:.75rem;font-weight:700;text-transform:capitalize}.status-pending{background:#624d1d;color:#ffd66b}.status-approved{background:#173f31;color:#70e6a7}.status-paid{background:#153e52;color:#79d7ff}.status-rejected{background:#54272d;color:#ff9ca6}
+.form-control,.form-select{background:#0c1728;color:#edf3ff;border-color:#304560}.form-control:focus,.form-select:focus{background:#0c1728;color:#fff;border-color:#4b91e2;box-shadow:none}
+.btn-sm{white-space:nowrap}.small-note{font-size:.78rem;color:var(--muted)}.error-box{white-space:pre-wrap;display:none}.pill{display:inline-block;background:#203650;border-radius:8px;padding:4px 8px;margin:2px;font-size:.76rem}
+</style>
 </head>
 <body>
+<nav class="navbar navbar-custom py-3">
+ <div class="container-fluid px-3 px-lg-4 d-flex justify-content-between gap-3 flex-wrap">
+  <a class="navbar-brand text-white fw-bold text-decoration-none" href="index.html"><i class="bi bi-arrow-left me-2"></i>Main Admin</a>
+  <div class="fw-bold text-success"><i class="bi bi-gift me-2"></i>Diwali Direct Offer Admin</div>
+  <div class="d-flex align-items-center gap-2"><span id="liveStatus" class="small-note">Connecting…</span><button id="refreshBtn" class="btn btn-outline-info btn-sm"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button></div>
+ </div>
+</nav>
+<main class="wrap">
+ <div id="accessError" class="alert alert-danger error-box"></div>
+ <div id="pageError" class="alert alert-warning error-box"></div>
+ <div class="small-note mb-3">Campaign: <strong>Diwali Bumper Offer 2026</strong> · 26 Oct – 7 Nov 2026 · Data refreshes live from the configured Firebase database.</div>
+ <div class="row g-3 mb-3">
+  <div class="col-6 col-xl-3"><div class="stat"><div id="earningUsers" class="stat-num text-info">—</div><div class="stat-label">Users With Earnings</div></div></div>
+  <div class="col-6 col-xl-3"><div class="stat"><div id="rewardsGenerated" class="stat-num text-success">$0.00</div><div class="stat-label">Total Rewards Generated</div></div></div>
+  <div class="col-6 col-xl-3"><div class="stat"><div id="pendingCount" class="stat-num text-warning">0</div><div class="stat-label">Pending Withdrawal Requests</div></div></div>
+  <div class="col-6 col-xl-3"><div class="stat"><div id="paidTotal" class="stat-num text-primary">$0.00</div><div class="stat-label">Actually Paid (USDT)</div></div></div>
+  <div class="col-6 col-xl-3"><div class="stat"><div id="approvedTotal" class="stat-num">$0.00</div><div class="stat-label">Approved, Not Yet Paid</div></div></div>
+  <div class="col-6 col-xl-3"><div class="stat"><div id="pendingTotal" class="stat-num">$0.00</div><div class="stat-label">Pending Amount (USDT)</div></div></div>
+  <div class="col-6 col-xl-3"><div class="stat"><div id="rejectedCount" class="stat-num text-danger">0</div><div class="stat-label">Rejected Requests</div></div></div>
+  <div class="col-6 col-xl-3"><div class="stat"><div id="eligiblePackages" class="stat-num">0</div><div class="stat-label">Eligible Purchases</div></div></div>
+ </div>
 
-    <nav class="navbar navbar-custom">
-        <div class="container-fluid px-4 d-flex justify-content-between align-items-center">
-            <a class="navbar-brand" href="index.html"><i class="bi bi-arrow-left me-2"></i> Back to Main Admin</a>
-            <span class="text-success fw-bold"><i class="bi bi-gift me-1"></i> Diwali Direct Offer Panel</span>
-        </div>
-    </nav>
+ <section class="panel">
+  <div class="section-title"><i class="bi bi-bar-chart-line text-success me-2"></i>Package & Reward Summary</div>
+  <div class="table-responsive">
+   <table class="table table-hover"><thead><tr><th>Package Purchased</th><th>Eligible Purchase Count</th><th>Reward Per Purchase</th><th>Total Reward Earned</th></tr></thead><tbody id="tierSummary"><tr><td colspan="4" class="text-center muted py-4">Loading…</td></tr></tbody></table>
+  </div>
+ </section>
 
-    <div class="dashboard-container">
-        
-        <!-- STATS ROW -->
-        <div class="row g-4 mb-4">
-            <div class="col-md-3 col-6">
-                <div class="stat-card">
-                    <div class="stat-number text-info" id="totalUsers">0</div>
-                    <div class="stat-label">Total Earning Users</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="stat-card">
-                    <div class="stat-number text-success" id="totalRewardsDist">$0</div>
-                    <div class="stat-label">Total Rewards Generated</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="stat-card">
-                    <div class="stat-number text-warning" id="pendingWithdrawals">0</div>
-                    <div class="stat-label">Pending Withdrawals</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="stat-card">
-                    <div class="stat-number text-primary" id="totalWithdrawn">$0</div>
-                    <div class="stat-label">Total Paid Withdrawals</div>
-                </div>
-            </div>
-        </div>
+ <section class="panel">
+  <div class="section-title"><i class="bi bi-people-fill text-success me-2"></i>Direct Referrer Earnings Breakdown</div>
+  <div class="row g-2 mb-3">
+   <div class="col-md-6"><input id="earningsSearch" class="form-control" placeholder="Search referrer name, username, UID…"></div>
+   <div class="col-md-3"><select id="earningsTier" class="form-select"><option value="all">All package tiers</option><option value="50">$50 package</option><option value="100">$100 package</option><option value="200">$200 package</option><option value="500">$500 package</option><option value="1000">$1000 package</option></select></div>
+   <div class="col-md-3"><button id="exportEarnings" class="btn btn-outline-success w-100"><i class="bi bi-download me-1"></i>Export CSV</button></div>
+  </div>
+  <div class="table-responsive"><table class="table table-hover"><thead><tr><th>Referrer Name / Username</th><th>Referrer UID</th><th>$50 count / reward</th><th>$100 count / reward</th><th>$200 count / reward</th><th>$500 count / reward</th><th>$1000 count / reward</th><th>Total Packages</th><th>Total Earned</th></tr></thead><tbody id="earningsBody"><tr><td colspan="9" class="text-center muted py-4">Loading…</td></tr></tbody></table></div>
+ </section>
 
-        <!-- USERS EARNINGS SECTION -->
-        <div class="card-glass">
-            <h4 class="card-title"><i class="bi bi-people-fill text-success me-2"></i>User Earnings Breakdown</h4>
-            <div class="table-responsive">
-                <table class="table table-custom">
-                    <thead>
-                        <tr>
-                            <th>User Details</th>
-                            <th>$50 IDs</th>
-                            <th>$100 IDs</th>
-                            <th>$200 IDs</th>
-                            <th>$500 IDs</th>
-                            <th>$1000 IDs</th>
-                            <th>Total Reward</th>
-                        </tr>
-                    </thead>
-                    <tbody id="earningsTableBody">
-                        <tr><td colspan="7" class="text-center py-4 text-muted">Loading data...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+ <section class="panel">
+  <div class="section-title"><i class="bi bi-receipt text-success me-2"></i>Eligible Purchase Details</div>
+  <div class="row g-2 mb-3">
+   <div class="col-md-8"><input id="purchaseSearch" class="form-control" placeholder="Search buyer name, buyer UID, referrer UID, purchase ID…"></div>
+   <div class="col-md-4"><select id="purchaseTier" class="form-select"><option value="all">All package tiers</option><option value="50">$50</option><option value="100">$100</option><option value="200">$200</option><option value="500">$500</option><option value="1000">$1000</option></select></div>
+  </div>
+  <div class="table-responsive"><table class="table table-hover"><thead><tr><th>Buyer / Package Owner</th><th>Buyer UID</th><th>Direct Referrer</th><th>Package</th><th>Reward</th><th>Purchase Date</th><th>Record Status</th></tr></thead><tbody id="purchasesBody"><tr><td colspan="7" class="text-center muted py-4">Loading…</td></tr></tbody></table></div>
+ </section>
 
-        <!-- WITHDRAWAL REQUESTS SECTION -->
-        <div class="card-glass">
-            <h4 class="card-title"><i class="bi bi-wallet2 text-success me-2"></i>Withdrawal Requests</h4>
-            <div class="table-responsive">
-                <table class="table table-custom">
-                    <thead>
-                        <tr>
-                            <th>User Details</th>
-                            <th>Reward Amount</th>
-                            <th>Requested On</th>
-                            <th>Wallet Address</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="withdrawalTableBody">
-                        <tr><td colspan="6" class="text-center py-4 text-muted">Loading data...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+ <section class="panel">
+  <div class="section-title"><i class="bi bi-wallet2 text-success me-2"></i>Withdrawal Requests & Payment Actions</div>
+  <div class="row g-2 mb-3">
+   <div class="col-md-6"><input id="withdrawalSearch" class="form-control" placeholder="Search name, UID, withdrawal ID, wallet address…"></div>
+   <div class="col-md-3"><select id="withdrawalStatusFilter" class="form-select"><option value="all">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="paid">Paid</option><option value="rejected">Rejected</option></select></div>
+   <div class="col-md-3"><button id="exportWithdrawals" class="btn btn-outline-success w-100"><i class="bi bi-download me-1"></i>Export CSV</button></div>
+  </div>
+  <div class="table-responsive"><table class="table table-hover"><thead><tr><th>User</th><th>User UID</th><th>Amount</th><th>Requested</th><th>Full USDT Wallet Address</th><th>Status</th><th>Admin Actions</th></tr></thead><tbody id="withdrawalsBody"><tr><td colspan="7" class="text-center muted py-4">Loading…</td></tr></tbody></table></div>
+  <p class="small-note mt-3 mb-0">Mark a request as Paid only after the USDT transfer is actually sent and verified. This panel records the status; it does not send USDT automatically.</p>
+ </section>
+</main>
+<script type="module">
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+const firebaseConfig = {
+ apiKey:"AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o",
+ authDomain:"rnd2-70080.firebaseapp.com",
+ databaseURL:"https://rnd2-70080-default-rtdb.asia-southeast1.firebasedatabase.app",
+ projectId:"rnd2-70080",
+ storageBucket:"rnd2-70080.firebasestorage.app",
+ messagingSenderId:"468625887938",
+ appId:"1:468625887938:web:5cb4ddbcf31b6fc0a4615b",
+ measurementId:"G-ELVJD5NQKB"
+};
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+const auth = getAuth(app), db = getDatabase(app);
+const CAMPAIGN_ID = "direct_diwali_offer_2026";
+const TIERS = {50:10,100:25,200:60,500:120,1000:250};
+let allUsers = {}, purchases = {}, withdrawals = {}, adminUid = null;
+let listenersStarted = false;
+const $ = id => document.getElementById(id);
+const money = n => "$" + (Number(n)||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+const safeDate = value => { const n=Number(value); const d=new Date(n < 1e12 ? n*1000 : n); return Number.isFinite(d.getTime()) ? d.toLocaleString() : "—"; };
+const statusHtml = s => `<span class="status status-${esc(String(s||"unknown").toLowerCase())}">${esc(s||"unknown")}</span>`;
+function showError(id,msg){const e=$(id);e.style.display="block";e.textContent=msg;}
+function hideError(id){$(id).style.display="none";}
 
-        // 🔥 LIVE FIREBASE CONFIG (RND2)
-        const firebaseConfig = {
-            apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
-            authDomain: "rnd2-70080.firebaseapp.com",
-            databaseURL: "https://rnd2-70080-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "rnd2-70080",
-            storageBucket: "rnd2-70080.firebasestorage.app",
-            messagingSenderId: "468625887938",
-            appId: "1:468625887938:web:5cb4ddbcf31b6fc0a4615b",
-            measurementId: "G-ELVJD5NQKB"
-        };
+onAuthStateChanged(auth, async user => {
+ if(!user){ $("liveStatus").textContent="Login required"; showError("accessError","Please sign in with an authorized administrator account. Redirecting to login…"); setTimeout(()=>location.href="login.html",1200); return; }
+ try{
+  const roleSnap=await get(ref(db,`users/${user.uid}/role`));
+  if(!roleSnap.exists() || String(roleSnap.val()).toLowerCase()!=="admin"){
+   showError("accessError","Access denied: this account is not marked as an admin."); $("liveStatus").textContent="Access denied"; return;
+  }
+  adminUid=user.uid; hideError("accessError"); startListeners();
+ }catch(err){showError("accessError","Could not verify admin access: "+(err?.message||err));$("liveStatus").textContent="Access error";}
+});
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const CAMPAIGN_ID = "direct_diwali_offer_2026"; 
-
-        // ✅ कॉपी फंक्शन
-        window.copyAddress = function(address) {
-            if (!address) return;
-            navigator.clipboard.writeText(address).then(() => { 
-                alert('✅ Full Wallet Address Copied!'); 
-            });
-        };
-
-        // 🟢 1. Rewards / Earnings Listener (sahi purchases path se)
-        function loadEarningsData() {
-            const purchasesRef = ref(db, `${CAMPAIGN_ID}/purchases`);
-            const usersRef = ref(db, "users");
-
-            onValue(purchasesRef, async (snapshot) => {
-                const tbody = document.getElementById('earningsTableBody');
-                tbody.innerHTML = '';
-                
-                if (!snapshot.exists()) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No earnings yet.</td></tr>';
-                    document.getElementById('totalUsers').innerText = "0";
-                    document.getElementById('totalRewardsDist').innerText = "$0.00";
-                    return;
-                }
-
-                const purchases = snapshot.val();
-                const usersSnap = await get(usersRef);
-                const allUsers = usersSnap.exists() ? usersSnap.val() : {};
-
-                // Group data by Referrer
-                const groupedData = {};
-                let totalRewards = 0;
-
-                // purchases में डेटा इस तरह है: { purchaseId: { directReferrerUid, packageAmount, rewardAmount, ... } }
-                for (let pId in purchases) {
-                    const p = purchases[pId];
-                    const rUid = p.directReferrerUid; // किसको रिवॉर्ड मिला
-                    const amt = Number(p.packageAmount || 0); // पैकेज (50, 100 आदि)
-                    const rAmt = Number(p.rewardAmount || 0); // रिवॉर्ड ($10, $25 आदि)
-
-                    if (!rUid) continue;
-
-                    if (!groupedData[rUid]) {
-                        groupedData[rUid] = { counts: {50:0, 100:0, 200:0, 500:0, 1000:0}, total: 0 };
-                    }
-                    if (groupedData[rUid].counts[amt] !== undefined) {
-                        groupedData[rUid].counts[amt]++;
-                    }
-                    groupedData[rUid].total += rAmt;
-                    totalRewards += rAmt;
-                }
-
-                // Render HTML
-                let html = '';
-                for (let uid in groupedData) {
-                    const data = groupedData[uid];
-                    const uData = allUsers[uid] || { name: 'Unknown', username: 'N/A' };
-                    
-                    html += `
-                        <tr>
-                            <td>
-                                <div class="user-info">
-                                    <span class="user-name">${uData.name || 'Unknown'}</span>
-                                    <span class="user-id">@${uData.username || uid}</span>
-                                </div>
-                            </td>
-                            <td>${data.counts[50] > 0 ? `<span class="text-info fw-bold">${data.counts[50]}x</span>` : '-'}</td>
-                            <td>${data.counts[100] > 0 ? `<span class="text-info fw-bold">${data.counts[100]}x</span>` : '-'}</td>
-                            <td>${data.counts[200] > 0 ? `<span class="text-info fw-bold">${data.counts[200]}x</span>` : '-'}</td>
-                            <td>${data.counts[500] > 0 ? `<span class="text-info fw-bold">${data.counts[500]}x</span>` : '-'}</td>
-                            <td>${data.counts[1000] > 0 ? `<span class="text-info fw-bold">${data.counts[1000]}x</span>` : '-'}</td>
-                            <td><strong class="text-success">$${data.total.toFixed(2)}</strong></td>
-                        </tr>
-                    `;
-                }
-
-                tbody.innerHTML = html;
-                document.getElementById('totalUsers').innerText = Object.keys(groupedData).length;
-                document.getElementById('totalRewardsDist').innerText = `$${totalRewards.toFixed(2)}`;
-            });
-        }
-
-        // 🟢 2. Withdrawals Listener
-        function loadWithdrawalData() {
-            const withdrawRef = ref(db, `${CAMPAIGN_ID}/withdrawals`);
-            const usersRef = ref(db, "users");
-
-            onValue(withdrawRef, async (snapshot) => {
-                const tbody = document.getElementById('withdrawalTableBody');
-                tbody.innerHTML = '';
-                let pendingCount = 0;
-                let paidTotal = 0;
-
-                if (!snapshot.exists()) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No withdrawal requests found.</td></tr>';
-                    document.getElementById('pendingWithdrawals').innerText = "0";
-                    document.getElementById('totalWithdrawn').innerText = "$0.00";
-                    return;
-                }
-
-                const usersSnap = await get(usersRef);
-                const allUsers = usersSnap.exists() ? usersSnap.val() : {};
-
-                const data = snapshot.val();
-                const entries = Object.values(data).sort((a, b) => b.requestedAt - a.requestedAt);
-
-                let html = '';
-                entries.forEach(item => {
-                    if (item.status === 'pending') pendingCount++;
-                    if (item.status === 'paid' || item.status === 'approved') paidTotal += (item.amount || 0);
-
-                    const date = new Date(item.requestedAt).toLocaleString();
-                    let statusBadge = '';
-                    if(item.status === 'pending') statusBadge = '<span class="badge-pending">Pending</span>';
-                    else if(item.status === 'approved') statusBadge = '<span class="badge-approved">Approved</span>';
-                    else if(item.status === 'paid') statusBadge = '<span class="badge-approved">Paid</span>';
-                    else statusBadge = '<span class="badge-rejected">Rejected</span>';
-
-                    let actionBtn = '';
-                    if (item.status === 'pending') {
-                        actionBtn = `
-                            <button class="btn btn-sm btn-success me-1" onclick="approveWithdrawal('${item.withdrawalId}')">Approve</button>
-                            <button class="btn btn-sm btn-danger" onclick="rejectWithdrawal('${item.withdrawalId}')">Reject</button>
-                        `;
-                    } else if (item.status === 'approved') {
-                        actionBtn = `<button class="btn btn-sm btn-primary" onclick="markAsPaid('${item.withdrawalId}')">Mark as Paid</button>`;
-                    } else {
-                        actionBtn = `<span class="text-success"><i class="bi bi-check-circle"></i></span>`;
-                    }
-
-                    const uData = allUsers[item.userId] || { name: 'Unknown', username: item.username || 'N/A' };
-
-                    html += `
-                        <tr>
-                            <td>
-                                <div class="user-info">
-                                    <span class="user-name">${uData.name || 'Unknown'}</span>
-                                    <span class="user-id">@${uData.username || item.userId}</span>
-                                </div>
-                            </td>
-                            <td><strong class="text-warning">$${(item.amount || 0).toFixed(2)} USDT</strong></td>
-                            <td style="font-size:0.8rem;color:#8899bb;">${date}</td>
-                            <td>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="wallet-address" title="${item.walletAddress}">${item.walletAddress}</span>
-                                    <button class="btn-copy" onclick="copyAddress('${item.walletAddress}')"><i class="bi bi-clipboard"></i></button>
-                                </div>
-                            </td>
-                            <td>${statusBadge}</td>
-                            <td>${actionBtn}</td>
-                        </tr>
-                    `;
-                });
-
-                tbody.innerHTML = html;
-                document.getElementById('pendingWithdrawals').innerText = pendingCount;
-                document.getElementById('totalWithdrawn').innerText = `$${paidTotal.toFixed(2)}`;
-            });
-        }
-
-        // 🟢 Actions (Approve, Reject, Mark Paid)
-        window.approveWithdrawal = async function(withdrawalId) {
-            if(!confirm("Are you sure you want to APPROVE this withdrawal?")) return;
-            await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${withdrawalId}`), { status: 'approved' });
-            alert('✅ Approved!');
-        };
-
-        window.rejectWithdrawal = async function(withdrawalId) {
-            if(!confirm("Are you sure you want to REJECT this withdrawal?")) return;
-            await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${withdrawalId}`), { status: 'rejected' });
-            alert('❌ Rejected!');
-        };
-
-        window.markAsPaid = async function(withdrawalId) {
-            if(!confirm("Have you sent the USDT? Mark as PAID?")) return;
-            await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${withdrawalId}`), { status: 'paid', paidAt: Date.now() });
-            alert('💰 Marked as Paid!');
-        };
-
-        // 🟢 Initialize Both
-        loadEarningsData();
-        loadWithdrawalData();
-    </script>
+function startListeners(){
+ if(listenersStarted)return; listenersStarted=true;
+ onValue(ref(db,"users"), snap=>{allUsers=snap.val()||{};renderAll();},err=>showError("pageError","Could not read users: "+err.message));
+ onValue(ref(db,`${CAMPAIGN_ID}/purchases`), snap=>{purchases=snap.val()||{};renderAll();},err=>showError("pageError","Could not read offer purchases: "+err.message));
+ onValue(ref(db,`${CAMPAIGN_ID}/withdrawals`), snap=>{withdrawals=snap.val()||{};renderAll();},err=>showError("pageError","Could not read withdrawals: "+err.message));
+ $("liveStatus").textContent="Live data connected";
+}
+function getUser(uid){return allUsers[uid]||{};}
+function displayName(uid,fallback=""){const u=getUser(uid);return u.name||u.fullName||u.username||fallback||"Unknown user";}
+function validTier(n){return Object.prototype.hasOwnProperty.call(TIERS,String(Number(n)));}
+function purchaseRows(){
+ return Object.entries(purchases).map(([id,p])=>({id,...(p||{})})).filter(p=>p.directReferrerUid && validTier(p.packageAmount) && Number(p.rewardAmount)>=0 && p.status!=="rejected");
+}
+function earningsByReferrer(){
+ const groups={};
+ for(const p of purchaseRows()){
+  const uid=String(p.directReferrerUid), tier=Number(p.packageAmount), reward=Number(p.rewardAmount)||TIERS[tier];
+  if(!groups[uid])groups[uid]={uid,counts:{50:0,100:0,200:0,500:0,1000:0},rewards:{50:0,100:0,200:0,500:0,1000:0},total:0,packages:0};
+  groups[uid].counts[tier]++;groups[uid].rewards[tier]+=reward;groups[uid].total+=reward;groups[uid].packages++;
+ }
+ return Object.values(groups).sort((a,b)=>b.total-a.total);
+}
+function renderAll(){
+ const rows=purchaseRows(), groups=earningsByReferrer();
+ const tierCounts={50:0,100:0,200:0,500:0,1000:0},tierRewards={50:0,100:0,200:0,500:0,1000:0};
+ rows.forEach(p=>{const t=Number(p.packageAmount);tierCounts[t]++;tierRewards[t]+=Number(p.rewardAmount)||TIERS[t];});
+ const totalReward=Object.values(tierRewards).reduce((a,b)=>a+b,0);
+ $("earningUsers").textContent=groups.length.toLocaleString();
+ $("rewardsGenerated").textContent=money(totalReward);
+ $("eligiblePackages").textContent=rows.length.toLocaleString();
+ $("tierSummary").innerHTML=Object.keys(TIERS).map(t=>`<tr><td><strong>${money(t)}</strong></td><td>${tierCounts[t]}</td><td>${money(TIERS[t])}</td><td class="text-success fw-bold">${money(tierRewards[t])}</td></tr>`).join("");
+ renderEarnings(groups);renderPurchases(rows);renderWithdrawals();
+}
+function renderEarnings(groups){
+ const q=$("earningsSearch").value.trim().toLowerCase(),tier=$("earningsTier").value;
+ const filtered=groups.filter(g=>{
+  const u=getUser(g.uid),hay=[g.uid,u.name,u.fullName,u.username].join(" ").toLowerCase();
+  return (!q||hay.includes(q))&&(tier==="all"||g.counts[Number(tier)]>0);
+ });
+ $("earningsBody").innerHTML=filtered.length?filtered.map(g=>{
+  const u=getUser(g.uid);
+  const cell=t=>`${g.counts[t]} <span class="muted">/ ${money(g.rewards[t])}</span>`;
+  return `<tr><td><strong>${esc(displayName(g.uid))}</strong><div class="muted">${esc(u.username||"")}</div></td><td class="mono">${esc(g.uid)}</td><td>${cell(50)}</td><td>${cell(100)}</td><td>${cell(200)}</td><td>${cell(500)}</td><td>${cell(1000)}</td><td>${g.packages}</td><td class="text-success fw-bold">${money(g.total)}</td></tr>`;
+ }).join(""):`<tr><td colspan="9" class="text-center muted py-4">No matching earning users.</td></tr>`;
+}
+function renderPurchases(rows){
+ const q=$("purchaseSearch").value.trim().toLowerCase(),tier=$("purchaseTier").value;
+ const filtered=rows.filter(p=>{
+  const u=getUser(p.buyerUid||"");
+  const hay=[p.id,p.buyerUid,p.directReferrerUid,u.name,u.username].join(" ").toLowerCase();
+  return (!q||hay.includes(q))&&(tier==="all"||Number(p.packageAmount)===Number(tier));
+ }).sort((a,b)=>(Number(b.timestamp)||0)-(Number(a.timestamp)||0));
+ $("purchasesBody").innerHTML=filtered.length?filtered.map(p=>{
+  const buyer=p.buyerUid||"—",refUid=p.directReferrerUid||"—",t=Number(p.packageAmount);
+  return `<tr><td><strong>${esc(displayName(buyer))}</strong><div class="muted">${esc(getUser(buyer).username||"")}</div></td><td class="mono">${esc(buyer)}</td><td><strong>${esc(displayName(refUid))}</strong><div class="mono muted">${esc(refUid)}</div></td><td>${money(t)}</td><td class="text-success fw-bold">${money(Number(p.rewardAmount)||TIERS[t]||0)}</td><td>${safeDate(p.timestamp)}</td><td>${statusHtml(p.status||"completed")}</td></tr>`;
+ }).join(""):`<tr><td colspan="7" class="text-center muted py-4">No matching eligible purchases.</td></tr>`;
+}
+function renderWithdrawals(){
+ const entries=Object.entries(withdrawals).map(([id,w])=>({id,...(w||{})})).sort((a,b)=>(Number(b.requestedAt)||0)-(Number(a.requestedAt)||0));
+ let pending=0,approved=0,paid=0,rejected=0,pendingAmount=0;
+ entries.forEach(w=>{const a=Number(w.amount)||0;if(w.status==="pending"){pending++;pendingAmount+=a;}else if(w.status==="approved"){approved+=a;}else if(w.status==="paid"){paid+=a;}else if(w.status==="rejected"){rejected++;}});
+ $("pendingCount").textContent=pending;$("approvedTotal").textContent=money(approved);$("pendingTotal").textContent=money(pendingAmount);$("paidTotal").textContent=money(paid);$("rejectedCount").textContent=rejected;
+ const q=$("withdrawalSearch").value.trim().toLowerCase(),filter=$("withdrawalStatusFilter").value;
+ const filtered=entries.filter(w=>{
+  const u=getUser(w.userId||"");
+  const hay=[w.userId,w.username,w.withdrawalId,w.walletAddress,u.name,u.username].join(" ").toLowerCase();
+  return (!q||hay.includes(q))&&(filter==="all"||String(w.status||"").toLowerCase()===filter);
+ });
+ $("withdrawalsBody").innerHTML=filtered.length?filtered.map(w=>{
+  const uid=w.userId||"",u=getUser(uid),status=String(w.status||"pending").toLowerCase(),wid=w.withdrawalId||w.id;
+  let actions="";
+  if(status==="pending") actions=`<button class="btn btn-success btn-sm me-1" data-action="approve" data-id="${esc(w.id)}">Approve</button><button class="btn btn-danger btn-sm" data-action="reject" data-id="${esc(w.id)}">Reject</button>`;
+  else if(status==="approved") actions=`<button class="btn btn-primary btn-sm" data-action="paid" data-id="${esc(w.id)}">Mark as Paid</button><button class="btn btn-outline-danger btn-sm ms-1" data-action="reject" data-id="${esc(w.id)}">Reject</button>`;
+  else actions=`<span class="muted">No actions</span>`;
+  const wallet=String(w.walletAddress||"");
+  return `<tr><td><strong>${esc(displayName(uid,w.username))}</strong><div class="muted">${esc(w.username||u.username||"")}</div></td><td class="mono">${esc(uid)}</td><td class="text-warning fw-bold">${money(w.amount)} USDT</td><td>${safeDate(w.requestedAt)}</td><td><div class="wallet mono">${esc(wallet||"No wallet address")}</div><div><button class="btn btn-outline-info btn-sm mt-1" data-action="copy" data-wallet="${esc(wallet)}" ${wallet?"":"disabled"}><i class="bi bi-clipboard me-1"></i>Copy full address</button></div></td><td>${statusHtml(status)}${w.txHash?`<div class="small-note mt-1">Tx: ${esc(w.txHash)}</div>`:""}</td><td>${actions}<div class="small-note mt-1">${esc(w.withdrawalId||w.id)}</div></td></tr>`;
+ }).join(""):`<tr><td colspan="7" class="text-center muted py-4">No withdrawal requests match this filter.</td></tr>`;
+}
+async function updateRelatedRecords(item,newStatus,extra={}){
+ const uid=item.userId, wid=item.withdrawalId||item.id, updates={};
+ updates[`${CAMPAIGN_ID}/withdrawals/${item.id}/status`]=newStatus;
+ updates[`${CAMPAIGN_ID}/withdrawals/${item.id}/updatedAt`]=Date.now();
+ for(const [k,v] of Object.entries(extra)) updates[`${CAMPAIGN_ID}/withdrawals/${item.id}/${k}`]=v;
+ if(uid){
+  const rewardPath=`${CAMPAIGN_ID}/rewards/${uid}`;
+  updates[`${rewardPath}/status`]=newStatus;
+  updates[`${rewardPath}/updatedAt`]=Date.now();
+  if(newStatus==="rejected") updates[`${rewardPath}/rejectedAt`]=Date.now();
+  if(newStatus==="paid"){updates[`${rewardPath}/paidAt`]=Date.now();if(extra.txHash)updates[`${rewardPath}/txHash`]=extra.txHash;}
+  // Keep existing transaction-history records in sync where withdrawalId matches.
+  const [globalSnap,userTxSnap]=await Promise.all([
+   get(ref(db,`${CAMPAIGN_ID}/transactions`)),
+   get(ref(db,`users/${uid}/diwali_transactions`))
+  ]);
+  for(const [id,tx] of Object.entries(globalSnap.val()||{})) if(tx?.withdrawalId===wid) updates[`${CAMPAIGN_ID}/transactions/${id}/status`]=newStatus;
+  for(const [id,tx] of Object.entries(userTxSnap.val()||{})) if(tx?.withdrawalId===wid) updates[`users/${uid}/diwali_transactions/${id}/status`]=newStatus;
+ }
+ await update(ref(db),updates);
+}
+async function doAction(action,id){
+ const item=withdrawals[id];if(!item){alert("Withdrawal record not found. Refresh and try again.");return;}
+ if(!adminUid){alert("Admin access is not verified.");return;}
+ try{
+  if(action==="copy"){
+   const wallet=item.walletAddress||"";if(!wallet){alert("No wallet address saved.");return;}
+   await navigator.clipboard.writeText(wallet);alert("Full wallet address copied.");return;
+  }
+  if(action==="approve"){
+   if(item.status!=="pending"){alert("Only pending requests can be approved.");return;}
+   if(!confirm(`Approve ${money(item.amount)} USDT for ${item.username||item.userId}?`))return;
+   await updateRelatedRecords({...item,id}, "approved", {approvedAt:Date.now(),approvedBy:adminUid});
+   alert("Withdrawal approved.");
+  }else if(action==="reject"){
+   if(!["pending","approved"].includes(item.status)){alert("Only pending or approved requests can be rejected.");return;}
+   const reason=prompt("Optional rejection reason (leave blank if none):","")||"";
+   if(!confirm("Reject this withdrawal request?"))return;
+   await updateRelatedRecords({...item,id}, "rejected", {rejectedAt:Date.now(),rejectedBy:adminUid,rejectionReason:reason});
+   alert("Withdrawal rejected. The user can request again if eligible.");
+  }else if(action==="paid"){
+   if(item.status!=="approved"){alert("Approve the request first.");return;}
+   const txHash=prompt("Enter the USDT transaction hash (recommended):","")||"";
+   if(!confirm("Confirm that USDT has actually been sent, then mark this request Paid?"))return;
+   await updateRelatedRecords({...item,id}, "paid", {paidAt:Date.now(),paidBy:adminUid,txHash});
+   alert("Marked as paid. Transaction history updated.");
+  }
+ }catch(err){console.error(err);alert("Action failed: "+(err?.message||err));}
+}
+$("withdrawalsBody").addEventListener("click",e=>{const b=e.target.closest("button[data-action]");if(b)doAction(b.dataset.action,b.dataset.id);});
+["earningsSearch","earningsTier"].forEach(id=>$(id).addEventListener("input",()=>renderEarnings(earningsByReferrer())));
+["purchaseSearch","purchaseTier"].forEach(id=>$(id).addEventListener("input",()=>renderPurchases(purchaseRows())));
+["withdrawalSearch","withdrawalStatusFilter"].forEach(id=>$(id).addEventListener("input",renderWithdrawals));
+$("refreshBtn").addEventListener("click",async()=>{try{const [u,p,w]=await Promise.all([get(ref(db,"users")),get(ref(db,`${CAMPAIGN_ID}/purchases`)),get(ref(db,`${CAMPAIGN_ID}/withdrawals`))]);allUsers=u.val()||{};purchases=p.val()||{};withdrawals=w.val()||{};renderAll();$("liveStatus").textContent="Refreshed";}catch(e){showError("pageError",e.message);}});
+function csvEscape(v){return '"'+String(v??"").replace(/"/g,'""')+'"';}
+function downloadCSV(name,rows){const csv=rows.map(r=>r.map(csvEscape).join(",")).join("\r\n");const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);}
+$("exportEarnings").addEventListener("click",()=>{const rows=[["Referrer Name","Username","Referrer UID","$50 Count","$50 Reward","$100 Count","$100 Reward","$200 Count","$200 Reward","$500 Count","$500 Reward","$1000 Count","$1000 Reward","Total Packages","Total Earned"]];earningsByReferrer().forEach(g=>{const u=getUser(g.uid);rows.push([displayName(g.uid),u.username||"",g.uid,g.counts[50],g.rewards[50],g.counts[100],g.rewards[100],g.counts[200],g.rewards[200],g.counts[500],g.rewards[500],g.counts[1000],g.rewards[1000],g.packages,g.total]);});downloadCSV("diwali-earnings.csv",rows);});
+$("exportWithdrawals").addEventListener("click",()=>{const rows=[["User","UID","Amount USDT","Requested At","Wallet Address","Status","Withdrawal ID","Transaction Hash"]];Object.entries(withdrawals).forEach(([id,w])=>rows.push([displayName(w.userId,w.username),w.userId,w.amount,safeDate(w.requestedAt),w.walletAddress,w.status,w.withdrawalId||id,w.txHash||""]));downloadCSV("diwali-withdrawals.csv",rows);});
+</script>
 </body>
 </html>
