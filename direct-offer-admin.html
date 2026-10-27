@@ -175,13 +175,12 @@
             });
         };
 
-        // 🟢 1. Rewards / Earnings Listener (user_claims से डेटा उठाएगा)
+        // 🟢 1. Rewards / Earnings Listener (sahi purchases path se)
         function loadEarningsData() {
-            // 🔥 ध्यान दें: हम यहाँ 'user_claims' को पढ़ रहे हैं
-            const claimsRef = ref(db, `${CAMPAIGN_ID}/user_claims`);
+            const purchasesRef = ref(db, `${CAMPAIGN_ID}/purchases`);
             const usersRef = ref(db, "users");
 
-            onValue(claimsRef, async (snapshot) => {
+            onValue(purchasesRef, async (snapshot) => {
                 const tbody = document.getElementById('earningsTableBody');
                 tbody.innerHTML = '';
                 
@@ -192,7 +191,7 @@
                     return;
                 }
 
-                const allClaims = snapshot.val();
+                const purchases = snapshot.val();
                 const usersSnap = await get(usersRef);
                 const allUsers = usersSnap.exists() ? usersSnap.val() : {};
 
@@ -200,24 +199,23 @@
                 const groupedData = {};
                 let totalRewards = 0;
 
-                // allClaims में डेटा इस तरह है: { referrerUid: { purchaseId: { amount, reward, ... } } }
-                for (let rUid in allClaims) {
-                    const userClaims = allClaims[rUid];
+                // purchases में डेटा इस तरह है: { purchaseId: { directReferrerUid, packageAmount, rewardAmount, ... } }
+                for (let pId in purchases) {
+                    const p = purchases[pId];
+                    const rUid = p.directReferrerUid; // किसको रिवॉर्ड मिला
+                    const amt = Number(p.packageAmount || 0); // पैकेज (50, 100 आदि)
+                    const rAmt = Number(p.rewardAmount || 0); // रिवॉर्ड ($10, $25 आदि)
+
+                    if (!rUid) continue;
+
                     if (!groupedData[rUid]) {
                         groupedData[rUid] = { counts: {50:0, 100:0, 200:0, 500:0, 1000:0}, total: 0 };
                     }
-
-                    for (let pId in userClaims) {
-                        const claim = userClaims[pId];
-                        const amt = Number(claim.amount || 0);
-                        const rAmt = Number(claim.reward || 0);
-
-                        if (groupedData[rUid].counts[amt] !== undefined) {
-                            groupedData[rUid].counts[amt]++;
-                        }
-                        groupedData[rUid].total += rAmt;
-                        totalRewards += rAmt;
+                    if (groupedData[rUid].counts[amt] !== undefined) {
+                        groupedData[rUid].counts[amt]++;
                     }
+                    groupedData[rUid].total += rAmt;
+                    totalRewards += rAmt;
                 }
 
                 // Render HTML
