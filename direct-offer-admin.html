@@ -175,7 +175,7 @@
             });
         };
 
-        // 🟢 1. Rewards / Earnings Listener (हर यूजर का डेटा)
+        // 🟢 1. Rewards / Earnings Listener
         function loadEarningsData() {
             const purchasesRef = ref(db, `${CAMPAIGN_ID}/purchases`);
             const usersRef = ref(db, "users");
@@ -192,8 +192,6 @@
                 }
 
                 const purchases = snapshot.val();
-                
-                // Fetch user details for names
                 const usersSnap = await get(usersRef);
                 const allUsers = usersSnap.exists() ? usersSnap.val() : {};
 
@@ -247,7 +245,7 @@
             });
         }
 
-        // 🟢 2. Withdrawals Listener (विड्रॉल रिक्वेस्ट)
+        // 🟢 2. Withdrawals Listener
         function loadWithdrawalData() {
             const withdrawRef = ref(db, `${CAMPAIGN_ID}/withdrawals`);
             const usersRef = ref(db, "users");
