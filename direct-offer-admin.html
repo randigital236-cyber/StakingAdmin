@@ -167,7 +167,7 @@
         const db = getDatabase(app);
         const CAMPAIGN_ID = "direct_diwali_offer_2026"; 
 
-        // ✅ कॉपी फंक्शन (पूरा एड्रेस कॉपी करने के लिए)
+        // ✅ कॉपी फंक्शन
         window.copyAddress = function(address) {
             if (!address) return;
             navigator.clipboard.writeText(address).then(() => { 
@@ -175,12 +175,13 @@
             });
         };
 
-        // 🟢 1. Rewards / Earnings Listener
+        // 🟢 1. Rewards / Earnings Listener (user_claims से डेटा उठाएगा)
         function loadEarningsData() {
-            const purchasesRef = ref(db, `${CAMPAIGN_ID}/purchases`);
+            // 🔥 ध्यान दें: हम यहाँ 'user_claims' को पढ़ रहे हैं
+            const claimsRef = ref(db, `${CAMPAIGN_ID}/user_claims`);
             const usersRef = ref(db, "users");
 
-            onValue(purchasesRef, async (snapshot) => {
+            onValue(claimsRef, async (snapshot) => {
                 const tbody = document.getElementById('earningsTableBody');
                 tbody.innerHTML = '';
                 
@@ -191,7 +192,7 @@
                     return;
                 }
 
-                const purchases = snapshot.val();
+                const allClaims = snapshot.val();
                 const usersSnap = await get(usersRef);
                 const allUsers = usersSnap.exists() ? usersSnap.val() : {};
 
@@ -199,20 +200,24 @@
                 const groupedData = {};
                 let totalRewards = 0;
 
-                for (let pId in purchases) {
-                    const p = purchases[pId];
-                    const rUid = p.directReferrerUid;
-                    const amt = p.packageAmount || 0;
-                    const rAmt = p.rewardAmount || 0;
-
+                // allClaims में डेटा इस तरह है: { referrerUid: { purchaseId: { amount, reward, ... } } }
+                for (let rUid in allClaims) {
+                    const userClaims = allClaims[rUid];
                     if (!groupedData[rUid]) {
                         groupedData[rUid] = { counts: {50:0, 100:0, 200:0, 500:0, 1000:0}, total: 0 };
                     }
-                    if (groupedData[rUid].counts[amt] !== undefined) {
-                        groupedData[rUid].counts[amt]++;
+
+                    for (let pId in userClaims) {
+                        const claim = userClaims[pId];
+                        const amt = Number(claim.amount || 0);
+                        const rAmt = Number(claim.reward || 0);
+
+                        if (groupedData[rUid].counts[amt] !== undefined) {
+                            groupedData[rUid].counts[amt]++;
+                        }
+                        groupedData[rUid].total += rAmt;
+                        totalRewards += rAmt;
                     }
-                    groupedData[rUid].total += rAmt;
-                    totalRewards += rAmt;
                 }
 
                 // Render HTML
