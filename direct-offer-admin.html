@@ -1,323 +1,218 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Diwali Direct Offer Admin</title>
+<title>Diwali Direct Offer — Admin Panel</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
-:root {
-  color-scheme: dark;
-  --bg: #080e1a;
-  --panel: #132237;
-  --line: #263b58;
-  --muted: #93a4bd;
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  background: var(--bg);
-  color: #edf3ff;
-  font-family: Arial, sans-serif;
-}
-.navbar-custom {
-  background: #0b1424;
-  border-bottom: 1px solid var(--line);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-.wrap { max-width: 1600px; margin: auto; padding: 22px 14px; }
-.panel, .stat {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 15px;
-  padding: 17px;
-  margin-bottom: 18px;
-}
+:root { color-scheme: dark; --bg: #080e1a; --panel: #132237; --line: #263b58; --muted: #93a4bd; }
+* { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
+body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
+.navbar-custom { background: #0b1424; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
+.wrap { max-width: 1600px; margin: auto; padding: 24px 16px; }
+.panel, .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 20px; }
 .stat { height: 100%; text-align: center; }
-.stat-num {
-  font-weight: 800;
-  font-size: clamp(1.25rem, 2vw, 2rem);
-  overflow-wrap: anywhere;
-}
-.stat-label { color: var(--muted); font-size: .82rem; margin-top: 8px; }
-.section-title {
-  font-size: 1.02rem;
-  font-weight: 800;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 12px;
-  margin-bottom: 14px;
-}
+.stat-num { font-weight: 800; font-size: clamp(1.2rem, 2vw, 2rem); overflow-wrap: anywhere; }
+.stat-label { color: var(--muted); font-size: .8rem; margin-top: 5px; }
+.section-title { font-size: 1.05rem; font-weight: 800; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 14px; }
+.table-responsive { max-height: 65vh; overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.table-responsive > .table { min-width: 1000px; }
+.table-responsive > .table td, .table-responsive > .table th { white-space: nowrap; }
+.table-responsive > .table td:first-child { white-space: normal; min-width: 150px; }
+.table { --bs-table-bg: transparent; --bs-table-color: #edf3ff; --bs-table-border-color: var(--line); margin: 0; }
+.table thead th { position: sticky; top: 0; background: #14243a; color: #b9c8df; white-space: nowrap; z-index: 1; font-size: .78rem; }
+.table td { vertical-align: middle; font-size: .82rem; }
 .muted, .small-note { color: var(--muted); }
 .small-note { font-size: .78rem; }
-.table-responsive {
-  overflow: auto;
-  max-height: 65vh;
-  -webkit-overflow-scrolling: touch;
-}
-.table-responsive > .table { min-width: 1000px; }
-.table {
-  --bs-table-bg: transparent;
-  --bs-table-color: #edf3ff;
-  --bs-table-border-color: var(--line);
-  margin-bottom: 0;
-}
-.table th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #14243a;
-  color: #b9c8df;
-  white-space: nowrap;
-  font-size: .8rem;
-}
-.table td { vertical-align: middle; font-size: .83rem; }
-.table td, .table th { white-space: nowrap; }
-.form-control, .form-select {
-  background: #0c1728;
-  color: #edf3ff;
-  border-color: #304560;
-}
-.form-control:focus, .form-select:focus {
-  background: #0c1728;
-  color: white;
-  border-color: #4b91e2;
-  box-shadow: none;
-}
-.mono { font-family: monospace; overflow-wrap: anywhere; }
-.wallet {
-  display: inline-block;
-  max-width: 280px;
-  white-space: normal;
-  word-break: break-all;
-  color: #8dc5ff;
-}
-.status {
-  display: inline-block;
-  border-radius: 30px;
-  padding: 4px 10px;
-  font-size: .75rem;
-  font-weight: 700;
-  text-transform: capitalize;
-}
+.mono { font-family: ui-monospace, monospace !important; overflow-wrap: anywhere; }
+.wallet { max-width: 270px; display: inline-block; white-space: normal; word-break: break-all; color: #8dc5ff; }
+.status { display: inline-block; border-radius: 30px; padding: 4px 10px; font-size: .75rem; font-weight: 700; text-transform: capitalize; }
 .status-pending { background: #624d1d; color: #ffd66b; }
 .status-approved { background: #173f31; color: #70e6a7; }
 .status-paid { background: #153e52; color: #79d7ff; }
 .status-rejected { background: #54272d; color: #ff9ca6; }
+.form-control, .form-select { background: #0c1728; color: #edf3ff; border-color: #304560; }
+.form-control:focus, .form-select:focus { background: #0c1728; color: white; border-color: #4b91e2; box-shadow: none; }
+.btn-sm { white-space: nowrap; }
 .error-box { white-space: pre-wrap; display: none; }
-button { white-space: nowrap; }
-@media(max-width:576px) {
-  .wrap { padding: 12px 9px; }
-  .panel, .stat { padding: 12px; }
-  .navbar-custom .container-fluid { align-items: flex-start !important; }
-  .table-responsive > .table { min-width: 1000px; }
-}
+.loading-screen { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 1.2rem; color: var(--muted); }
+@media (max-width: 576px) { .wrap { padding: 14px 10px; } .panel, .stat { padding: 13px; } .navbar-custom .container-fluid { align-items: flex-start !important; } .table-responsive > .table { min-width: 1000px; } }
 </style>
 </head>
 
 <body>
 
-<nav class="navbar navbar-custom py-3">
-  <div class="container-fluid px-3 d-flex justify-content-between gap-3 flex-wrap">
-    <a href="index.html" class="navbar-brand text-white fw-bold text-decoration-none">
-      <i class="bi bi-arrow-left me-2"></i>Main Admin
-    </a>
-    <div class="text-success fw-bold">
-      <i class="bi bi-gift me-2"></i>Diwali Direct Offer Admin
-    </div>
-    <div class="d-flex align-items-center gap-2">
-      <span id="liveStatus" class="small-note">Checking existing session...</span>
-      <button id="refreshBtn" class="btn btn-outline-info btn-sm">Refresh</button>
-    </div>
+<div id="loadingScreen" class="loading-screen">
+  <div class="text-center">
+    <div class="spinner-border text-success mb-3" role="status"></div>
+    <div>Checking authentication...</div>
   </div>
-</nav>
+</div>
 
-<main class="wrap">
-
-  <div id="pageError" class="alert alert-warning error-box"></div>
-
-  <div class="small-note mb-3">
-    Campaign: <strong>Diwali Bumper Offer 2026</strong> ·
-    Offer period: 26 Oct – 7 Nov 2026 ·
-    Withdrawal opening date: 8 Nov 2026.
-  </div>
-
-  <div class="row g-3 mb-3">
-    <div class="col-6 col-xl-3"><div class="stat">
-      <div id="earningUsers" class="stat-num text-info">—</div>
-      <div class="stat-label">Users With Earnings</div>
-    </div></div>
-
-    <div class="col-6 col-xl-3"><div class="stat">
-      <div id="rewardsGenerated" class="stat-num text-success">—</div>
-      <div class="stat-label">Total Rewards Generated</div>
-    </div></div>
-
-    <div class="col-6 col-xl-3"><div class="stat">
-      <div id="pendingCount" class="stat-num text-warning">—</div>
-      <div class="stat-label">Pending Withdrawal Requests</div>
-    </div></div>
-
-    <div class="col-6 col-xl-3"><div class="stat">
-      <div id="paidTotal" class="stat-num text-primary">—</div>
-      <div class="stat-label">Actually Paid (USDT)</div>
-    </div></div>
-
-    <div class="col-6 col-xl-3"><div class="stat">
-      <div id="approvedTotal" class="stat-num">—</div>
-      <div class="stat-label">Approved, Not Yet Paid</div>
-    </div></div>
-
-    <div class="col-6 col-xl-3"><div class="stat">
-      <div id="pendingTotal" class="stat-num">—</div>
-      <div class="stat-label">Pending Amount (USDT)</div>
-    </div></div>
-
-    <div class="col-6 col-xl-3"><div class="stat">
-      <div id="rejectedCount" class="stat-num text-danger">—</div>
-      <div class="stat-label">Rejected Requests</div>
-    </div></div>
-
-    <div class="col-6 col-xl-3"><div class="stat">
-      <div id="eligiblePackages" class="stat-num">—</div>
-      <div class="stat-label">Eligible Purchases</div>
-    </div></div>
-  </div>
-
-  <section class="panel">
-    <div class="section-title">Package & Reward Summary</div>
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead><tr>
-          <th>Package</th><th>Purchase Count</th>
-          <th>Reward Per Purchase</th><th>Total Reward</th>
-        </tr></thead>
-        <tbody id="tierSummary">
-          <tr><td colspan="4">Waiting for Firebase data...</td></tr>
-        </tbody>
-      </table>
+<div id="mainContent" style="display: none;">
+  <nav class="navbar navbar-custom py-3">
+    <div class="container-fluid px-3 d-flex justify-content-between gap-3 flex-wrap">
+      <a class="navbar-brand text-white fw-bold text-decoration-none" href="index.html">
+        <i class="bi bi-arrow-left me-2"></i>Main Admin
+      </a>
+      <div class="fw-bold text-success">
+        <i class="bi bi-gift me-2"></i>Diwali Direct Offer Admin
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span id="liveStatus" class="small-note">Connecting...</span>
+        <button id="refreshBtn" class="btn btn-outline-info btn-sm">
+          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+      </div>
     </div>
-  </section>
+  </nav>
 
-  <section class="panel">
-    <div class="section-title">Direct Referrer Earnings</div>
-    <div class="row g-2 mb-3">
-      <div class="col-md-6">
-        <input id="earningsSearch" class="form-control"
-          placeholder="Search referrer name, username or UID">
+  <main class="wrap">
+    <div id="pageError" class="alert alert-warning error-box"></div>
+    <div class="small-note mb-3">
+      Campaign: <strong>Diwali Bumper Offer 2026</strong> · 26 Oct – 7 Nov 2026 · Live Firebase data
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-xl-3">
+        <div class="stat">
+          <div id="earningUsers" class="stat-num text-info">—</div>
+          <div class="stat-label">Users With Earnings</div>
+        </div>
       </div>
-      <div class="col-md-3">
-        <select id="earningsTier" class="form-select">
-          <option value="all">All package tiers</option>
-          <option value="50">$50 package</option>
-          <option value="100">$100 package</option>
-          <option value="200">$200 package</option>
-          <option value="500">$500 package</option>
-          <option value="1000">$1000 package</option>
-        </select>
+      <div class="col-6 col-xl-3">
+        <div class="stat">
+          <div id="rewardsGenerated" class="stat-num text-success">$0.00</div>
+          <div class="stat-label">Total Rewards Generated</div>
+        </div>
       </div>
-      <div class="col-md-3">
-        <button id="exportEarnings" class="btn btn-outline-success w-100">Export CSV</button>
+      <div class="col-6 col-xl-3">
+        <div class="stat">
+          <div id="pendingCount" class="stat-num text-warning">0</div>
+          <div class="stat-label">Pending Withdrawal Requests</div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="stat">
+          <div id="paidTotal" class="stat-num text-primary">$0.00</div>
+          <div class="stat-label">Actually Paid (USDT)</div>
+        </div>
       </div>
     </div>
 
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead><tr>
-          <th>Referrer</th><th>UID</th>
-          <th>$50 Count / Reward</th><th>$100 Count / Reward</th>
-          <th>$200 Count / Reward</th><th>$500 Count / Reward</th>
-          <th>$1000 Count / Reward</th><th>Total Packages</th><th>Total Earned</th>
-        </tr></thead>
-        <tbody id="earningsBody">
-          <tr><td colspan="9">Waiting for Firebase data...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+    <!-- Package Summary -->
+    <section class="panel">
+      <div class="section-title"><i class="bi bi-bar-chart-line text-success me-2"></i>Package & Reward Summary</div>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Package Purchased</th>
+              <th>Eligible Purchase Count</th>
+              <th>Reward Per Purchase</th>
+              <th>Total Reward Earned</th>
+            </tr>
+          </thead>
+          <tbody id="tierSummary">
+            <tr><td colspan="4" class="text-center muted py-4">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-  <section class="panel">
-    <div class="section-title">Eligible Purchase Details</div>
-    <div class="row g-2 mb-3">
-      <div class="col-md-8">
-        <input id="purchaseSearch" class="form-control"
-          placeholder="Search buyer UID, referrer UID or purchase ID">
+    <!-- Referrer Earnings -->
+    <section class="panel">
+      <div class="section-title"><i class="bi bi-people-fill text-success me-2"></i>Direct Referrer Earnings Breakdown</div>
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <input id="earningsSearch" class="form-control" placeholder="Search referrer name, username, UID...">
+        </div>
+        <div class="col-md-6">
+          <select id="earningsTier" class="form-select">
+            <option value="all">All package tiers</option>
+            <option value="50">$50 package</option>
+            <option value="100">$100 package</option>
+            <option value="200">$200 package</option>
+            <option value="500">$500 package</option>
+            <option value="1000">$1000 package</option>
+          </select>
+        </div>
       </div>
-      <div class="col-md-4">
-        <select id="purchaseTier" class="form-select">
-          <option value="all">All package tiers</option>
-          <option value="50">$50</option><option value="100">$100</option>
-          <option value="200">$200</option><option value="500">$500</option>
-          <option value="1000">$1000</option>
-        </select>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Referrer Name / Username</th>
+              <th>Referrer UID</th>
+              <th>$50 count / reward</th>
+              <th>$100 count / reward</th>
+              <th>$200 count / reward</th>
+              <th>$500 count / reward</th>
+              <th>$1000 count / reward</th>
+              <th>Total Packages</th>
+              <th>Total Earned</th>
+            </tr>
+          </thead>
+          <tbody id="earningsBody">
+            <tr><td colspan="9" class="text-center muted py-4">Loading...</td></tr>
+          </tbody>
+        </table>
       </div>
-    </div>
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead><tr>
-          <th>Buyer</th><th>Buyer UID</th><th>Direct Referrer</th>
-          <th>Package</th><th>Reward</th><th>Purchase Date</th><th>Status</th>
-        </tr></thead>
-        <tbody id="purchasesBody">
-          <tr><td colspan="7">Waiting for Firebase data...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+    </section>
 
-  <section class="panel">
-    <div class="section-title">Withdrawal Requests & Payment Status</div>
-    <div class="row g-2 mb-3">
-      <div class="col-md-6">
-        <input id="withdrawalSearch" class="form-control"
-          placeholder="Search name, UID, withdrawal ID or wallet">
+    <!-- Withdrawals -->
+    <section class="panel">
+      <div class="section-title"><i class="bi bi-wallet2 text-success me-2"></i>Withdrawal Requests & Payment Actions</div>
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <input id="withdrawalSearch" class="form-control" placeholder="Search name, UID, withdrawal ID, wallet...">
+        </div>
+        <div class="col-md-6">
+          <select id="withdrawalStatusFilter" class="form-select">
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="paid">Paid</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
       </div>
-      <div class="col-md-3">
-        <select id="withdrawalStatusFilter" class="form-select">
-          <option value="all">All statuses</option>
-          <option value="pending">Pending</option><option value="approved">Approved</option>
-          <option value="paid">Paid</option><option value="rejected">Rejected</option>
-        </select>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>User UID</th>
+              <th>Amount</th>
+              <th>Requested</th>
+              <th>Full USDT Wallet Address</th>
+              <th>Status</th>
+              <th>Admin Actions</th>
+            </tr>
+          </thead>
+          <tbody id="withdrawalsBody">
+            <tr><td colspan="7" class="text-center muted py-4">Loading...</td></tr>
+          </tbody>
+        </table>
       </div>
-      <div class="col-md-3">
-        <button id="exportWithdrawals" class="btn btn-outline-success w-100">Export CSV</button>
-      </div>
-    </div>
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead><tr>
-          <th>User</th><th>UID</th><th>Amount</th><th>Requested At</th>
-          <th>Full Wallet Address</th><th>Status</th><th>Actions</th>
-        </tr></thead>
-        <tbody id="withdrawalsBody">
-          <tr><td colspan="7">Waiting for Firebase data...</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="small-note mt-3">
-      This page records withdrawal status; it does not send USDT automatically.
-      Mark a request Paid only after the transfer is actually sent and verified.
-    </p>
-  </section>
-</main>
+    </section>
+  </main>
+</div>
 
 <script type="module">
-import { initializeApp, getApps } from
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-import { getAuth, onAuthStateChanged } from
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-import { getDatabase, ref, get, onValue, update } from
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
+// 🔥 LIVE FIREBASE CONFIG (RND2)
 const firebaseConfig = {
-  apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o",
+  apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
   authDomain: "rnd2-70080.firebaseapp.com",
   databaseURL: "https://rnd2-70080-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "rnd2-70080",
@@ -327,83 +222,76 @@ const firebaseConfig = {
   measurementId: "G-ELVJD5NQKB"
 };
 
-const app = getApps().find(a => a.options.projectId === firebaseConfig.projectId)
-  || initializeApp(firebaseConfig);
-
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
-
-const CAMPAIGN = "direct_diwali_offer_2026";
+const CAMPAIGN_ID = "direct_diwali_offer_2026";
 const TIERS = { 50: 10, 100: 25, 200: 60, 500: 120, 1000: 250 };
 
 let allUsers = {};
 let purchases = {};
 let withdrawals = {};
-let currentUid = null;
 let listenersStarted = false;
-let withdrawalReadFailed = false;
-let usersReadFailed = false;
-let purchasesReadFailed = false;
 
 const $ = id => document.getElementById(id);
+const money = n => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 
-const money = n => "$" + (Number(n) || 0).toLocaleString("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
+// 🔥 AUTH CHECK: पहले चेक करो कि यूजर लॉग-इन है या नहीं
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    // यूजर लॉग-इन है, अब डेटा लोड करो
+    $("loadingScreen").style.display = "none";
+    $("mainContent").style.display = "block";
+    startListeners();
+  } else {
+    // यूजर लॉग-इन नहीं है
+    $("loadingScreen").innerHTML = `<div class="text-danger">Access Denied. Please login through the main admin panel.</div>`;
+  }
 });
 
-const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({
-  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-}[c]));
+function startListeners() {
+  if (listenersStarted) return;
+  listenersStarted = true;
+  $("liveStatus").textContent = "Connecting...";
 
-function showError(message) {
-  const box = $("pageError");
-  box.style.display = "block";
-  box.textContent = message;
+  onValue(ref(db, "users"), snapshot => {
+    allUsers = snapshot.val() || {};
+    renderAll();
+  }, error => showError("pageError", "Could not read users: " + error.message));
+
+  onValue(ref(db, `${CAMPAIGN_ID}/purchases`), snapshot => {
+    purchases = snapshot.val() || {};
+    renderAll();
+  }, error => showError("pageError", "Could not read offer purchases: " + error.message));
+
+  onValue(ref(db, `${CAMPAIGN_ID}/withdrawals`), snapshot => {
+    withdrawals = snapshot.val() || {};
+    renderAll();
+  }, error => showError("pageError", "Could not read withdrawals: " + error.message));
 }
-function hideError() {
-  $("pageError").style.display = "none";
+
+function showError(id, message) {
+  const el = $(id);
+  el.style.display = "block";
+  el.textContent = message;
 }
-function safeDate(value) {
-  if (value === null || value === undefined || value === "") return "—";
-  const n = Number(value);
-  const d = new Date(Number.isFinite(n) ? (n < 1e12 ? n * 1000 : n) : value);
-  return Number.isFinite(d.getTime()) ? d.toLocaleString() : "—";
-}
-function statusHtml(value) {
-  const s = String(value || "unknown").toLowerCase();
-  return `<span class="status status-${esc(s)}">${esc(s)}</span>`;
-}
-function getUser(uid) {
-  return allUsers[uid] || {};
-}
+
+function getUser(uid) { return allUsers[uid] || {}; }
+
 function displayName(uid, fallback = "") {
-  const u = getUser(uid);
-  return u.name || u.fullName || u.full_name || u.username || fallback || "Unknown user";
+  const user = getUser(uid);
+  return user.name || user.fullName || user.username || fallback || "Unknown user";
 }
-function validTier(n) {
-  return Object.prototype.hasOwnProperty.call(TIERS, String(Number(n)));
+
+function validTier(amount) {
+  return Object.prototype.hasOwnProperty.call(TIERS, String(Number(amount)));
 }
-function asRows(data) {
-  return Object.entries(data || {}).map(([id, value]) => ({
-    id,
-    ...(value && typeof value === "object" ? value : {})
-  }));
-}
+
 function purchaseRows() {
-  return asRows(purchases).filter(p => {
-    const tier = Number(p.packageAmount ?? p.package ?? p.amount);
-    const refUid = p.directReferrerUid || p.referrerUid || p.referrerId || p.sponsorUid;
-    const status = String(p.status || "completed").toLowerCase();
-    return refUid && validTier(tier) && status !== "rejected";
-  }).map(p => ({
-    ...p,
-    buyerUid: p.buyerUid || p.userId || p.uid || "",
-    directReferrerUid: p.directReferrerUid || p.referrerUid || p.referrerId || p.sponsorUid || "",
-    packageAmount: Number(p.packageAmount ?? p.package ?? p.amount),
-    rewardAmount: Number(p.rewardAmount ?? p.reward ?? TIERS[Number(p.packageAmount ?? p.package ?? p.amount)]),
-    timestamp: p.timestamp ?? p.createdAt ?? p.purchasedAt ?? p.time
-  }));
+  return Object.entries(purchases)
+    .map(([id, p]) => ({ id, ...(p || {}) }))
+    .filter(p => p.directReferrerUid && validTier(p.packageAmount) && p.status !== "rejected");
 }
 
 function earningsByReferrer() {
@@ -411,388 +299,160 @@ function earningsByReferrer() {
   for (const p of purchaseRows()) {
     const uid = String(p.directReferrerUid);
     const tier = Number(p.packageAmount);
-    const reward = Number.isFinite(p.rewardAmount) ? p.rewardAmount : TIERS[tier];
+    const reward = Number(p.rewardAmount) || TIERS[tier];
 
-    if (!groups[uid]) groups[uid] = {
-      uid,
-      counts: {50:0,100:0,200:0,500:0,1000:0},
-      rewards: {50:0,100:0,200:0,500:0,1000:0},
-      total: 0,
-      packages: 0
-    };
-
+    if (!groups[uid]) {
+      groups[uid] = { uid, counts: {50:0, 100:0, 200:0, 500:0, 1000:0}, rewards: {50:0, 100:0, 200:0, 500:0, 1000:0}, total: 0, packages: 0 };
+    }
     groups[uid].counts[tier]++;
     groups[uid].rewards[tier] += reward;
     groups[uid].total += reward;
     groups[uid].packages++;
   }
-  return Object.values(groups).sort((a,b) => b.total - a.total);
+  return Object.values(groups).sort((a, b) => b.total - a.total);
 }
 
 function renderAll() {
   const rows = purchaseRows();
   const groups = earningsByReferrer();
-
-  const counts = {50:0,100:0,200:0,500:0,1000:0};
-  const rewards = {50:0,100:0,200:0,500:0,1000:0};
+  const tierCounts = {50:0, 100:0, 200:0, 500:0, 1000:0};
+  const tierRewards = {50:0, 100:0, 200:0, 500:0, 1000:0};
 
   rows.forEach(p => {
-    const t = Number(p.packageAmount);
-    counts[t]++;
-    rewards[t] += Number(p.rewardAmount) || TIERS[t];
+    const tier = Number(p.packageAmount);
+    tierCounts[tier]++;
+    tierRewards[tier] += Number(p.rewardAmount) || TIERS[tier];
   });
 
+  const totalReward = Object.values(tierRewards).reduce((a, b) => a + b, 0);
+
   $("earningUsers").textContent = groups.length.toLocaleString();
-  $("rewardsGenerated").textContent =
-    purchasesReadFailed ? "—" : money(Object.values(rewards).reduce((a,b) => a+b, 0));
-  $("eligiblePackages").textContent = purchasesReadFailed ? "—" : rows.length.toLocaleString();
+  $("rewardsGenerated").textContent = money(totalReward);
 
   $("tierSummary").innerHTML = Object.keys(TIERS).map(t => `
     <tr>
-      <td>${money(t)}</td>
-      <td>${purchasesReadFailed ? "—" : counts[t]}</td>
+      <td><strong>${money(t)}</strong></td>
+      <td>${tierCounts[t]}</td>
       <td>${money(TIERS[t])}</td>
-      <td class="text-success fw-bold">${purchasesReadFailed ? "—" : money(rewards[t])}</td>
+      <td class="text-success fw-bold">${money(tierRewards[t])}</td>
     </tr>
   `).join("");
 
   renderEarnings(groups);
-  renderPurchases(rows);
   renderWithdrawals();
+  $("liveStatus").textContent = "Live data connected";
 }
 
 function renderEarnings(groups) {
-  const q = $("earningsSearch").value.trim().toLowerCase();
+  const query = $("earningsSearch").value.trim().toLowerCase();
   const tier = $("earningsTier").value;
-
   const filtered = groups.filter(g => {
-    const u = getUser(g.uid);
-    const text = [g.uid,u.name,u.fullName,u.username].join(" ").toLowerCase();
-    return (!q || text.includes(q)) && (tier === "all" || g.counts[Number(tier)] > 0);
+    const user = getUser(g.uid);
+    const hay = [g.uid, user.name, user.fullName, user.username].join(" ").toLowerCase();
+    return (!query || hay.includes(query)) && (tier === "all" || g.counts[Number(tier)] > 0);
   });
 
   $("earningsBody").innerHTML = filtered.length ? filtered.map(g => {
-    const u = getUser(g.uid);
-    const cell = t => `${g.counts[t]} / ${money(g.rewards[t])}`;
-    return `<tr>
-      <td><strong>${esc(displayName(g.uid))}</strong><div class="muted">${esc(u.username || "")}</div></td>
-      <td class="mono">${esc(g.uid)}</td>
-      <td>${cell(50)}</td><td>${cell(100)}</td><td>${cell(200)}</td>
-      <td>${cell(500)}</td><td>${cell(1000)}</td>
-      <td>${g.packages}</td><td class="text-success fw-bold">${money(g.total)}</td>
-    </tr>`;
+    const user = getUser(g.uid);
+    const cell = t => `${g.counts[t]} <span class="muted">/ ${money(g.rewards[t])}</span>`;
+    return `
+      <tr>
+        <td><strong>${esc(displayName(g.uid))}</strong><div class="muted">${esc(user.username || "")}</div></td>
+        <td class="mono">${esc(g.uid)}</td>
+        <td>${cell(50)}</td><td>${cell(100)}</td><td>${cell(200)}</td><td>${cell(500)}</td><td>${cell(1000)}</td>
+        <td>${g.packages}</td>
+        <td class="text-success fw-bold">${money(g.total)}</td>
+      </tr>
+    `;
   }).join("") : `<tr><td colspan="9" class="text-center muted py-4">No matching earning users.</td></tr>`;
 }
 
-function renderPurchases(rows) {
-  const q = $("purchaseSearch").value.trim().toLowerCase();
-  const tier = $("purchaseTier").value;
-
-  const filtered = rows.filter(p => {
-    const buyer = getUser(p.buyerUid);
-    const text = [p.id,p.buyerUid,p.directReferrerUid,buyer.name,buyer.username].join(" ").toLowerCase();
-    return (!q || text.includes(q)) && (tier === "all" || Number(p.packageAmount) === Number(tier));
-  }).sort((a,b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
-
-  $("purchasesBody").innerHTML = filtered.length ? filtered.map(p => `
-    <tr>
-      <td><strong>${esc(displayName(p.buyerUid))}</strong><div class="muted">${esc(getUser(p.buyerUid).username || "")}</div></td>
-      <td class="mono">${esc(p.buyerUid)}</td>
-      <td><strong>${esc(displayName(p.directReferrerUid))}</strong><div class="mono muted">${esc(p.directReferrerUid)}</div></td>
-      <td>${money(p.packageAmount)}</td>
-      <td class="text-success fw-bold">${money(p.rewardAmount)}</td>
-      <td>${safeDate(p.timestamp)}</td>
-      <td>${statusHtml(p.status || "completed")}</td>
-    </tr>
-  `).join("") : `<tr><td colspan="7" class="text-center muted py-4">No matching purchases.</td></tr>`;
-}
-
 function renderWithdrawals() {
-  const entries = asRows(withdrawals).map(w => ({
-    ...w,
-    userId: w.userId || w.uid || w.uidUser || "",
-    amount: Number(w.amount ?? w.withdrawAmount ?? w.rewardAmount) || 0,
-    walletAddress: w.walletAddress || w.wallet || w.address || w.withdrawalAddress || "",
-    requestedAt: w.requestedAt ?? w.createdAt ?? w.timestamp ?? w.time,
-    status: String(w.status || "pending").toLowerCase()
-  })).sort((a,b) => Number(b.requestedAt || 0) - Number(a.requestedAt || 0));
+  const entries = Object.entries(withdrawals)
+    .map(([id, w]) => ({id, ...(w || {})}))
+    .sort((a, b) => (Number(b.requestedAt) || 0) - (Number(a.requestedAt) || 0));
 
   let pending = 0, approved = 0, paid = 0, rejected = 0, pendingAmount = 0;
   entries.forEach(w => {
-    if (w.status === "pending") { pending++; pendingAmount += w.amount; }
-    else if (w.status === "approved") approved += w.amount;
-    else if (w.status === "paid") paid += w.amount;
-    else if (w.status === "rejected") rejected++;
+    const amount = Number(w.amount) || 0;
+    const status = String(w.status || "pending").toLowerCase();
+    if (status === "pending") { pending++; pendingAmount += amount; }
+    else if (status === "approved") approved += amount;
+    else if (status === "paid") paid += amount;
+    else if (status === "rejected") rejected++;
   });
 
-  $("pendingCount").textContent = withdrawalReadFailed ? "—" : pending;
-  $("approvedTotal").textContent = withdrawalReadFailed ? "—" : money(approved);
-  $("pendingTotal").textContent = withdrawalReadFailed ? "—" : money(pendingAmount);
-  $("paidTotal").textContent = withdrawalReadFailed ? "—" : money(paid);
-  $("rejectedCount").textContent = withdrawalReadFailed ? "—" : rejected;
+  $("pendingCount").textContent = pending;
+  $("paidTotal").textContent = money(paid);
 
-  const q = $("withdrawalSearch").value.trim().toLowerCase();
+  const query = $("withdrawalSearch").value.trim().toLowerCase();
   const filter = $("withdrawalStatusFilter").value;
-
   const filtered = entries.filter(w => {
-    const u = getUser(w.userId);
-    const text = [w.userId,w.username,w.withdrawalId,w.walletAddress,u.name,u.username].join(" ").toLowerCase();
-    return (!q || text.includes(q)) && (filter === "all" || w.status === filter);
+    const user = getUser(w.userId || "");
+    const hay = [w.userId, w.username, w.withdrawalId, w.walletAddress, user.name, user.username].join(" ").toLowerCase();
+    return (!query || hay.includes(query)) && (filter === "all" || String(w.status || "pending").toLowerCase() === filter);
   });
 
-  $("withdrawalsBody").innerHTML = withdrawalReadFailed
-    ? `<tr><td colspan="7" class="text-warning">Firebase denied access to withdrawal records. Check that Firebase Authentication has restored the existing session and that the rules apply to this Firebase project.</td></tr>`
-    : filtered.length ? filtered.map(w => {
-      let actions = "";
-      if (w.status === "pending") {
-        actions = `<button class="btn btn-success btn-sm me-1" data-action="approve" data-id="${esc(w.id)}">Approve</button>
-          <button class="btn btn-danger btn-sm" data-action="reject" data-id="${esc(w.id)}">Reject</button>`;
-      } else if (w.status === "approved") {
-        actions = `<button class="btn btn-primary btn-sm me-1" data-action="paid" data-id="${esc(w.id)}">Mark Paid</button>
-          <button class="btn btn-outline-danger btn-sm" data-action="reject" data-id="${esc(w.id)}">Reject</button>`;
-      } else {
-        actions = `<span class="muted">No actions</span>`;
-      }
+  $("withdrawalsBody").innerHTML = filtered.length ? filtered.map(w => {
+    const uid = w.userId || "";
+    const user = getUser(uid);
+    const status = String(w.status || "pending").toLowerCase();
+    const wallet = String(w.walletAddress || "");
+    let actions = "";
+    
+    if (status === "pending") {
+      actions = `
+        <button class="btn btn-success btn-sm me-1" onclick="approveWithdrawal('${w.id}')">Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="rejectWithdrawal('${w.id}')">Reject</button>
+      `;
+    } else if (status === "approved") {
+      actions = `
+        <button class="btn btn-primary btn-sm" onclick="markAsPaid('${w.id}')">Mark as Paid</button>
+      `;
+    } else {
+      actions = `<span class="muted">Done</span>`;
+    }
 
-      const wallet = String(w.walletAddress || "");
-      return `<tr>
-        <td><strong>${esc(displayName(w.userId,w.username))}</strong><div class="muted">${esc(w.username || getUser(w.userId).username || "")}</div></td>
-        <td class="mono">${esc(w.userId)}</td>
+    return `
+      <tr>
+        <td><strong>${esc(displayName(uid, w.username))}</strong><div class="muted">${esc(w.username || user.username || "")}</div></td>
+        <td class="mono">${esc(uid)}</td>
         <td class="text-warning fw-bold">${money(w.amount)} USDT</td>
-        <td>${safeDate(w.requestedAt)}</td>
-        <td><div class="wallet mono">${esc(wallet || "No address saved")}</div>
-          <button class="btn btn-outline-info btn-sm mt-1" data-action="copy" data-wallet="${esc(wallet)}" ${wallet ? "" : "disabled"}>Copy Address</button>
+        <td>${new Date(w.requestedAt).toLocaleString()}</td>
+        <td>
+          <div class="wallet mono">${esc(wallet || "No wallet address")}</div>
+          <div><button class="btn btn-outline-info btn-sm mt-1" onclick="copyAddress('${wallet}')"><i class="bi bi-clipboard me-1"></i>Copy</button></div>
         </td>
-        <td>${statusHtml(w.status)}${w.txHash ? `<div class="small-note mt-1">Tx: ${esc(w.txHash)}</div>` : ""}</td>
-        <td>${actions}<div class="small-note mt-1">${esc(w.withdrawalId || w.id)}</div></td>
-      </tr>`;
-    }).join("") : `<tr><td colspan="7" class="text-center muted py-4">No withdrawal requests found.</td></tr>`;
+        <td><span class="status status-${status}">${status}</span></td>
+        <td>${actions}</td>
+      </tr>
+    `;
+  }).join("") : `<tr><td colspan="7" class="text-center muted py-4">No withdrawal requests match this filter.</td></tr>`;
 }
 
-async function updateWithdrawal(item, newStatus, extra = {}) {
-  const updates = {};
-  const path = `${CAMPAIGN}/withdrawals/${item.id}`;
-  updates[`${path}/status`] = newStatus;
-  updates[`${path}/updatedAt`] = Date.now();
-
-  for (const [key,value] of Object.entries(extra)) {
-    updates[`${path}/${key}`] = value;
-  }
-
-  await update(ref(db), updates);
+window.copyAddress = function(wallet) {
+  if(!wallet) return alert("No address to copy");
+  navigator.clipboard.writeText(wallet);
+  alert("✅ Full wallet address copied!");
 }
 
-async function doAction(action, id, walletFromButton = "") {
-  if (action === "copy") {
-    const wallet = walletFromButton;
-    if (!wallet) return alert("No wallet address saved.");
-
-    try {
-      await navigator.clipboard.writeText(wallet);
-      alert("Full wallet address copied.");
-    } catch {
-      const input = document.createElement("textarea");
-      input.value = wallet;
-      document.body.appendChild(input);
-      input.select();
-      const ok = document.execCommand("copy");
-      input.remove();
-      alert(ok ? "Full wallet address copied." : "Copy failed. Please copy the address manually.");
-    }
-    return;
-  }
-
-  if (!currentUid) {
-    alert("Firebase session is not active. Open this page from your already logged-in Main Admin and retry.");
-    return;
-  }
-
-  const raw = withdrawals[id];
-  if (!raw) return alert("Withdrawal record not found. Refresh the page.");
-
-  const item = {
-    ...raw,
-    id,
-    status: String(raw.status || "pending").toLowerCase(),
-    userId: raw.userId || raw.uid || ""
-  };
-
-  try {
-    if (action === "approve") {
-      if (item.status !== "pending") return alert("Only pending requests can be approved.");
-      if (!confirm(`Approve ${money(item.amount)} USDT?`)) return;
-      await updateWithdrawal(item, "approved", {approvedAt: Date.now()});
-      alert("Withdrawal approved.");
-    }
-
-    if (action === "reject") {
-      if (!["pending","approved"].includes(item.status)) return alert("This request cannot be rejected.");
-      const reason = prompt("Optional rejection reason:", "") || "";
-      if (!confirm("Reject this withdrawal request?")) return;
-      await updateWithdrawal(item, "rejected", {rejectedAt: Date.now(), rejectionReason: reason});
-      alert("Withdrawal rejected.");
-    }
-
-    if (action === "paid") {
-      if (item.status !== "approved") return alert("Approve the request first.");
-      const txHash = prompt("Enter the USDT transaction hash:", "") || "";
-      if (!confirm("Confirm that the USDT transfer has actually been sent. Mark as Paid?")) return;
-      await updateWithdrawal(item, "paid", {paidAt: Date.now(), txHash});
-      alert("Marked as paid.");
-    }
-  } catch (error) {
-    console.error(error);
-    alert("Action failed: " + (error.message || error));
-  }
+window.approveWithdrawal = async function(id) {
+  if(!confirm("Are you sure you want to APPROVE this withdrawal?")) return;
+  await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${id}`), { status: 'approved' });
+  alert('✅ Approved!');
 }
 
-$("withdrawalsBody").addEventListener("click", event => {
-  const button = event.target.closest("button[data-action]");
-  if (button) doAction(button.dataset.action, button.dataset.id, button.dataset.wallet || "");
-});
-
-["earningsSearch","earningsTier"].forEach(id =>
-  $(id).addEventListener("input", () => renderEarnings(earningsByReferrer()))
-);
-["purchaseSearch","purchaseTier"].forEach(id =>
-  $(id).addEventListener("input", () => renderPurchases(purchaseRows()))
-);
-["withdrawalSearch","withdrawalStatusFilter"].forEach(id => {
-  $(id).addEventListener("input", renderWithdrawals);
-  $(id).addEventListener("change", renderWithdrawals);
-});
-
-function csvEscape(value) {
-  return '"' + String(value ?? "").replace(/"/g, '""') + '"';
-}
-function downloadCSV(name, rows) {
-  const csv = rows.map(row => row.map(csvEscape).join(",")).join("\r\n");
-  const blob = new Blob(["\ufeff" + csv], {type:"text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+window.rejectWithdrawal = async function(id) {
+  if(!confirm("Are you sure you want to REJECT this withdrawal?")) return;
+  await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${id}`), { status: 'rejected' });
+  alert('❌ Rejected!');
 }
 
-$("exportEarnings").addEventListener("click", () => {
-  const rows = [["Referrer","UID","$50 Count","$50 Reward","$100 Count","$100 Reward",
-    "$200 Count","$200 Reward","$500 Count","$500 Reward","$1000 Count","$1000 Reward",
-    "Total Packages","Total Earned"]];
-  earningsByReferrer().forEach(g => rows.push([
-    displayName(g.uid),g.uid,g.counts[50],g.rewards[50],g.counts[100],g.rewards[100],
-    g.counts[200],g.rewards[200],g.counts[500],g.rewards[500],
-    g.counts[1000],g.rewards[1000],g.packages,g.total
-  ]));
-  downloadCSV("diwali-earnings.csv", rows);
-});
-
-$("exportWithdrawals").addEventListener("click", () => {
-  const rows = [["User","UID","Amount","Requested At","Wallet","Status","Withdrawal ID","Tx Hash"]];
-  asRows(withdrawals).forEach(w => rows.push([
-    displayName(w.userId || w.uid,w.username),
-    w.userId || w.uid || "",
-    w.amount ?? w.withdrawAmount ?? "",
-    safeDate(w.requestedAt ?? w.createdAt ?? w.timestamp),
-    w.walletAddress || w.wallet || w.address || "",
-    w.status || "",
-    w.withdrawalId || w.id,
-    w.txHash || ""
-  ]));
-  downloadCSV("diwali-withdrawals.csv", rows);
-});
-
-function startListeners() {
-  if (listenersStarted) return;
-  listenersStarted = true;
-
-  $("liveStatus").textContent = "Loading Firebase data...";
-
-  onValue(ref(db,"users"), snapshot => {
-    allUsers = snapshot.val() || {};
-    usersReadFailed = false;
-    renderAll();
-  }, error => {
-    usersReadFailed = true;
-    showError("Users read failed: " + error.message);
-  });
-
-  onValue(ref(db,`${CAMPAIGN}/purchases`), snapshot => {
-    purchases = snapshot.val() || {};
-    purchasesReadFailed = false;
-    hideError();
-    renderAll();
-  }, error => {
-    purchasesReadFailed = true;
-    showError("Purchases read failed: " + error.message);
-    renderAll();
-  });
-
-  onValue(ref(db,`${CAMPAIGN}/withdrawals`), snapshot => {
-    withdrawals = snapshot.val() || {};
-    withdrawalReadFailed = false;
-    hideError();
-    renderAll();
-  }, error => {
-    withdrawals = {};
-    withdrawalReadFailed = true;
-    showError("Withdrawals read failed: " + error.message);
-    renderAll();
-  });
+window.markAsPaid = async function(id) {
+  if(!confirm("Have you sent the USDT? Mark as PAID?")) return;
+  await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${id}`), { status: 'paid', paidAt: Date.now() });
+  alert('💰 Marked as Paid!');
 }
-
-$("refreshBtn").addEventListener("click", async () => {
-  if (!currentUid) {
-    $("liveStatus").textContent = "Waiting for Firebase session";
-    showError("No active Firebase Authentication session. Please open this page from the already logged-in Main Admin.");
-    return;
-  }
-
-  $("liveStatus").textContent = "Refreshing...";
-  try {
-    const [u,p,w] = await Promise.all([
-      get(ref(db,"users")),
-      get(ref(db,`${CAMPAIGN}/purchases`)),
-      get(ref(db,`${CAMPAIGN}/withdrawals`))
-    ]);
-
-    allUsers = u.val() || {};
-    purchases = p.val() || {};
-    withdrawals = w.val() || {};
-
-    usersReadFailed = false;
-    purchasesReadFailed = false;
-    withdrawalReadFailed = false;
-
-    hideError();
-    renderAll();
-    $("liveStatus").textContent = "Data refreshed";
-  } catch (error) {
-    showError("Refresh failed: " + error.message);
-    $("liveStatus").textContent = "Refresh failed";
-  }
-});
-
-// Restore the Firebase Authentication session. No separate login page
-// and no separate admin-role check are created here.
-onAuthStateChanged(auth, user => {
-  currentUid = user ? user.uid : null;
-
-  if (!user) {
-    $("liveStatus").textContent = "Firebase session not found";
-    showError(
-      "No Firebase Authentication session was found for this page. " +
-      "Your rules require auth != null. This page does not create a new login; " +
-      "open it in the same browser/site after the Main Admin Firebase session is active."
-    );
-    return;
-  }
-
-  hideError();
-  $("liveStatus").textContent = "Firebase session restored";
-  startListeners();
-});
 </script>
 </body>
 </html>
