@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -19,10 +18,7 @@
   --muted: #93a4bd;
 }
 
-* {
-  box-sizing: border-box;
-  font-family: Inter, system-ui, sans-serif;
-}
+* { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
 
 body {
   margin: 0;
@@ -34,9 +30,7 @@ body {
 .navbar-custom {
   background: #0b1424;
   border-bottom: 1px solid var(--line);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  position: sticky; top: 0; z-index: 10;
 }
 
 .wrap {
@@ -45,8 +39,7 @@ body {
   padding: 24px 16px;
 }
 
-.panel,
-.stat {
+.panel, .stat {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -54,10 +47,7 @@ body {
   margin-bottom: 20px;
 }
 
-.stat {
-  height: 100%;
-  text-align: center;
-}
+.stat { height: 100%; text-align: center; }
 
 .stat-num {
   font-weight: 800;
@@ -65,40 +55,23 @@ body {
   overflow-wrap: anywhere;
 }
 
-.stat-label {
-  color: var(--muted);
-  font-size: .8rem;
-  margin-top: 5px;
-}
+.stat-label { color: var(--muted); font-size: .8rem; margin-top: 5px; }
 
 .section-title {
-  font-size: 1.05rem;
-  font-weight: 800;
+  font-size: 1.05rem; font-weight: 800;
   border-bottom: 1px solid var(--line);
-  padding-bottom: 12px;
-  margin-bottom: 14px;
+  padding-bottom: 12px; margin-bottom: 14px;
 }
 
 .table-responsive {
   max-height: 65vh;
-  overflow-x: auto;
-  overflow-y: auto;
+  overflow-x: auto; overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.table-responsive > .table {
-  min-width: 1000px;
-}
-
-.table-responsive > .table td,
-.table-responsive > .table th {
-  white-space: nowrap;
-}
-
-.table-responsive > .table td:first-child {
-  white-space: normal;
-  min-width: 150px;
-}
+.table-responsive > .table { min-width: 1000px; }
+.table-responsive > .table td, .table-responsive > .table th { white-space: nowrap; }
+.table-responsive > .table td:first-child { white-space: normal; min-width: 150px; }
 
 .table {
   --bs-table-bg: transparent;
@@ -108,112 +81,54 @@ body {
 }
 
 .table thead th {
-  position: sticky;
-  top: 0;
+  position: sticky; top: 0;
   background: #14243a;
   color: #b9c8df;
-  white-space: nowrap;
-  z-index: 1;
-  font-size: .78rem;
+  white-space: nowrap; z-index: 1; font-size: .78rem;
 }
 
-.table td {
-  vertical-align: middle;
-  font-size: .82rem;
-}
+.table td { vertical-align: middle; font-size: .82rem; }
 
-.muted,
-.small-note {
-  color: var(--muted);
-}
-
-.small-note {
-  font-size: .78rem;
-}
-
-.mono {
-  font-family: ui-monospace, monospace !important;
-  overflow-wrap: anywhere;
-}
+.muted, .small-note { color: var(--muted); }
+.small-note { font-size: .78rem; }
+.mono { font-family: ui-monospace, monospace !important; overflow-wrap: anywhere; }
 
 .wallet {
-  max-width: 270px;
-  display: inline-block;
-  white-space: normal;
-  word-break: break-all;
-  color: #8dc5ff;
+  max-width: 270px; display: inline-block;
+  white-space: normal; word-break: break-all; color: #8dc5ff;
 }
 
 .status {
-  display: inline-block;
-  border-radius: 30px;
-  padding: 4px 10px;
-  font-size: .75rem;
-  font-weight: 700;
-  text-transform: capitalize;
+  display: inline-block; border-radius: 30px;
+  padding: 4px 10px; font-size: .75rem;
+  font-weight: 700; text-transform: capitalize;
 }
 
-.status-pending {
-  background: #624d1d;
-  color: #ffd66b;
-}
+.status-pending { background: #624d1d; color: #ffd66b; }
+.status-approved { background: #173f31; color: #70e6a7; }
+.status-paid { background: #153e52; color: #79d7ff; }
+.status-rejected { background: #54272d; color: #ff9ca6; }
 
-.status-approved {
-  background: #173f31;
-  color: #70e6a7;
-}
-
-.status-paid {
-  background: #153e52;
-  color: #79d7ff;
-}
-
-.status-rejected {
-  background: #54272d;
-  color: #ff9ca6;
-}
-
-.form-control,
-.form-select {
+.form-control, .form-select {
   background: #0c1728;
   color: #edf3ff;
   border-color: #304560;
 }
 
-.form-control:focus,
-.form-select:focus {
-  background: #0c1728;
-  color: white;
-  border-color: #4b91e2;
-  box-shadow: none;
+.form-control:focus, .form-select:focus {
+  background: #0c1728; color: white;
+  border-color: #4b91e2; box-shadow: none;
 }
 
-.btn-sm {
-  white-space: nowrap;
-}
+.btn-sm { white-space: nowrap; }
 
-.error-box {
-  white-space: pre-wrap;
-  display: none;
-}
+.error-box { white-space: pre-wrap; display: none; }
 
 @media (max-width: 576px) {
-  .wrap {
-    padding: 14px 10px;
-  }
-
-  .panel,
-  .stat {
-    padding: 13px;
-  }
-
-  .navbar-custom .container-fluid {
-    align-items: flex-start !important;
-  }
-
-  .table-responsive > .table {
-    min-width: 1000px;
-  }
+  .wrap { padding: 14px 10px; }
+  .panel, .stat { padding: 13px; }
+  .navbar-custom .container-fluid { align-items: flex-start !important; }
+  .table-responsive > .table { min-width: 1000px; }
 }
 </style>
 </head>
@@ -222,16 +137,12 @@ body {
 
 <nav class="navbar navbar-custom py-3">
   <div class="container-fluid px-3 d-flex justify-content-between gap-3 flex-wrap">
-    <a class="navbar-brand text-white fw-bold text-decoration-none"
-       href="index.html">
+    <a class="navbar-brand text-white fw-bold text-decoration-none" href="index.html">
       <i class="bi bi-arrow-left me-2"></i>Main Admin
     </a>
-
     <div class="fw-bold text-success">
-      <i class="bi bi-gift me-2"></i>
-      Diwali Direct Offer Admin
+      <i class="bi bi-gift me-2"></i>Diwali Direct Offer Admin
     </div>
-
     <div class="d-flex align-items-center gap-2">
       <span id="liveStatus" class="small-note">Connecting...</span>
       <button id="refreshBtn" class="btn btn-outline-info btn-sm">
@@ -246,78 +157,64 @@ body {
   <div id="pageError" class="alert alert-warning error-box"></div>
 
   <div class="small-note mb-3">
-    Campaign: <strong>Diwali Bumper Offer 2026</strong>
-    · 26 Oct – 7 Nov 2026
-    · Live Firebase data
-    · Tables scroll horizontally on small screens.
+    Campaign: <strong>Diwali Bumper Offer 2026</strong> · 26 Oct – 7 Nov 2026 · Live Firebase data · Tables scroll horizontally on small screens.
   </div>
 
   <div class="row g-3 mb-3">
-
     <div class="col-6 col-xl-3">
       <div class="stat">
         <div id="earningUsers" class="stat-num text-info">—</div>
         <div class="stat-label">Users With Earnings</div>
       </div>
     </div>
-
     <div class="col-6 col-xl-3">
       <div class="stat">
         <div id="rewardsGenerated" class="stat-num text-success">$0.00</div>
         <div class="stat-label">Total Rewards Generated</div>
       </div>
     </div>
-
     <div class="col-6 col-xl-3">
       <div class="stat">
         <div id="pendingCount" class="stat-num text-warning">0</div>
         <div class="stat-label">Pending Withdrawal Requests</div>
       </div>
     </div>
-
     <div class="col-6 col-xl-3">
       <div class="stat">
         <div id="paidTotal" class="stat-num text-primary">$0.00</div>
         <div class="stat-label">Actually Paid (USDT)</div>
       </div>
     </div>
-
     <div class="col-6 col-xl-3">
       <div class="stat">
         <div id="approvedTotal" class="stat-num">$0.00</div>
         <div class="stat-label">Approved, Not Yet Paid</div>
       </div>
     </div>
-
     <div class="col-6 col-xl-3">
       <div class="stat">
         <div id="pendingTotal" class="stat-num">$0.00</div>
         <div class="stat-label">Pending Amount (USDT)</div>
       </div>
     </div>
-
     <div class="col-6 col-xl-3">
       <div class="stat">
         <div id="rejectedCount" class="stat-num text-danger">0</div>
         <div class="stat-label">Rejected Requests</div>
       </div>
     </div>
-
     <div class="col-6 col-xl-3">
       <div class="stat">
         <div id="eligiblePackages" class="stat-num">0</div>
         <div class="stat-label">Eligible Purchases</div>
       </div>
     </div>
-
   </div>
 
   <section class="panel">
     <div class="section-title">
-      <i class="bi bi-bar-chart-line text-success me-2"></i>
-      Package & Reward Summary
+      <i class="bi bi-bar-chart-line text-success me-2"></i>Package & Reward Summary
     </div>
-
     <div class="table-responsive">
       <table class="table table-hover">
         <thead>
@@ -329,9 +226,7 @@ body {
           </tr>
         </thead>
         <tbody id="tierSummary">
-          <tr>
-            <td colspan="4" class="text-center muted py-4">Loading...</td>
-          </tr>
+          <tr><td colspan="4" class="text-center muted py-4">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -339,16 +234,12 @@ body {
 
   <section class="panel">
     <div class="section-title">
-      <i class="bi bi-people-fill text-success me-2"></i>
-      Direct Referrer Earnings Breakdown
+      <i class="bi bi-people-fill text-success me-2"></i>Direct Referrer Earnings Breakdown
     </div>
-
     <div class="row g-2 mb-3">
       <div class="col-md-6">
-        <input id="earningsSearch" class="form-control"
-               placeholder="Search referrer name, username, UID...">
+        <input id="earningsSearch" class="form-control" placeholder="Search referrer name, username, UID...">
       </div>
-
       <div class="col-md-3">
         <select id="earningsTier" class="form-select">
           <option value="all">All package tiers</option>
@@ -359,14 +250,12 @@ body {
           <option value="1000">$1000 package</option>
         </select>
       </div>
-
       <div class="col-md-3">
         <button id="exportEarnings" class="btn btn-outline-success w-100">
           <i class="bi bi-download me-1"></i>Export CSV
         </button>
       </div>
     </div>
-
     <div class="table-responsive">
       <table class="table table-hover">
         <thead>
@@ -383,9 +272,7 @@ body {
           </tr>
         </thead>
         <tbody id="earningsBody">
-          <tr>
-            <td colspan="9" class="text-center muted py-4">Loading...</td>
-          </tr>
+          <tr><td colspan="9" class="text-center muted py-4">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -393,16 +280,12 @@ body {
 
   <section class="panel">
     <div class="section-title">
-      <i class="bi bi-receipt text-success me-2"></i>
-      Eligible Purchase Details
+      <i class="bi bi-receipt text-success me-2"></i>Eligible Purchase Details
     </div>
-
     <div class="row g-2 mb-3">
       <div class="col-md-8">
-        <input id="purchaseSearch" class="form-control"
-               placeholder="Search buyer UID, referrer UID, purchase ID...">
+        <input id="purchaseSearch" class="form-control" placeholder="Search buyer UID, referrer UID, purchase ID...">
       </div>
-
       <div class="col-md-4">
         <select id="purchaseTier" class="form-select">
           <option value="all">All package tiers</option>
@@ -414,7 +297,6 @@ body {
         </select>
       </div>
     </div>
-
     <div class="table-responsive">
       <table class="table table-hover">
         <thead>
@@ -429,9 +311,7 @@ body {
           </tr>
         </thead>
         <tbody id="purchasesBody">
-          <tr>
-            <td colspan="7" class="text-center muted py-4">Loading...</td>
-          </tr>
+          <tr><td colspan="7" class="text-center muted py-4">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -439,16 +319,12 @@ body {
 
   <section class="panel">
     <div class="section-title">
-      <i class="bi bi-wallet2 text-success me-2"></i>
-      Withdrawal Requests & Payment Actions
+      <i class="bi bi-wallet2 text-success me-2"></i>Withdrawal Requests & Payment Actions
     </div>
-
     <div class="row g-2 mb-3">
       <div class="col-md-6">
-        <input id="withdrawalSearch" class="form-control"
-               placeholder="Search name, UID, withdrawal ID, wallet...">
+        <input id="withdrawalSearch" class="form-control" placeholder="Search name, UID, withdrawal ID, wallet...">
       </div>
-
       <div class="col-md-3">
         <select id="withdrawalStatusFilter" class="form-select">
           <option value="all">All statuses</option>
@@ -458,14 +334,12 @@ body {
           <option value="rejected">Rejected</option>
         </select>
       </div>
-
       <div class="col-md-3">
         <button id="exportWithdrawals" class="btn btn-outline-success w-100">
           <i class="bi bi-download me-1"></i>Export CSV
         </button>
       </div>
     </div>
-
     <div class="table-responsive">
       <table class="table table-hover">
         <thead>
@@ -480,37 +354,24 @@ body {
           </tr>
         </thead>
         <tbody id="withdrawalsBody">
-          <tr>
-            <td colspan="7" class="text-center muted py-4">Loading...</td>
-          </tr>
+          <tr><td colspan="7" class="text-center muted py-4">Loading...</td></tr>
         </tbody>
       </table>
     </div>
-
     <p class="small-note mt-3 mb-0">
-      Mark a request as Paid only after the USDT transfer is actually sent
-      and verified. This panel records the status; it does not send USDT automatically.
+      Mark a request as Paid only after the USDT transfer is actually sent and verified. This panel records the status; it does not send USDT automatically.
     </p>
   </section>
 
 </main>
 
 <script type="module">
-import {
-  initializeApp,
-  getApps
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-import {
-  getDatabase,
-  ref,
-  get,
-  onValue,
-  update
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
+// 🔥 LIVE FIREBASE CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o",
+  apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
   authDomain: "rnd2-70080.firebaseapp.com",
   databaseURL: "https://rnd2-70080-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "rnd2-70080",
@@ -520,45 +381,25 @@ const firebaseConfig = {
   measurementId: "G-ELVJD5NQKB"
 };
 
-const app = getApps().length
-  ? getApps()[0]
-  : initializeApp(firebaseConfig);
-
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const CAMPAIGN_ID = "direct_diwali_offer_2026";
 
-const TIERS = {
-  50: 10,
-  100: 25,
-  200: 60,
-  500: 120,
-  1000: 250
-};
+const TIERS = { 50: 10, 100: 25, 200: 60, 500: 120, 1000: 250 };
 
 let allUsers = {};
 let purchases = {};
 let withdrawals = {};
 let listenersStarted = false;
 
-/*
-  Main Admin login is expected to be handled by the parent website.
-  This page intentionally has no separate login page or role check.
-*/
-const ADMIN_LABEL = "Main Admin";
-
 const $ = id => document.getElementById(id);
 
 const money = n => "$" + (Number(n) || 0).toLocaleString("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
+  minimumFractionDigits: 2, maximumFractionDigits: 2
 });
 
 const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;"
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[ch]));
 
 const safeDate = value => {
@@ -578,9 +419,7 @@ function showError(id, message) {
   el.textContent = message;
 }
 
-function hideError(id) {
-  $(id).style.display = "none";
-}
+function hideError(id) { $(id).style.display = "none"; }
 
 function startListeners() {
   if (listenersStarted) return;
@@ -588,39 +427,25 @@ function startListeners() {
 
   $("liveStatus").textContent = "Connecting...";
 
-  onValue(
-    ref(db, "users"),
-    snapshot => {
-      allUsers = snapshot.val() || {};
-      renderAll();
-    },
-    error => showError("pageError", "Could not read users: " + error.message)
-  );
+  onValue(ref(db, "users"), snapshot => {
+    allUsers = snapshot.val() || {};
+    renderAll();
+  }, error => showError("pageError", "Could not read users: " + error.message));
 
-  onValue(
-    ref(db, `${CAMPAIGN_ID}/purchases`),
-    snapshot => {
-      purchases = snapshot.val() || {};
-      renderAll();
-    },
-    error => showError("pageError", "Could not read offer purchases: " + error.message)
-  );
+  onValue(ref(db, `${CAMPAIGN_ID}/purchases`), snapshot => {
+    purchases = snapshot.val() || {};
+    renderAll();
+  }, error => showError("pageError", "Could not read offer purchases: " + error.message));
 
-  onValue(
-    ref(db, `${CAMPAIGN_ID}/withdrawals`),
-    snapshot => {
-      withdrawals = snapshot.val() || {};
-      renderAll();
-    },
-    error => showError("pageError", "Could not read withdrawals: " + error.message)
-  );
+  onValue(ref(db, `${CAMPAIGN_ID}/withdrawals`), snapshot => {
+    withdrawals = snapshot.val() || {};
+    renderAll();
+  }, error => showError("pageError", "Could not read withdrawals: " + error.message));
 
   $("liveStatus").textContent = "Listening for data...";
 }
 
-function getUser(uid) {
-  return allUsers[uid] || {};
-}
+function getUser(uid) { return allUsers[uid] || {}; }
 
 function displayName(uid, fallback = "") {
   const user = getUser(uid);
@@ -634,46 +459,32 @@ function validTier(amount) {
 function purchaseRows() {
   return Object.entries(purchases)
     .map(([id, p]) => ({ id, ...(p || {}) }))
-    .filter(p =>
-      p.directReferrerUid &&
-      validTier(p.packageAmount) &&
-      p.status !== "rejected"
-    );
+    .filter(p => p.directReferrerUid && validTier(p.packageAmount) && p.status !== "rejected");
 }
 
 function earningsByReferrer() {
   const groups = {};
-
   for (const p of purchaseRows()) {
     const uid = String(p.directReferrerUid);
     const tier = Number(p.packageAmount);
     const reward = Number(p.rewardAmount) || TIERS[tier];
 
     if (!groups[uid]) {
-      groups[uid] = {
-        uid,
-        counts: {50: 0, 100: 0, 200: 0, 500: 0, 1000: 0},
-        rewards: {50: 0, 100: 0, 200: 0, 500: 0, 1000: 0},
-        total: 0,
-        packages: 0
-      };
+      groups[uid] = { uid, counts: {50:0, 100:0, 200:0, 500:0, 1000:0}, rewards: {50:0, 100:0, 200:0, 500:0, 1000:0}, total: 0, packages: 0 };
     }
-
     groups[uid].counts[tier]++;
     groups[uid].rewards[tier] += reward;
     groups[uid].total += reward;
     groups[uid].packages++;
   }
-
   return Object.values(groups).sort((a, b) => b.total - a.total);
 }
 
 function renderAll() {
   const rows = purchaseRows();
   const groups = earningsByReferrer();
-
-  const tierCounts = {50: 0, 100: 0, 200: 0, 500: 0, 1000: 0};
-  const tierRewards = {50: 0, 100: 0, 200: 0, 500: 0, 1000: 0};
+  const tierCounts = {50:0, 100:0, 200:0, 500:0, 1000:0};
+  const tierRewards = {50:0, 100:0, 200:0, 500:0, 1000:0};
 
   rows.forEach(p => {
     const tier = Number(p.packageAmount);
@@ -707,83 +518,54 @@ function renderAll() {
 function renderEarnings(groups) {
   const query = $("earningsSearch").value.trim().toLowerCase();
   const tier = $("earningsTier").value;
-
   const filtered = groups.filter(g => {
     const user = getUser(g.uid);
-    const hay = [g.uid, user.name, user.fullName, user.username]
-      .join(" ").toLowerCase();
-
-    return (!query || hay.includes(query)) &&
-      (tier === "all" || g.counts[Number(tier)] > 0);
+    const hay = [g.uid, user.name, user.fullName, user.username].join(" ").toLowerCase();
+    return (!query || hay.includes(query)) && (tier === "all" || g.counts[Number(tier)] > 0);
   });
 
-  $("earningsBody").innerHTML = filtered.length
-    ? filtered.map(g => {
-        const user = getUser(g.uid);
-        const cell = t =>
-          `${g.counts[t]} <span class="muted">/ ${money(g.rewards[t])}</span>`;
-
-        return `
-          <tr>
-            <td>
-              <strong>${esc(displayName(g.uid))}</strong>
-              <div class="muted">${esc(user.username || "")}</div>
-            </td>
-            <td class="mono">${esc(g.uid)}</td>
-            <td>${cell(50)}</td>
-            <td>${cell(100)}</td>
-            <td>${cell(200)}</td>
-            <td>${cell(500)}</td>
-            <td>${cell(1000)}</td>
-            <td>${g.packages}</td>
-            <td class="text-success fw-bold">${money(g.total)}</td>
-          </tr>
-        `;
-      }).join("")
-    : `<tr><td colspan="9" class="text-center muted py-4">No matching earning users.</td></tr>`;
+  $("earningsBody").innerHTML = filtered.length ? filtered.map(g => {
+    const user = getUser(g.uid);
+    const cell = t => `${g.counts[t]} <span class="muted">/ ${money(g.rewards[t])}</span>`;
+    return `
+      <tr>
+        <td><strong>${esc(displayName(g.uid))}</strong><div class="muted">${esc(user.username || "")}</div></td>
+        <td class="mono">${esc(g.uid)}</td>
+        <td>${cell(50)}</td><td>${cell(100)}</td><td>${cell(200)}</td><td>${cell(500)}</td><td>${cell(1000)}</td>
+        <td>${g.packages}</td>
+        <td class="text-success fw-bold">${money(g.total)}</td>
+      </tr>
+    `;
+  }).join("") : `<tr><td colspan="9" class="text-center muted py-4">No matching earning users.</td></tr>`;
 }
 
 function renderPurchases(rows) {
   const query = $("purchaseSearch").value.trim().toLowerCase();
   const tier = $("purchaseTier").value;
-
   const filtered = rows.filter(p => {
     const user = getUser(p.buyerUid || "");
-    const hay = [
-      p.id, p.buyerUid, p.directReferrerUid,
-      user.name, user.username
-    ].join(" ").toLowerCase();
-
-    return (!query || hay.includes(query)) &&
-      (tier === "all" || Number(p.packageAmount) === Number(tier));
+    const hay = [p.id, p.buyerUid, p.directReferrerUid, user.name, user.username].join(" ").toLowerCase();
+    return (!query || hay.includes(query)) && (tier === "all" || Number(p.packageAmount) === Number(tier));
   }).sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
 
-  $("purchasesBody").innerHTML = filtered.length
-    ? filtered.map(p => {
-        const buyer = p.buyerUid || "—";
-        const referrer = p.directReferrerUid || "—";
-        const tierAmount = Number(p.packageAmount);
-        const reward = Number(p.rewardAmount) || TIERS[tierAmount] || 0;
+  $("purchasesBody").innerHTML = filtered.length ? filtered.map(p => {
+    const buyer = p.buyerUid || "—";
+    const referrer = p.directReferrerUid || "—";
+    const tierAmount = Number(p.packageAmount);
+    const reward = Number(p.rewardAmount) || TIERS[tierAmount] || 0;
 
-        return `
-          <tr>
-            <td>
-              <strong>${esc(displayName(buyer))}</strong>
-              <div class="muted">${esc(getUser(buyer).username || "")}</div>
-            </td>
-            <td class="mono">${esc(buyer)}</td>
-            <td>
-              <strong>${esc(displayName(referrer))}</strong>
-              <div class="mono muted">${esc(referrer)}</div>
-            </td>
-            <td>${money(tierAmount)}</td>
-            <td class="text-success fw-bold">${money(reward)}</td>
-            <td>${safeDate(p.timestamp)}</td>
-            <td>${statusHtml(p.status || "completed")}</td>
-          </tr>
-        `;
-      }).join("")
-    : `<tr><td colspan="7" class="text-center muted py-4">No matching eligible purchases.</td></tr>`;
+    return `
+      <tr>
+        <td><strong>${esc(displayName(buyer))}</strong><div class="muted">${esc(getUser(buyer).username || "")}</div></td>
+        <td class="mono">${esc(buyer)}</td>
+        <td><strong>${esc(displayName(referrer))}</strong><div class="mono muted">${esc(referrer)}</div></td>
+        <td>${money(tierAmount)}</td>
+        <td class="text-success fw-bold">${money(reward)}</td>
+        <td>${safeDate(p.timestamp)}</td>
+        <td>${statusHtml(p.status || "completed")}</td>
+      </tr>
+    `;
+  }).join("") : `<tr><td colspan="7" class="text-center muted py-4">No matching eligible purchases.</td></tr>`;
 }
 
 function renderWithdrawals() {
@@ -791,26 +573,14 @@ function renderWithdrawals() {
     .map(([id, w]) => ({id, ...(w || {})}))
     .sort((a, b) => (Number(b.requestedAt) || 0) - (Number(a.requestedAt) || 0));
 
-  let pending = 0;
-  let approved = 0;
-  let paid = 0;
-  let rejected = 0;
-  let pendingAmount = 0;
-
+  let pending = 0, approved = 0, paid = 0, rejected = 0, pendingAmount = 0;
   entries.forEach(w => {
     const amount = Number(w.amount) || 0;
     const status = String(w.status || "pending").toLowerCase();
-
-    if (status === "pending") {
-      pending++;
-      pendingAmount += amount;
-    } else if (status === "approved") {
-      approved += amount;
-    } else if (status === "paid") {
-      paid += amount;
-    } else if (status === "rejected") {
-      rejected++;
-    }
+    if (status === "pending") { pending++; pendingAmount += amount; }
+    else if (status === "approved") approved += amount;
+    else if (status === "paid") paid += amount;
+    else if (status === "rejected") rejected++;
   });
 
   $("pendingCount").textContent = pending;
@@ -821,222 +591,119 @@ function renderWithdrawals() {
 
   const query = $("withdrawalSearch").value.trim().toLowerCase();
   const filter = $("withdrawalStatusFilter").value;
-
   const filtered = entries.filter(w => {
     const user = getUser(w.userId || "");
-    const hay = [
-      w.userId, w.username, w.withdrawalId, w.walletAddress,
-      user.name, user.username
-    ].join(" ").toLowerCase();
-
-    return (!query || hay.includes(query)) &&
-      (filter === "all" || String(w.status || "pending").toLowerCase() === filter);
+    const hay = [w.userId, w.username, w.withdrawalId, w.walletAddress, user.name, user.username].join(" ").toLowerCase();
+    return (!query || hay.includes(query)) && (filter === "all" || String(w.status || "pending").toLowerCase() === filter);
   });
 
-  $("withdrawalsBody").innerHTML = filtered.length
-    ? filtered.map(w => {
-        const uid = w.userId || "";
-        const user = getUser(uid);
-        const status = String(w.status || "pending").toLowerCase();
-        const wallet = String(w.walletAddress || "");
-        const withdrawalId = w.withdrawalId || w.id;
+  $("withdrawalsBody").innerHTML = filtered.length ? filtered.map(w => {
+    const uid = w.userId || "";
+    const user = getUser(uid);
+    const status = String(w.status || "pending").toLowerCase();
+    const wallet = String(w.walletAddress || "");
+    const withdrawalId = w.withdrawalId || w.id;
+    let actions = "";
+    if (status === "pending") {
+      actions = `
+        <button class="btn btn-success btn-sm me-1" data-action="approve" data-id="${esc(w.id)}">Approve</button>
+        <button class="btn btn-danger btn-sm" data-action="reject" data-id="${esc(w.id)}">Reject</button>
+      `;
+    } else if (status === "approved") {
+      actions = `
+        <button class="btn btn-primary btn-sm" data-action="paid" data-id="${esc(w.id)}">Mark as Paid</button>
+        <button class="btn btn-outline-danger btn-sm ms-1" data-action="reject" data-id="${esc(w.id)}">Reject</button>
+      `;
+    } else {
+      actions = `<span class="muted">No actions</span>`;
+    }
 
-        let actions = "";
-
-        if (status === "pending") {
-          actions = `
-            <button class="btn btn-success btn-sm me-1"
-                    data-action="approve" data-id="${esc(w.id)}">Approve</button>
-            <button class="btn btn-danger btn-sm"
-                    data-action="reject" data-id="${esc(w.id)}">Reject</button>
-          `;
-        } else if (status === "approved") {
-          actions = `
-            <button class="btn btn-primary btn-sm"
-                    data-action="paid" data-id="${esc(w.id)}">Mark as Paid</button>
-            <button class="btn btn-outline-danger btn-sm ms-1"
-                    data-action="reject" data-id="${esc(w.id)}">Reject</button>
-          `;
-        } else {
-          actions = `<span class="muted">No actions</span>`;
-        }
-
-        return `
-          <tr>
-            <td>
-              <strong>${esc(displayName(uid, w.username))}</strong>
-              <div class="muted">${esc(w.username || user.username || "")}</div>
-            </td>
-            <td class="mono">${esc(uid)}</td>
-            <td class="text-warning fw-bold">${money(w.amount)} USDT</td>
-            <td>${safeDate(w.requestedAt)}</td>
-            <td>
-              <div class="wallet mono">${esc(wallet || "No wallet address")}</div>
-              <div>
-                <button class="btn btn-outline-info btn-sm mt-1"
-                        data-action="copy"
-                        data-id="${esc(w.id)}"
-                        ${wallet ? "" : "disabled"}>
-                  <i class="bi bi-clipboard me-1"></i>Copy full address
-                </button>
-              </div>
-            </td>
-            <td>
-              ${statusHtml(status)}
-              ${w.txHash ? `<div class="small-note mt-1">Tx: ${esc(w.txHash)}</div>` : ""}
-            </td>
-            <td>
-              ${actions}
-              <div class="small-note mt-1">${esc(withdrawalId)}</div>
-            </td>
-          </tr>
-        `;
-      }).join("")
-    : `<tr><td colspan="7" class="text-center muted py-4">No withdrawal requests match this filter.</td></tr>`;
+    return `
+      <tr>
+        <td><strong>${esc(displayName(uid, w.username))}</strong><div class="muted">${esc(w.username || user.username || "")}</div></td>
+        <td class="mono">${esc(uid)}</td>
+        <td class="text-warning fw-bold">${money(w.amount)} USDT</td>
+        <td>${safeDate(w.requestedAt)}</td>
+        <td>
+          <div class="wallet mono">${esc(wallet || "No wallet address")}</div>
+          <div><button class="btn btn-outline-info btn-sm mt-1" data-action="copy" data-id="${esc(w.id)}" ${wallet ? "" : "disabled"}><i class="bi bi-clipboard me-1"></i>Copy</button></div>
+        </td>
+        <td>${statusHtml(status)}${w.txHash ? `<div class="small-note mt-1">Tx: ${esc(w.txHash)}</div>` : ""}</td>
+        <td>${actions}<div class="small-note mt-1">${esc(withdrawalId)}</div></td>
+      </tr>
+    `;
+  }).join("") : `<tr><td colspan="7" class="text-center muted py-4">No withdrawal requests match this filter.</td></tr>`;
 }
 
 async function updateRelatedRecords(item, newStatus, extra = {}) {
   const uid = item.userId;
   const withdrawalId = item.withdrawalId || item.id;
   const updates = {};
-
   updates[`${CAMPAIGN_ID}/withdrawals/${item.id}/status`] = newStatus;
   updates[`${CAMPAIGN_ID}/withdrawals/${item.id}/updatedAt`] = Date.now();
-
   for (const [key, value] of Object.entries(extra)) {
     updates[`${CAMPAIGN_ID}/withdrawals/${item.id}/${key}`] = value;
   }
-
   if (uid) {
     const rewardPath = `${CAMPAIGN_ID}/rewards/${uid}`;
-
     updates[`${rewardPath}/status`] = newStatus;
     updates[`${rewardPath}/updatedAt`] = Date.now();
-
-    if (newStatus === "rejected") {
-      updates[`${rewardPath}/rejectedAt`] = Date.now();
-    }
-
+    if (newStatus === "rejected") updates[`${rewardPath}/rejectedAt`] = Date.now();
     if (newStatus === "paid") {
       updates[`${rewardPath}/paidAt`] = Date.now();
-      if (extra.txHash) {
-        updates[`${rewardPath}/txHash`] = extra.txHash;
-      }
+      if (extra.txHash) updates[`${rewardPath}/txHash`] = extra.txHash;
     }
-
     const [globalSnapshot, userTxSnapshot] = await Promise.all([
       get(ref(db, `${CAMPAIGN_ID}/transactions`)),
       get(ref(db, `users/${uid}/diwali_transactions`))
     ]);
-
     for (const [id, tx] of Object.entries(globalSnapshot.val() || {})) {
-      if (tx?.withdrawalId === withdrawalId) {
-        updates[`${CAMPAIGN_ID}/transactions/${id}/status`] = newStatus;
-      }
+      if (tx?.withdrawalId === withdrawalId) updates[`${CAMPAIGN_ID}/transactions/${id}/status`] = newStatus;
     }
-
     for (const [id, tx] of Object.entries(userTxSnapshot.val() || {})) {
-      if (tx?.withdrawalId === withdrawalId) {
-        updates[`users/${uid}/diwali_transactions/${id}/status`] = newStatus;
-      }
+      if (tx?.withdrawalId === withdrawalId) updates[`users/${uid}/diwali_transactions/${id}/status`] = newStatus;
     }
   }
-
   await update(ref(db), updates);
 }
 
 async function doAction(action, id) {
   const item = withdrawals[id];
-
-  if (!item) {
-    alert("Withdrawal record not found. Refresh and try again.");
-    return;
-  }
-
+  if (!item) { alert("Withdrawal record not found. Refresh and try again."); return; }
   try {
     if (action === "copy") {
       const wallet = item.walletAddress || "";
-
-      if (!wallet) {
-        alert("No wallet address saved.");
-        return;
-      }
-
-      try {
-        await navigator.clipboard.writeText(wallet);
-      } catch {
+      if (!wallet) { alert("No wallet address saved."); return; }
+      try { await navigator.clipboard.writeText(wallet); } 
+      catch {
         const textarea = document.createElement("textarea");
-        textarea.value = wallet;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
-        textarea.select();
-        const copied = document.execCommand("copy");
-        textarea.remove();
-
+        textarea.value = wallet; textarea.style.position = "fixed"; textarea.style.opacity = "0";
+        document.body.appendChild(textarea); textarea.select();
+        const copied = document.execCommand("copy"); textarea.remove();
         if (!copied) throw new Error("Clipboard copy failed.");
       }
-
       alert("Full wallet address copied.");
       return;
     }
-
     if (action === "approve") {
-      if (String(item.status).toLowerCase() !== "pending") {
-        alert("Only pending requests can be approved.");
-        return;
-      }
-
-      if (!confirm(`Approve ${money(item.amount)} USDT for ${item.username || item.userId}?`)) {
-        return;
-      }
-
-      await updateRelatedRecords(item, "approved", {
-        approvedAt: Date.now()
-      });
-
+      if (String(item.status).toLowerCase() !== "pending") { alert("Only pending requests can be approved."); return; }
+      if (!confirm(`Approve ${money(item.amount)} USDT for ${item.username || item.userId}?`)) return;
+      await updateRelatedRecords(item, "approved", { approvedAt: Date.now() });
       alert("Withdrawal approved.");
     }
-
     if (action === "reject") {
       const status = String(item.status || "pending").toLowerCase();
-
-      if (!["pending", "approved"].includes(status)) {
-        alert("Only pending or approved requests can be rejected.");
-        return;
-      }
-
+      if (!["pending", "approved"].includes(status)) { alert("Only pending or approved requests can be rejected."); return; }
       const reason = prompt("Optional rejection reason:", "") || "";
-
-      if (!confirm("Reject this withdrawal request?")) {
-        return;
-      }
-
-      await updateRelatedRecords(item, "rejected", {
-        rejectedAt: Date.now(),
-        rejectionReason: reason
-      });
-
+      if (!confirm("Reject this withdrawal request?")) return;
+      await updateRelatedRecords(item, "rejected", { rejectedAt: Date.now(), rejectionReason: reason });
       alert("Withdrawal rejected.");
     }
-
     if (action === "paid") {
-      if (String(item.status).toLowerCase() !== "approved") {
-        alert("Approve the request first.");
-        return;
-      }
-
+      if (String(item.status).toLowerCase() !== "approved") { alert("Approve the request first."); return; }
       const txHash = prompt("Enter USDT transaction hash:", "") || "";
-
-      if (!confirm("Confirm that USDT has actually been sent and verified. Mark as Paid?")) {
-        return;
-      }
-
-      await updateRelatedRecords(item, "paid", {
-        paidAt: Date.now(),
-        txHash
-      });
-
+      if (!confirm("Confirm that USDT has actually been sent and verified. Mark as Paid?")) return;
+      await updateRelatedRecords(item, "paid", { paidAt: Date.now(), txHash });
       alert("Marked as paid. Transaction history updated.");
     }
   } catch (error) {
@@ -1066,18 +733,15 @@ $("withdrawalsBody").addEventListener("click", event => {
 
 $("refreshBtn").addEventListener("click", async () => {
   $("liveStatus").textContent = "Refreshing...";
-
   try {
     const [usersSnapshot, purchasesSnapshot, withdrawalsSnapshot] = await Promise.all([
       get(ref(db, "users")),
       get(ref(db, `${CAMPAIGN_ID}/purchases`)),
       get(ref(db, `${CAMPAIGN_ID}/withdrawals`))
     ]);
-
     allUsers = usersSnapshot.val() || {};
     purchases = purchasesSnapshot.val() || {};
     withdrawals = withdrawalsSnapshot.val() || {};
-
     renderAll();
     $("liveStatus").textContent = "Refreshed";
     hideError("pageError");
@@ -1087,78 +751,30 @@ $("refreshBtn").addEventListener("click", async () => {
   }
 });
 
-function csvEscape(value) {
-  return '"' + String(value ?? "").replace(/"/g, '""') + '"';
-}
-
+function csvEscape(value) { return '"' + String(value ?? "").replace(/"/g, '""') + '"'; }
 function downloadCSV(filename, rows) {
-  const csv = rows
-    .map(row => row.map(csvEscape).join(","))
-    .join("\r\n");
-
-  const blob = new Blob(["\ufeff" + csv], {
-    type: "text/csv;charset=utf-8;"
-  });
-
+  const csv = rows.map(row => row.map(csvEscape).join(",")).join("\r\n");
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-
-  a.href = url;
-  a.download = filename;
-  a.click();
-
+  a.href = url; a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 $("exportEarnings").addEventListener("click", () => {
-  const rows = [[
-    "Referrer Name", "Username", "Referrer UID",
-    "$50 Count", "$50 Reward",
-    "$100 Count", "$100 Reward",
-    "$200 Count", "$200 Reward",
-    "$500 Count", "$500 Reward",
-    "$1000 Count", "$1000 Reward",
-    "Total Packages", "Total Earned"
-  ]];
-
+  const rows = [["Referrer Name", "Username", "Referrer UID", "$50 Count", "$50 Reward", "$100 Count", "$100 Reward", "$200 Count", "$200 Reward", "$500 Count", "$500 Reward", "$1000 Count", "$1000 Reward", "Total Packages", "Total Earned"]];
   earningsByReferrer().forEach(g => {
     const user = getUser(g.uid);
-
-    rows.push([
-      displayName(g.uid),
-      user.username || "",
-      g.uid,
-      g.counts[50], g.rewards[50],
-      g.counts[100], g.rewards[100],
-      g.counts[200], g.rewards[200],
-      g.counts[500], g.rewards[500],
-      g.counts[1000], g.rewards[1000],
-      g.packages, g.total
-    ]);
+    rows.push([displayName(g.uid), user.username || "", g.uid, g.counts[50], g.rewards[50], g.counts[100], g.rewards[100], g.counts[200], g.rewards[200], g.counts[500], g.rewards[500], g.counts[1000], g.rewards[1000], g.packages, g.total]);
   });
-
   downloadCSV("diwali-earnings.csv", rows);
 });
 
 $("exportWithdrawals").addEventListener("click", () => {
-  const rows = [[
-    "User", "UID", "Amount USDT", "Requested At",
-    "Wallet Address", "Status", "Withdrawal ID", "Transaction Hash"
-  ]];
-
+  const rows = [["User", "UID", "Amount USDT", "Requested At", "Wallet Address", "Status", "Withdrawal ID", "Transaction Hash"]];
   Object.entries(withdrawals).forEach(([id, w]) => {
-    rows.push([
-      displayName(w.userId, w.username),
-      w.userId || "",
-      w.amount || 0,
-      safeDate(w.requestedAt),
-      w.walletAddress || "",
-      w.status || "",
-      w.withdrawalId || id,
-      w.txHash || ""
-    ]);
+    rows.push([displayName(w.userId, w.username), w.userId || "", w.amount || 0, safeDate(w.requestedAt), w.walletAddress || "", w.status || "", w.withdrawalId || id, w.txHash || ""]);
   });
-
   downloadCSV("diwali-withdrawals.csv", rows);
 });
 
