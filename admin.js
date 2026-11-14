@@ -1,11 +1,10 @@
 // ============================================================
-// ADMIN PANEL - RND STAKING (Final v12 - Top Search Restored)
+// ADMIN PANEL - RND STAKING (Final v13 - Top Search Fully Restored)
 // ============================================================
-// Changes from v11:
-//   - ✅ RESTORED: Top User Search Box (Name, Username, Email, UID)
-//   - ✅ RESTORED: Click on search result to view full User Details
-//   - ✅ KEPT: All v11 Security & Bug fixes (XSS, Abort, Admin Check, SafeRender)
-//   - ✅ KEPT: Mobile-friendly Inline Adjustment in Users Tab
+// Changes from v12:
+//   - ✅ RESTORED: Old Top Search Box Design (using original CSS classes)
+//   - ✅ RESTORED: Search result items with Avatar and "Referred By" info
+//   - ✅ KEPT: All Security, Mobile, and Transaction fixes
 // ============================================================
 
 import { initializeApp } from "firebase/app";
@@ -58,6 +57,7 @@ let previousSnapshot = {
 // 🔥 LOCAL VARIABLES FOR MOBILE FRIENDLY SELECTION
 let mobileAdjustUser = null; 
 let adjustSearchTimeout = null;
+let topSearchTimeout = null;
 
 // ============================================================
 // XSS HELPERS
@@ -901,20 +901,18 @@ function renderDashboard() {
     document.getElementById('adminContent').innerHTML = `
         <div class="row g-4">
 
-            <!-- 🔥 RESTORED: TOP USER SEARCH SECTION -->
+            <!-- 🔥 RESTORED: TOP USER SEARCH SECTION (Old Design) -->
             <div class="col-12">
-                <div class="user-search-section" style="background:rgba(46,204,113,0.05); border:1px solid rgba(46,204,113,0.2); border-radius:12px; padding:20px;">
-                    <div class="section-title" style="display:flex; align-items:center; gap:10px; color:#2ecc71; font-weight:600; margin-bottom:15px;">
-                        <i class="bi bi-search"></i> Search Any User (Name, Username, Email or UID)
+                <div class="user-search-section">
+                    <div class="section-title">
+                        <i class="bi bi-search"></i> Search User
+                        <span class="text-muted small" style="font-weight:400;font-size:0.75rem;margin-left:auto;">Name, Username, Email ya UID se</span>
                     </div>
-                    <div class="user-search-input-wrap position-relative">
-                        <i class="bi bi-search position-absolute" style="left:15px; top:12px; color:#556688;"></i>
-                        <input type="text" id="topSearchInput" class="form-control form-control-custom" style="padding-left:40px;" 
-                               placeholder="Type user name, username, email or UID..." oninput="handleTopSearch(this.value)" autocomplete="off">
+                    <div class="user-search-input-wrap">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" id="userSearchInput" placeholder="Type user name, username, email or UID..." oninput="handleTopSearch(this.value)">
                     </div>
-                    <div id="topSearchResults" class="position-absolute w-100 mt-1 shadow-lg" 
-                         style="z-index:9999; max-height:300px; overflow-y:auto; background:#0f172a; border:1px solid rgba(46,204,113,0.5); border-radius:8px; display:none;">
-                    </div>
+                    <div class="search-results-list" id="userSearchResults"></div>
                 </div>
             </div>
 
@@ -1083,56 +1081,59 @@ function renderDashboard() {
 }
 
 // ============================================================
-// 🔥 TOP SEARCH LOGIC
+// 🔥 TOP SEARCH LOGIC (Old Style Restored)
 // ============================================================
 window.handleTopSearch = function(query) {
-    const resultsDiv = document.getElementById('topSearchResults');
+    const resultsDiv = document.getElementById('userSearchResults');
+    if (!resultsDiv) return;
     const q = String(query || '').trim().toLowerCase();
     
     if (!q) {
-        resultsDiv.style.display = 'none';
         resultsDiv.innerHTML = '';
         return;
     }
 
-    const matched = [];
-    for (const uid in allUsers) {
-        const u = allUsers[uid];
-        if (!u || u.role === 'admin') continue;
-        const name = String(u.name || '').toLowerCase();
-        const username = String(u.username || '').toLowerCase();
-        const email = String(u.email || '').toLowerCase();
-        const uidL = String(uid).toLowerCase();
-        
-        if (name.includes(q) || username.includes(q) || email.includes(q) || uidL.includes(q)) {
-            matched.push({ uid, u });
+    clearTimeout(topSearchTimeout);
+    topSearchTimeout = setTimeout(() => {
+        const matched = [];
+        for (const uid in allUsers) {
+            const u = allUsers[uid];
+            if (!u || u.role === 'admin') continue;
+            const name = String(u.name || '').toLowerCase();
+            const username = String(u.username || '').toLowerCase();
+            const email = String(u.email || '').toLowerCase();
+            const uidL = String(uid).toLowerCase();
+            const code = String(u.referralCode || '').toLowerCase();
+            
+            if (name.includes(q) || username.includes(q) || email.includes(q) || uidL.includes(q) || code.includes(q)) {
+                matched.push({ uid, u });
+            }
         }
-    }
 
-    if (matched.length === 0) {
-        resultsDiv.innerHTML = `<div class="p-3 text-muted text-center"><i class="bi bi-person-x"></i> No user found for "${escapeHtml(query)}"</div>`;
-        resultsDiv.style.display = 'block';
-        return;
-    }
+        if (matched.length === 0) {
+            resultsDiv.innerHTML = `<div class="no-data" style="padding:20px;"><i class="bi bi-person-x" style="font-size:2rem;"></i><p style="font-size:0.85rem;">No user found for "${escapeHtml(query)}"</p></div>`;
+            return;
+        }
 
-    resultsDiv.innerHTML = matched.slice(0, 10).map(({ uid, u }) => {
-        const sponsor = getSponsorInfo(u, allUsers);
-        const referredHtml = sponsor 
-            ? `<div class="small" style="color:#60a5fa;">Referred by: <strong>${escapeHtml(sponsor.name)}</strong></div>` 
-            : `<div class="small" style="color:#556688;">No referrer</div>`;
-        
-        return `
-            <div class="p-3 border-bottom" style="border-color:rgba(255,255,255,0.05) !important; cursor:pointer; transition:0.2s;" 
-                 onmouseover="this.style.background='rgba(46,204,113,0.1)'" 
-                 onmouseout="this.style.background='transparent'"
-                 onclick="viewUserDetails('${escapeAttr(uid)}'); document.getElementById('topSearchResults').style.display='none'; document.getElementById('topSearchInput').value='';">
-                <div class="fw-bold" style="color:#fff;font-size:1rem;">${escapeHtml(u.name || 'Unknown')} <span style="color:#8899bb;font-weight:400;font-size:0.85rem;">@${escapeHtml(u.username || 'N/A')}</span></div>
-                <div class="small" style="color:#8899bb;">${escapeHtml(u.email || 'No email')} · ${escapeHtml(uid.substring(0, 15))}...</div>
-                ${referredHtml}
-            </div>
-        `;
-    }).join('');
-    resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = matched.slice(0, 20).map(({ uid, u }) => {
+            const sponsor = getSponsorInfo(u, allUsers);
+            const initial = (u.name || u.username || 'U').charAt(0).toUpperCase();
+            const referredHtml = sponsor
+                ? `<div class="referred-by"><i class="bi bi-arrow-return-right"></i> Referred by <strong>${escapeHtml(sponsor.name)}</strong> (@${escapeHtml(sponsor.username)})</div>`
+                : `<div class="referred-by" style="color:#556688;"><i class="bi bi-dash-circle"></i> No referrer</div>`;
+            return `
+                <div class="search-result-item" onclick="viewUserDetails('${escapeAttr(uid)}'); document.getElementById('userSearchResults').innerHTML=''; document.getElementById('userSearchInput').value='';">
+                    <div class="avatar-sm">${escapeHtml(initial)}</div>
+                    <div class="info">
+                        <div class="name">${escapeHtml(u.name || 'Unknown')} <span style="color:#8899bb;font-weight:400;">@${escapeHtml(u.username || 'N/A')}</span></div>
+                        <div class="meta">${escapeHtml(u.email || 'No email')} · ${escapeHtml(uid.substring(0, 14))}...</div>
+                        ${referredHtml}
+                    </div>
+                    <div class="arrow"><i class="bi bi-chevron-right"></i></div>
+                </div>
+            `;
+        }).join('');
+    }, 200);
 };
 
 // ============================================================
@@ -1375,7 +1376,7 @@ window.filterDeposits = function(value) {
 };
 
 // ============================================================
-// 🔥 USERS TAB (Inline Adjustments)
+// USERS TAB (Inline Adjustments)
 // ============================================================
 function renderUsersTab() {
     const filteredUsers = Object.keys(allUsers).filter(k => allUsers[k].role !== 'admin');
