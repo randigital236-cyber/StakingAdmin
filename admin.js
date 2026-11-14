@@ -1,12 +1,11 @@
 // ============================================================
-// ADMIN PANEL - RND STAKING (Final v11 - Security & Bug Fixes)
+// ADMIN PANEL - RND STAKING (Final v12 - Top Search Restored)
 // ============================================================
-// Changes from v10:
-//   - ✅ SECURITY: Fixed XSS in onclick attributes (using data-*)
-//   - ✅ SECURITY: Added strict ADMIN_EMAIL check on login
-//   - ✅ BUG FIX: Firebase runTransaction abort (return;) to prevent false success
-//   - ✅ BUG FIX: Added safeRender() to prevent input loss on live updates
-//   - ✅ FIXED: Escaped `level` variable in activity descriptions
+// Changes from v11:
+//   - ✅ RESTORED: Top User Search Box (Name, Username, Email, UID)
+//   - ✅ RESTORED: Click on search result to view full User Details
+//   - ✅ KEPT: All v11 Security & Bug fixes (XSS, Abort, Admin Check, SafeRender)
+//   - ✅ KEPT: Mobile-friendly Inline Adjustment in Users Tab
 // ============================================================
 
 import { initializeApp } from "firebase/app";
@@ -56,7 +55,7 @@ let previousSnapshot = {
     deposits: new Set(), initialized: false
 };
 
-// 🔥 LOCAL VARIABLE FOR MOBILE FRIENDLY SELECTION
+// 🔥 LOCAL VARIABLES FOR MOBILE FRIENDLY SELECTION
 let mobileAdjustUser = null; 
 let adjustSearchTimeout = null;
 
@@ -81,7 +80,6 @@ function escapeAttr(text) {
 function safeRender() {
     const a = document.activeElement;
     const box = document.getElementById('adminContent');
-    // If user is typing in an input/select inside the admin panel, do not re-render
     if (a && ['INPUT','SELECT','TEXTAREA'].includes(a.tagName) && box && box.contains(a)) {
         return;
     }
@@ -219,7 +217,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function() 
 });
 
 // ============================================================
-// 🔥 NORMAL WITHDRAWAL — SAFE STATUS UPDATE (FIXED ABORT)
+// 🔥 NORMAL WITHDRAWAL — SAFE STATUS UPDATE
 // ============================================================
 async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark = '') {
     if (!uid || !withdrawalId) {
@@ -250,12 +248,9 @@ async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark
                 }
             }
 
-            // 🔥 FIX: return; to abort transaction if not found
             if (!targetTxKey || !targetTx) return; 
 
             const currentStatus = String(targetTx.status || 'pending').toLowerCase();
-            
-            // 🔥 FIX: return; to abort transaction if already processed
             if (currentStatus !== 'pending') return; 
 
             targetTx.status = newStatus;
@@ -378,7 +373,7 @@ async function syncWithdrawalAcrossLocations(uid, withdrawalId, newStatus, remar
 }
 
 // ============================================================
-// 🔥 ADMIN ADJUSTMENT — SAFE WITH AUDIT (FIXED ABORT)
+// 🔥 ADMIN ADJUSTMENT — SAFE WITH AUDIT
 // ============================================================
 async function processAdminAdjustment(uid, walletType, amount, type, description, remark = '') {
     if (!uid) return { success: false, error: 'Missing user' };
@@ -415,7 +410,6 @@ async function processAdminAdjustment(uid, walletType, amount, type, description
 
             const newBalance = Math.round(newBalanceRaw * 1e8) / 1e8;
 
-            // 🔥 FIX: return; to abort if balance goes negative
             if (newBalance < 0) return; 
 
             auditRecord = {
@@ -469,10 +463,9 @@ async function processAdminAdjustment(uid, walletType, amount, type, description
 }
 
 // ============================================================
-// AUTH STATE (SECURITY FIX: Admin email check)
+// AUTH STATE
 // ============================================================
 onAuthStateChanged(auth, (user) => {
-    // 🔥 FIX: Strictly check if the logged-in user is the admin
     if (user && user.email !== ADMIN_EMAIL) { 
         signOut(auth); 
         showToast('❌ Unauthorized access!', 'error');
@@ -524,37 +517,37 @@ function setupRealtimeListeners() {
         detectActivityFromUsers(newUsers, allUsers);
         allUsers = newUsers;
         extractTransactionsFromUsers();
-        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
+        if (isDataLoaded) safeRender();
     }, (error) => { console.error('Users listener error:', error); showToast('⚠️ Error loading users: ' + error.message, 'error'); });
 
     dataListeners.withdrawals = onValue(ref(db, 'withdrawals'), (snapshot) => {
         allWithdrawals = snapshot.exists() ? snapshot.val() : {};
-        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
+        if (isDataLoaded) safeRender();
     }, (error) => console.error('Withdrawals listener error:', error));
 
     dataListeners.deposits = onValue(ref(db, 'deposits'), (snapshot) => {
         const newDeposits = snapshot.exists() ? snapshot.val() : {};
         detectActivityFromDeposits(newDeposits, allDeposits);
         allDeposits = newDeposits;
-        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
+        if (isDataLoaded) safeRender();
     }, (error) => console.error('Deposits listener error:', error));
 
     dataListeners.adminWithdrawals = onValue(ref(db, 'admin/withdrawals'), (snapshot) => {
         allAdminWithdrawals = snapshot.exists() ? snapshot.val() : {};
-        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
+        if (isDataLoaded) safeRender();
     }, (error) => console.error('Admin withdrawals listener error:', error));
 
     dataListeners.campaignRewards = onValue(ref(db, 'campaign_rewards'), (snapshot) => {
         const newRewards = snapshot.exists() ? snapshot.val() : {};
         detectActivityFromCampaignRewards(newRewards, allCampaignRewards);
         allCampaignRewards = newRewards;
-        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
+        if (isDataLoaded) safeRender();
     }, (error) => console.error('Campaign rewards listener error:', error));
 
     dataListeners.globalTransactions = onValue(ref(db, 'transactions'), (snapshot) => {
         const globalTx = snapshot.exists() ? snapshot.val() : {};
         detectActivityFromGlobalTransactions(globalTx);
-        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
+        if (isDataLoaded) safeRender();
     }, (error) => console.error('Global transactions listener error:', error));
 
     dataListeners.settings = onValue(ref(db, 'settings'), (snapshot) => {
@@ -566,7 +559,7 @@ function setupRealtimeListeners() {
                 rateInput.value = allSettings.rate;
                 if (rateDisplay) rateDisplay.textContent = allSettings.rate;
             }
-            safeRender(); // 🔥 Using safeRender
+            safeRender();
         }
     });
 
@@ -696,7 +689,6 @@ function processTransactionForActivity(tx, user, uid, txId) {
         icon = 'bi-people-fill'; title = 'Referral Commission'; amountType = 'credit'; type = 'reward';
         const fromName = tx.fromName || tx.fromUsername || tx.fromUid || 'a user';
         const level = tx.level || tx.referralLevel || '';
-        // 🔥 FIX: Escaped level
         const levelStr = level ? ` (Level ${escapeHtml(String(level))})` : '';
         desc = `<strong>${escapeHtml(user.name || user.username || 'Unknown')}</strong> received commission from <strong style="color:#fbbf24;">${escapeHtml(String(fromName))}</strong>${levelStr}`;
     }
@@ -706,7 +698,6 @@ function processTransactionForActivity(tx, user, uid, txId) {
         amountType = 'credit'; type = 'reward';
         const fromName = tx.fromName || tx.fromUsername || 'a user';
         const level = tx.level || tx.referralLevel || '';
-        // 🔥 FIX: Escaped level
         const levelStr = level ? ` (L${escapeHtml(String(level))})` : '';
         desc = `<strong>${escapeHtml(user.name || user.username || 'Unknown')}</strong> earned ${escapeHtml(String(fromName))} referral${levelStr}`;
     }
@@ -756,7 +747,6 @@ function detectActivityFromGlobalTransactions(globalTx) {
 
         const fromName = tx.fromName || tx.fromUsername || tx.fromUid || tx.sourceUserName || 'a user';
         const level = tx.level || tx.referralLevel || '';
-        // 🔥 FIX: Escaped level
         const levelStr = level ? ` (Level ${escapeHtml(String(level))})` : '';
 
         let title = 'Referral Commission';
@@ -910,6 +900,23 @@ function renderDashboard() {
 
     document.getElementById('adminContent').innerHTML = `
         <div class="row g-4">
+
+            <!-- 🔥 RESTORED: TOP USER SEARCH SECTION -->
+            <div class="col-12">
+                <div class="user-search-section" style="background:rgba(46,204,113,0.05); border:1px solid rgba(46,204,113,0.2); border-radius:12px; padding:20px;">
+                    <div class="section-title" style="display:flex; align-items:center; gap:10px; color:#2ecc71; font-weight:600; margin-bottom:15px;">
+                        <i class="bi bi-search"></i> Search Any User (Name, Username, Email or UID)
+                    </div>
+                    <div class="user-search-input-wrap position-relative">
+                        <i class="bi bi-search position-absolute" style="left:15px; top:12px; color:#556688;"></i>
+                        <input type="text" id="topSearchInput" class="form-control form-control-custom" style="padding-left:40px;" 
+                               placeholder="Type user name, username, email or UID..." oninput="handleTopSearch(this.value)" autocomplete="off">
+                    </div>
+                    <div id="topSearchResults" class="position-absolute w-100 mt-1 shadow-lg" 
+                         style="z-index:9999; max-height:300px; overflow-y:auto; background:#0f172a; border:1px solid rgba(46,204,113,0.5); border-radius:8px; display:none;">
+                    </div>
+                </div>
+            </div>
 
             <!-- HEADER -->
             <div class="col-12">
@@ -1076,6 +1083,59 @@ function renderDashboard() {
 }
 
 // ============================================================
+// 🔥 TOP SEARCH LOGIC
+// ============================================================
+window.handleTopSearch = function(query) {
+    const resultsDiv = document.getElementById('topSearchResults');
+    const q = String(query || '').trim().toLowerCase();
+    
+    if (!q) {
+        resultsDiv.style.display = 'none';
+        resultsDiv.innerHTML = '';
+        return;
+    }
+
+    const matched = [];
+    for (const uid in allUsers) {
+        const u = allUsers[uid];
+        if (!u || u.role === 'admin') continue;
+        const name = String(u.name || '').toLowerCase();
+        const username = String(u.username || '').toLowerCase();
+        const email = String(u.email || '').toLowerCase();
+        const uidL = String(uid).toLowerCase();
+        
+        if (name.includes(q) || username.includes(q) || email.includes(q) || uidL.includes(q)) {
+            matched.push({ uid, u });
+        }
+    }
+
+    if (matched.length === 0) {
+        resultsDiv.innerHTML = `<div class="p-3 text-muted text-center"><i class="bi bi-person-x"></i> No user found for "${escapeHtml(query)}"</div>`;
+        resultsDiv.style.display = 'block';
+        return;
+    }
+
+    resultsDiv.innerHTML = matched.slice(0, 10).map(({ uid, u }) => {
+        const sponsor = getSponsorInfo(u, allUsers);
+        const referredHtml = sponsor 
+            ? `<div class="small" style="color:#60a5fa;">Referred by: <strong>${escapeHtml(sponsor.name)}</strong></div>` 
+            : `<div class="small" style="color:#556688;">No referrer</div>`;
+        
+        return `
+            <div class="p-3 border-bottom" style="border-color:rgba(255,255,255,0.05) !important; cursor:pointer; transition:0.2s;" 
+                 onmouseover="this.style.background='rgba(46,204,113,0.1)'" 
+                 onmouseout="this.style.background='transparent'"
+                 onclick="viewUserDetails('${escapeAttr(uid)}'); document.getElementById('topSearchResults').style.display='none'; document.getElementById('topSearchInput').value='';">
+                <div class="fw-bold" style="color:#fff;font-size:1rem;">${escapeHtml(u.name || 'Unknown')} <span style="color:#8899bb;font-weight:400;font-size:0.85rem;">@${escapeHtml(u.username || 'N/A')}</span></div>
+                <div class="small" style="color:#8899bb;">${escapeHtml(u.email || 'No email')} · ${escapeHtml(uid.substring(0, 15))}...</div>
+                ${referredHtml}
+            </div>
+        `;
+    }).join('');
+    resultsDiv.style.display = 'block';
+};
+
+// ============================================================
 // DASHBOARD TAB
 // ============================================================
 function renderDashboardTab() {
@@ -1179,7 +1239,7 @@ window.clearActivityFeed = function() {
 };
 
 // ============================================================
-// WITHDRAWALS TAB (XSS FIXED)
+// WITHDRAWALS TAB
 // ============================================================
 function renderWithdrawalsTab() {
     const seenIds = new Set();
@@ -1218,7 +1278,6 @@ function renderWithdrawalsTab() {
                             const isDirectOffer = w.type === 'direct_offer_withdrawal';
                             const walletAddr = w.walletAddress || w.wallet || '';
                             
-                            // 🔥 XSS FIX: Using data-addr instead of inline JS
                             const walletHtml = walletAddr
                                 ? `<div class="wallet-cell"><span class="addr" title="${escapeAttr(walletAddr)}">${escapeHtml(walletAddr)}</span><button class="btn-copy" data-addr="${escapeAttr(walletAddr)}" onclick="event.stopPropagation(); copyAddress(this.dataset.addr,'Wallet', this)"><i class="bi bi-clipboard"></i></button></div>`
                                 : `<span style="color:#556688;font-size:0.75rem;">No address</span>`;
@@ -1316,12 +1375,10 @@ window.filterDeposits = function(value) {
 };
 
 // ============================================================
-// 🔥 USERS TAB (Mobile Friendly + Safe Adjustments)
+// 🔥 USERS TAB (Inline Adjustments)
 // ============================================================
 function renderUsersTab() {
     const filteredUsers = Object.keys(allUsers).filter(k => allUsers[k].role !== 'admin');
-    
-    // अगर यूजर सेलेक्टेड है तो उसकी जानकारी
     const selectedUser = mobileAdjustUser ? allUsers[mobileAdjustUser] : null;
 
     return `
@@ -1330,7 +1387,6 @@ function renderUsersTab() {
                 <i class="bi bi-wallet2"></i> Quick Wallet Adjustment (Credit / Debit)
             </div>
             
-            <!-- SEARCH SECTION -->
             <div class="mb-3 position-relative">
                 <label class="form-label text-muted small">Search User (Name, Username, Email or UID)</label>
                 <div class="position-relative">
@@ -1338,13 +1394,11 @@ function renderUsersTab() {
                     <input type="text" id="adjustSearchInput" class="form-control form-control-custom" style="padding-left:40px;" 
                            placeholder="Type to search..." oninput="handleAdjustSearch(this.value)" autocomplete="off">
                 </div>
-                <!-- Search Results Dropdown -->
                 <div id="adjustSearchResults" class="position-absolute w-100 mt-1 shadow-lg" 
                      style="z-index:9999; max-height:250px; overflow-y:auto; background:#0f172a; border:1px solid rgba(96,165,250,0.5); border-radius:8px; display:none;">
                 </div>
             </div>
 
-            <!-- SELECTED USER DISPLAY (Only shows if selected) -->
             ${selectedUser ? `
                 <div class="mb-3 p-3 rounded" style="background:rgba(96,165,250,0.1); border:1px solid rgba(96,165,250,0.3);">
                     <div class="d-flex align-items-center justify-content-between">
@@ -1360,7 +1414,6 @@ function renderUsersTab() {
                 </div>
             ` : ''}
 
-            <!-- ADJUSTMENT FORM -->
             <form id="adminAdjustForm" class="row g-2 align-items-end" onsubmit="handleAdminAdjustment(event)">
                 <input type="hidden" id="adminUserSelect" value="${selectedUser ? mobileAdjustUser : ''}">
                 
@@ -1395,7 +1448,6 @@ function renderUsersTab() {
             </form>
         </div>
 
-        <!-- ALL USERS TABLE -->
         <div class="card-glass">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                 <div class="card-title" style="margin-bottom:0;"><i class="bi bi-people text-success me-2"></i>All Users (${filteredUsers.length})</div>
@@ -1687,7 +1739,6 @@ function renderSettingsTab() {
 // ============================================================
 window.switchTab = function(tab) {
     currentTab = tab;
-    // Clear selected adjust user when switching away from users tab
     if (tab !== 'users') {
         mobileAdjustUser = null;
     }
