@@ -1,18 +1,19 @@
 // ============================================================
-// ADMIN PANEL - RND STAKING (Final v10 - Mobile Fixed)
+// ADMIN PANEL - RND STAKING (Final v11 - Security & Bug Fixes)
 // ============================================================
-// Changes from v9:
-//   - ✅ FIXED: Mobile Auto-Select Bug (Removed global state)
-//   - ✅ FIXED: Mobile Touch/Click issue for search results
-//   - ✅ IMPROVED: Smooth Search (Debounce added)
-//   - ✅ IMPROVED: Auto-clear selection after adjustment
+// Changes from v10:
+//   - ✅ SECURITY: Fixed XSS in onclick attributes (using data-*)
+//   - ✅ SECURITY: Added strict ADMIN_EMAIL check on login
+//   - ✅ BUG FIX: Firebase runTransaction abort (return;) to prevent false success
+//   - ✅ BUG FIX: Added safeRender() to prevent input loss on live updates
+//   - ✅ FIXED: Escaped `level` variable in activity descriptions
 // ============================================================
 
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { getDatabase, ref, get, update, set, onValue, remove, runTransaction, push } from "firebase/database";
 
-// 🔥 NEW FIREBASE CONFIG (rnd2-70080)
+// 🔥 FIREBASE CONFIG (rnd2-70080)
 const firebaseConfig = {
   apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
   authDomain: "rnd2-70080.firebaseapp.com",
@@ -55,7 +56,7 @@ let previousSnapshot = {
     deposits: new Set(), initialized: false
 };
 
-// 🔥 LOCAL VARIABLE FOR MOBILE FRIENDLY SELECTION (No Global Window)
+// 🔥 LOCAL VARIABLE FOR MOBILE FRIENDLY SELECTION
 let mobileAdjustUser = null; 
 let adjustSearchTimeout = null;
 
@@ -72,6 +73,19 @@ function escapeAttr(text) {
     if (text === null || text === undefined) return '';
     return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ============================================================
+// SAFE RENDER (Prevents input loss on live updates)
+// ============================================================
+function safeRender() {
+    const a = document.activeElement;
+    const box = document.getElementById('adminContent');
+    // If user is typing in an input/select inside the admin panel, do not re-render
+    if (a && ['INPUT','SELECT','TEXTAREA'].includes(a.tagName) && box && box.contains(a)) {
+        return;
+    }
+    renderDashboard();
 }
 
 // ============================================================
@@ -205,7 +219,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function() 
 });
 
 // ============================================================
-// 🔥 NORMAL WITHDRAWAL — SAFE STATUS UPDATE
+// 🔥 NORMAL WITHDRAWAL — SAFE STATUS UPDATE (FIXED ABORT)
 // ============================================================
 async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark = '') {
     if (!uid || !withdrawalId) {
@@ -236,10 +250,13 @@ async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark
                 }
             }
 
-            if (!targetTxKey || !targetTx) return currentData;
+            // 🔥 FIX: return; to abort transaction if not found
+            if (!targetTxKey || !targetTx) return; 
 
             const currentStatus = String(targetTx.status || 'pending').toLowerCase();
-            if (currentStatus !== 'pending') return currentData;
+            
+            // 🔥 FIX: return; to abort transaction if already processed
+            if (currentStatus !== 'pending') return; 
 
             targetTx.status = newStatus;
             targetTx.updatedAt = now;
@@ -361,7 +378,7 @@ async function syncWithdrawalAcrossLocations(uid, withdrawalId, newStatus, remar
 }
 
 // ============================================================
-// 🔥 ADMIN ADJUSTMENT — SAFE WITH AUDIT
+// 🔥 ADMIN ADJUSTMENT — SAFE WITH AUDIT (FIXED ABORT)
 // ============================================================
 async function processAdminAdjustment(uid, walletType, amount, type, description, remark = '') {
     if (!uid) return { success: false, error: 'Missing user' };
@@ -398,7 +415,8 @@ async function processAdminAdjustment(uid, walletType, amount, type, description
 
             const newBalance = Math.round(newBalanceRaw * 1e8) / 1e8;
 
-            if (newBalance < 0) return currentData;
+            // 🔥 FIX: return; to abort if balance goes negative
+            if (newBalance < 0) return; 
 
             auditRecord = {
                 txId: txId,
@@ -451,9 +469,16 @@ async function processAdminAdjustment(uid, walletType, amount, type, description
 }
 
 // ============================================================
-// AUTH STATE
+// AUTH STATE (SECURITY FIX: Admin email check)
 // ============================================================
 onAuthStateChanged(auth, (user) => {
+    // 🔥 FIX: Strictly check if the logged-in user is the admin
+    if (user && user.email !== ADMIN_EMAIL) { 
+        signOut(auth); 
+        showToast('❌ Unauthorized access!', 'error');
+        return; 
+    }
+
     if (user) {
         document.getElementById('passwordScreen').style.display = 'none';
         document.getElementById('mainNav').style.display = 'flex';
@@ -499,37 +524,37 @@ function setupRealtimeListeners() {
         detectActivityFromUsers(newUsers, allUsers);
         allUsers = newUsers;
         extractTransactionsFromUsers();
-        if (isDataLoaded) renderDashboard();
+        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
     }, (error) => { console.error('Users listener error:', error); showToast('⚠️ Error loading users: ' + error.message, 'error'); });
 
     dataListeners.withdrawals = onValue(ref(db, 'withdrawals'), (snapshot) => {
         allWithdrawals = snapshot.exists() ? snapshot.val() : {};
-        if (isDataLoaded) renderDashboard();
+        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
     }, (error) => console.error('Withdrawals listener error:', error));
 
     dataListeners.deposits = onValue(ref(db, 'deposits'), (snapshot) => {
         const newDeposits = snapshot.exists() ? snapshot.val() : {};
         detectActivityFromDeposits(newDeposits, allDeposits);
         allDeposits = newDeposits;
-        if (isDataLoaded) renderDashboard();
+        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
     }, (error) => console.error('Deposits listener error:', error));
 
     dataListeners.adminWithdrawals = onValue(ref(db, 'admin/withdrawals'), (snapshot) => {
         allAdminWithdrawals = snapshot.exists() ? snapshot.val() : {};
-        if (isDataLoaded) renderDashboard();
+        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
     }, (error) => console.error('Admin withdrawals listener error:', error));
 
     dataListeners.campaignRewards = onValue(ref(db, 'campaign_rewards'), (snapshot) => {
         const newRewards = snapshot.exists() ? snapshot.val() : {};
         detectActivityFromCampaignRewards(newRewards, allCampaignRewards);
         allCampaignRewards = newRewards;
-        if (isDataLoaded) renderDashboard();
+        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
     }, (error) => console.error('Campaign rewards listener error:', error));
 
     dataListeners.globalTransactions = onValue(ref(db, 'transactions'), (snapshot) => {
         const globalTx = snapshot.exists() ? snapshot.val() : {};
         detectActivityFromGlobalTransactions(globalTx);
-        if (isDataLoaded) renderDashboard();
+        if (isDataLoaded) safeRender(); // 🔥 Using safeRender
     }, (error) => console.error('Global transactions listener error:', error));
 
     dataListeners.settings = onValue(ref(db, 'settings'), (snapshot) => {
@@ -541,7 +566,7 @@ function setupRealtimeListeners() {
                 rateInput.value = allSettings.rate;
                 if (rateDisplay) rateDisplay.textContent = allSettings.rate;
             }
-            renderDashboard();
+            safeRender(); // 🔥 Using safeRender
         }
     });
 
@@ -671,7 +696,8 @@ function processTransactionForActivity(tx, user, uid, txId) {
         icon = 'bi-people-fill'; title = 'Referral Commission'; amountType = 'credit'; type = 'reward';
         const fromName = tx.fromName || tx.fromUsername || tx.fromUid || 'a user';
         const level = tx.level || tx.referralLevel || '';
-        const levelStr = level ? ` (Level ${level})` : '';
+        // 🔥 FIX: Escaped level
+        const levelStr = level ? ` (Level ${escapeHtml(String(level))})` : '';
         desc = `<strong>${escapeHtml(user.name || user.username || 'Unknown')}</strong> received commission from <strong style="color:#fbbf24;">${escapeHtml(String(fromName))}</strong>${levelStr}`;
     }
     else if (tx.type === 'level_commission' || tx.type === 'direct_commission' || tx.type === 'team_commission') {
@@ -680,7 +706,8 @@ function processTransactionForActivity(tx, user, uid, txId) {
         amountType = 'credit'; type = 'reward';
         const fromName = tx.fromName || tx.fromUsername || 'a user';
         const level = tx.level || tx.referralLevel || '';
-        const levelStr = level ? ` (L${level})` : '';
+        // 🔥 FIX: Escaped level
+        const levelStr = level ? ` (L${escapeHtml(String(level))})` : '';
         desc = `<strong>${escapeHtml(user.name || user.username || 'Unknown')}</strong> earned ${escapeHtml(String(fromName))} referral${levelStr}`;
     }
     else if (tx.type === 'daily_release') {
@@ -729,7 +756,8 @@ function detectActivityFromGlobalTransactions(globalTx) {
 
         const fromName = tx.fromName || tx.fromUsername || tx.fromUid || tx.sourceUserName || 'a user';
         const level = tx.level || tx.referralLevel || '';
-        const levelStr = level ? ` (Level ${level})` : '';
+        // 🔥 FIX: Escaped level
+        const levelStr = level ? ` (Level ${escapeHtml(String(level))})` : '';
 
         let title = 'Referral Commission';
         let icon = 'bi-people-fill';
@@ -1040,7 +1068,6 @@ function renderDashboard() {
         const settingsForm = document.getElementById('settingsForm');
         if (settingsForm) settingsForm.addEventListener('submit', async (e) => { e.preventDefault(); await saveSettings(); });
         
-        // Ensure new admin adjust form is bound
         const adminForm = document.getElementById('adminAdjustForm');
         if (adminForm) {
             adminForm.onsubmit = handleAdminAdjustment;
@@ -1152,7 +1179,7 @@ window.clearActivityFeed = function() {
 };
 
 // ============================================================
-// WITHDRAWALS TAB
+// WITHDRAWALS TAB (XSS FIXED)
 // ============================================================
 function renderWithdrawalsTab() {
     const seenIds = new Set();
@@ -1190,9 +1217,12 @@ function renderWithdrawalsTab() {
                             const statusText = status === 'pending' ? '⏳ Pending' : ['approved','success','paid'].includes(status) ? '✅ Done' : '❌ Rejected';
                             const isDirectOffer = w.type === 'direct_offer_withdrawal';
                             const walletAddr = w.walletAddress || w.wallet || '';
+                            
+                            // 🔥 XSS FIX: Using data-addr instead of inline JS
                             const walletHtml = walletAddr
-                                ? `<div class="wallet-cell"><span class="addr" title="${escapeAttr(walletAddr)}">${escapeHtml(walletAddr)}</span><button class="btn-copy" onclick="event.stopPropagation(); copyAddress('${escapeAttr(walletAddr)}','Wallet', this)"><i class="bi bi-clipboard"></i></button></div>`
+                                ? `<div class="wallet-cell"><span class="addr" title="${escapeAttr(walletAddr)}">${escapeHtml(walletAddr)}</span><button class="btn-copy" data-addr="${escapeAttr(walletAddr)}" onclick="event.stopPropagation(); copyAddress(this.dataset.addr,'Wallet', this)"><i class="bi bi-clipboard"></i></button></div>`
                                 : `<span style="color:#556688;font-size:0.75rem;">No address</span>`;
+                                
                             return `
                                 <tr data-user="${escapeAttr((user.username || user.name || '').toLowerCase())}">
                                     <td>${i + 1}</td>
@@ -1204,8 +1234,8 @@ function renderWithdrawalsTab() {
                                     <td><span class="${statusClass}">${statusText}</span></td>
                                     <td>
                                         ${status === 'pending' && !isDirectOffer ? `
-                                            <button class="btn btn-success-custom btn-sm me-1" onclick="approveWithdrawal('${escapeAttr(w.uid)}', '${escapeAttr(w.withdrawalId || '')}')"><i class="bi bi-check-lg"></i></button>
-                                            <button class="btn btn-danger-custom btn-sm" onclick="rejectWithdrawal('${escapeAttr(w.uid)}', '${escapeAttr(w.withdrawalId || '')}')"><i class="bi bi-x-lg"></i></button>
+                                            <button class="btn btn-success-custom btn-sm me-1" data-uid="${escapeAttr(w.uid)}" data-wid="${escapeAttr(w.withdrawalId || '')}" onclick="approveWithdrawal(this.dataset.uid, this.dataset.wid)"><i class="bi bi-check-lg"></i></button>
+                                            <button class="btn btn-danger-custom btn-sm" data-uid="${escapeAttr(w.uid)}" data-wid="${escapeAttr(w.withdrawalId || '')}" onclick="rejectWithdrawal(this.dataset.uid, this.dataset.wid)"><i class="bi bi-x-lg"></i></button>
                                         ` : isDirectOffer ? `<span style="color:#f59e0b;font-size:0.7rem;">Manage in Direct Offer page</span>` : `<span style="color:#34d399;font-size:0.75rem;">✓ Done</span>`}
                                     </td>
                                 </tr>
@@ -1286,7 +1316,7 @@ window.filterDeposits = function(value) {
 };
 
 // ============================================================
-// 🔥 NEW & FIXED: USERS TAB (Mobile & Desktop Friendly)
+// 🔥 USERS TAB (Mobile Friendly + Safe Adjustments)
 // ============================================================
 function renderUsersTab() {
     const filteredUsers = Object.keys(allUsers).filter(k => allUsers[k].role !== 'admin');
@@ -1358,7 +1388,6 @@ function renderUsersTab() {
                     <input type="text" id="adminAdjustDesc" class="form-control form-control-custom" placeholder="e.g. Bonus, Correction">
                 </div>
                 <div class="col-md-2">
-                    <!-- Button stays disabled until a user is selected -->
                     <button type="submit" class="btn btn-warning-custom w-100" ${!selectedUser ? 'disabled' : ''} id="adjustSubmitBtn">
                         <i class="bi bi-shield-check"></i> Apply
                     </button>
@@ -1413,7 +1442,7 @@ window.filterUsers = function(value) {
 };
 
 // ============================================================
-// NEW: SEARCH & SELECT HELPERS FOR ADJUSTMENT
+// SEARCH & SELECT HELPERS FOR ADJUSTMENT
 // ============================================================
 window.handleAdjustSearch = function(query) {
     const resultsDiv = document.getElementById('adjustSearchResults');
@@ -1425,7 +1454,6 @@ window.handleAdjustSearch = function(query) {
         return;
     }
 
-    // टाइपिंग के दौरान बार-बार सर्च न हो, इसलिए 200ms का डिले
     clearTimeout(adjustSearchTimeout);
     adjustSearchTimeout = setTimeout(() => {
         const matched = [];
@@ -1448,7 +1476,6 @@ window.handleAdjustSearch = function(query) {
             return;
         }
 
-        // मोबाइल में टच इवेंट्स के लिए ontouchstart और onmousedown दोनों जरूरी हैं
         resultsDiv.innerHTML = matched.slice(0, 10).map(({ uid, u }) => `
             <div class="p-3 border-bottom" style="border-color:rgba(255,255,255,0.05) !important; cursor:pointer; transition:0.2s;" 
                  onmouseover="this.style.background='rgba(96,165,250,0.15)'" 
@@ -1464,7 +1491,6 @@ window.handleAdjustSearch = function(query) {
     }, 200);
 };
 
-// यूजर को सेलेक्ट करने का फंक्शन
 window.selectUserForAdjustment = function(uid) {
     mobileAdjustUser = uid;
     const resultsDiv = document.getElementById('adjustSearchResults');
@@ -1473,15 +1499,13 @@ window.selectUserForAdjustment = function(uid) {
         resultsDiv.innerHTML = '';
     }
     const searchInput = document.getElementById('adjustSearchInput');
-    if (searchInput) searchInput.value = ''; // सर्च बॉक्स खाली कर दें
+    if (searchInput) searchInput.value = ''; 
     
-    // UI को रिफ्रेश करें ताकि सेलेक्टेड यूजर दिखे
     renderDashboard(); 
     showToast('✅ User selected for adjustment', 'success');
 };
 
-// एडजस्टमेंट अप्लाई करने का फंक्शन
-async function handleAdminAdjustment(e) {
+window.handleAdminAdjustment = async function(e) {
     if(e) e.preventDefault();
     
     const uid = document.getElementById('adminUserSelect').value;
@@ -1507,7 +1531,6 @@ async function handleAdminAdjustment(e) {
             document.getElementById('adminAdjustAmount').value = '';
             document.getElementById('adminAdjustDesc').value = '';
             
-            // सेलेक्शन क्लियर करें
             mobileAdjustUser = null; 
             setTimeout(renderDashboard, 500);
         } else {
