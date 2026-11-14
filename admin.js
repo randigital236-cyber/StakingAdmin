@@ -1,12 +1,11 @@
 // ============================================================
-// ADMIN PANEL - RND STAKING (Final v9 - Inline User Adjust)
+// ADMIN PANEL - RND STAKING (Final v10 - Mobile Fixed)
 // ============================================================
-// Changes from v8:
-//   - ✅ ADDED: Inline "Quick Wallet Adjustment" section in Users Tab
-//   - ✅ ADDED: Live Search (Name, Username, Email, UID) for adjustments
-//   - ✅ ADDED: Shows Selected User Info (Name, UID, Balance) before applying
-//   - ✅ IMPROVED: handleAdminAdjustment now uses the new inline form
-//   - ✅ REMOVED: Old bulky Admin Adjustment form from top of Users Tab
+// Changes from v9:
+//   - ✅ FIXED: Mobile Auto-Select Bug (Removed global state)
+//   - ✅ FIXED: Mobile Touch/Click issue for search results
+//   - ✅ IMPROVED: Smooth Search (Debounce added)
+//   - ✅ IMPROVED: Auto-clear selection after adjustment
 // ============================================================
 
 import { initializeApp } from "firebase/app";
@@ -56,8 +55,9 @@ let previousSnapshot = {
     deposits: new Set(), initialized: false
 };
 
-// New Global for Adjust Search
-window.__selectedAdjustUid = '';
+// 🔥 LOCAL VARIABLE FOR MOBILE FRIENDLY SELECTION (No Global Window)
+let mobileAdjustUser = null; 
+let adjustSearchTimeout = null;
 
 // ============================================================
 // XSS HELPERS
@@ -483,7 +483,7 @@ onAuthStateChanged(auth, (user) => {
             deposits: new Set(), initialized: false
         };
         isDataLoaded = false;
-        window.__selectedAdjustUid = '';
+        mobileAdjustUser = null;
     }
 });
 
@@ -1286,12 +1286,13 @@ window.filterDeposits = function(value) {
 };
 
 // ============================================================
-// USERS TAB (NEW: Inline Search & Adjust)
+// 🔥 NEW & FIXED: USERS TAB (Mobile & Desktop Friendly)
 // ============================================================
 function renderUsersTab() {
     const filteredUsers = Object.keys(allUsers).filter(k => allUsers[k].role !== 'admin');
-    const selectedUid = window.__selectedAdjustUid || '';
-    const selectedUser = selectedUid ? allUsers[selectedUid] : null;
+    
+    // अगर यूजर सेलेक्टेड है तो उसकी जानकारी
+    const selectedUser = mobileAdjustUser ? allUsers[mobileAdjustUser] : null;
 
     return `
         <div class="card-glass mb-4" style="background:rgba(96,165,250,0.05);border-color:rgba(96,165,250,0.2);">
@@ -1307,28 +1308,31 @@ function renderUsersTab() {
                     <input type="text" id="adjustSearchInput" class="form-control form-control-custom" style="padding-left:40px;" 
                            placeholder="Type to search..." oninput="handleAdjustSearch(this.value)" autocomplete="off">
                 </div>
-                <div id="adjustSearchResults" class="position-absolute w-100 mt-1" style="z-index:1000; max-height:200px; overflow-y:auto; background:#0a0e17; border:1px solid rgba(96,165,250,0.3); border-radius:8px; display:none;"></div>
+                <!-- Search Results Dropdown -->
+                <div id="adjustSearchResults" class="position-absolute w-100 mt-1 shadow-lg" 
+                     style="z-index:9999; max-height:250px; overflow-y:auto; background:#0f172a; border:1px solid rgba(96,165,250,0.5); border-radius:8px; display:none;">
+                </div>
             </div>
 
-            <!-- SELECTED USER DISPLAY -->
-            <div id="selectedUserDisplay" class="mb-3 p-3 rounded" style="background:rgba(96,165,250,0.1); border:1px solid rgba(96,165,250,0.2); display: ${selectedUser ? 'block' : 'none'};">
-                ${selectedUser ? `
+            <!-- SELECTED USER DISPLAY (Only shows if selected) -->
+            ${selectedUser ? `
+                <div class="mb-3 p-3 rounded" style="background:rgba(96,165,250,0.1); border:1px solid rgba(96,165,250,0.3);">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <div class="fw-bold" style="color:#fff;font-size:1.1rem;">${escapeHtml(selectedUser.name || 'Unknown')} <span class="text-muted">@${escapeHtml(selectedUser.username || 'N/A')}</span></div>
-                            <div class="small" style="color:#60a5fa;">UID: ${escapeHtml(selectedUid)}</div>
+                            <div class="small" style="color:#60a5fa;">UID: ${escapeHtml(mobileAdjustUser)}</div>
                         </div>
                         <div class="text-end">
                             <div class="small text-muted">Deposit Wallet</div>
                             <div class="fw-bold" style="color:#2ecc71;">$${(selectedUser.depositWallet || 0).toFixed(2)}</div>
                         </div>
                     </div>
-                ` : ''}
-            </div>
+                </div>
+            ` : ''}
 
             <!-- ADJUSTMENT FORM -->
             <form id="adminAdjustForm" class="row g-2 align-items-end" onsubmit="handleAdminAdjustment(event)">
-                <input type="hidden" id="adminUserSelect" value="${escapeAttr(selectedUid)}">
+                <input type="hidden" id="adminUserSelect" value="${selectedUser ? mobileAdjustUser : ''}">
                 
                 <div class="col-md-3">
                     <label class="form-label">Select Wallet</label>
@@ -1354,7 +1358,8 @@ function renderUsersTab() {
                     <input type="text" id="adminAdjustDesc" class="form-control form-control-custom" placeholder="e.g. Bonus, Correction">
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-warning-custom w-100" ${!selectedUid ? 'disabled' : ''} id="adjustSubmitBtn">
+                    <!-- Button stays disabled until a user is selected -->
+                    <button type="submit" class="btn btn-warning-custom w-100" ${!selectedUser ? 'disabled' : ''} id="adjustSubmitBtn">
                         <i class="bi bi-shield-check"></i> Apply
                     </button>
                 </div>
@@ -1388,8 +1393,8 @@ function renderUsersTab() {
                                     <td>${u.totalReferrals || 0}</td>
                                     <td>${sponsorHtml}</td>
                                     <td>
-                                        <button class="btn btn-sm me-1" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa;" onclick="selectUserForAdjustment('${escapeAttr(key)}')" title="Select for Adjustment"><i class="bi bi-pencil-square"></i></button>
-                                        <button class="btn btn-sm" style="background:rgba(46,204,113,0.15);border-color:rgba(46,204,113,0.2);color:#2ecc71;" onclick="viewUserDetails('${escapeAttr(key)}')" title="View Details"><i class="bi bi-eye"></i></button>
+                                        <button type="button" class="btn btn-sm me-1" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa;" onclick="selectUserForAdjustment('${escapeAttr(key)}')" title="Select for Adjustment"><i class="bi bi-pencil-square"></i></button>
+                                        <button type="button" class="btn btn-sm" style="background:rgba(46,204,113,0.15);border-color:rgba(46,204,113,0.2);color:#2ecc71;" onclick="viewUserDetails('${escapeAttr(key)}')" title="View Details"><i class="bi bi-eye"></i></button>
                                     </td>
                                 </tr>
                             `;
@@ -1416,52 +1421,66 @@ window.handleAdjustSearch = function(query) {
     
     if (!q) {
         resultsDiv.style.display = 'none';
+        resultsDiv.innerHTML = '';
         return;
     }
 
-    const matched = [];
-    for (const uid in allUsers) {
-        const u = allUsers[uid];
-        if (!u || u.role === 'admin') continue;
-        const name = String(u.name || '').toLowerCase();
-        const username = String(u.username || '').toLowerCase();
-        const email = String(u.email || '').toLowerCase();
-        const uidL = String(uid).toLowerCase();
-        
-        if (name.includes(q) || username.includes(q) || email.includes(q) || uidL.includes(q)) {
-            matched.push({ uid, u });
+    // टाइपिंग के दौरान बार-बार सर्च न हो, इसलिए 200ms का डिले
+    clearTimeout(adjustSearchTimeout);
+    adjustSearchTimeout = setTimeout(() => {
+        const matched = [];
+        for (const uid in allUsers) {
+            const u = allUsers[uid];
+            if (!u || u.role === 'admin') continue;
+            const name = String(u.name || '').toLowerCase();
+            const username = String(u.username || '').toLowerCase();
+            const email = String(u.email || '').toLowerCase();
+            const uidL = String(uid).toLowerCase();
+            
+            if (name.includes(q) || username.includes(q) || email.includes(q) || uidL.includes(q)) {
+                matched.push({ uid, u });
+            }
         }
-    }
 
-    if (matched.length === 0) {
-        resultsDiv.innerHTML = `<div class="p-3 text-muted text-center"><i class="bi bi-person-x"></i> No user found</div>`;
+        if (matched.length === 0) {
+            resultsDiv.innerHTML = `<div class="p-3 text-muted text-center" style="color:#8899bb !important;"><i class="bi bi-person-x"></i> No user found for "${escapeHtml(query)}"</div>`;
+            resultsDiv.style.display = 'block';
+            return;
+        }
+
+        // मोबाइल में टच इवेंट्स के लिए ontouchstart और onmousedown दोनों जरूरी हैं
+        resultsDiv.innerHTML = matched.slice(0, 10).map(({ uid, u }) => `
+            <div class="p-3 border-bottom" style="border-color:rgba(255,255,255,0.05) !important; cursor:pointer; transition:0.2s;" 
+                 onmouseover="this.style.background='rgba(96,165,250,0.15)'" 
+                 onmouseout="this.style.background='transparent'"
+                 ontouchstart="this.style.background='rgba(96,165,250,0.15)'"
+                 ontouchend="this.style.background='transparent'"
+                 onclick="selectUserForAdjustment('${escapeAttr(uid)}')">
+                <div class="fw-bold" style="color:#fff;">${escapeHtml(u.name || 'Unknown')}</div>
+                <div class="small" style="color:#60a5fa;">@${escapeHtml(u.username || 'N/A')} · ${escapeHtml(uid.substring(0, 12))}...</div>
+            </div>
+        `).join('');
         resultsDiv.style.display = 'block';
-        return;
-    }
-
-    resultsDiv.innerHTML = matched.slice(0, 10).map(({ uid, u }) => `
-        <div class="p-2 border-bottom" style="border-color:rgba(255,255,255,0.05) !important; cursor:pointer; transition:0.2s;" 
-             onmouseover="this.style.background='rgba(96,165,250,0.1)'" 
-             onmouseout="this.style.background='transparent'"
-             onclick="selectUserForAdjustment('${escapeAttr(uid)}')">
-            <div class="fw-bold" style="color:#fff;">${escapeHtml(u.name || 'Unknown')}</div>
-            <div class="small" style="color:#60a5fa;">@${escapeHtml(u.username || 'N/A')} · ${escapeHtml(uid.substring(0, 12))}...</div>
-        </div>
-    `).join('');
-    resultsDiv.style.display = 'block';
+    }, 200);
 };
 
+// यूजर को सेलेक्ट करने का फंक्शन
 window.selectUserForAdjustment = function(uid) {
-    window.__selectedAdjustUid = uid;
+    mobileAdjustUser = uid;
     const resultsDiv = document.getElementById('adjustSearchResults');
-    if (resultsDiv) resultsDiv.style.display = 'none';
+    if (resultsDiv) {
+        resultsDiv.style.display = 'none';
+        resultsDiv.innerHTML = '';
+    }
+    const searchInput = document.getElementById('adjustSearchInput');
+    if (searchInput) searchInput.value = ''; // सर्च बॉक्स खाली कर दें
     
-    // Re-render tab to show selected user
+    // UI को रिफ्रेश करें ताकि सेलेक्टेड यूजर दिखे
     renderDashboard(); 
     showToast('✅ User selected for adjustment', 'success');
 };
 
-// Override handleAdminAdjustment to work with new form
+// एडजस्टमेंट अप्लाई करने का फंक्शन
 async function handleAdminAdjustment(e) {
     if(e) e.preventDefault();
     
@@ -1487,8 +1506,9 @@ async function handleAdminAdjustment(e) {
             showToast(`✅ Successfully ${type === 'credit' ? 'Credited' : 'Debited'} $${amount}!`, 'success');
             document.getElementById('adminAdjustAmount').value = '';
             document.getElementById('adminAdjustDesc').value = '';
-            // Clear selection
-            window.__selectedAdjustUid = ''; 
+            
+            // सेलेक्शन क्लियर करें
+            mobileAdjustUser = null; 
             setTimeout(renderDashboard, 500);
         } else {
             showToast('❌ Failed: ' + (result.error || 'Error'), 'error');
@@ -1646,7 +1666,7 @@ window.switchTab = function(tab) {
     currentTab = tab;
     // Clear selected adjust user when switching away from users tab
     if (tab !== 'users') {
-        window.__selectedAdjustUid = '';
+        mobileAdjustUser = null;
     }
     renderDashboard();
 };
