@@ -1,28 +1,28 @@
 // ============================================================
-// ADMIN PANEL - RND STAKING (Final v8 - Step 1 Updated)
+// ADMIN PANEL - RND STAKING (Final v9 - Inline User Adjust)
 // ============================================================
-// Changes from v7:
-//   - ❌ REMOVED: Direct Offer Overview card from Dashboard
-//   - ❌ REMOVED: Direct Offer tab (its content moved to separate page)
-//   - ❌ REMOVED: Direct Offer Stats from Settings
-//   - ✅ ADDED: Quick Nav section with 2 buttons (Rank Reward, Direct Offer)
-//   - ✅ Both buttons navigate to separate standalone pages
-//   - ✅ All existing functionality preserved (Users, Withdrawals, Deposits, etc.)
+// Changes from v8:
+//   - ✅ ADDED: Inline "Quick Wallet Adjustment" section in Users Tab
+//   - ✅ ADDED: Live Search (Name, Username, Email, UID) for adjustments
+//   - ✅ ADDED: Shows Selected User Info (Name, UID, Balance) before applying
+//   - ✅ IMPROVED: handleAdminAdjustment now uses the new inline form
+//   - ✅ REMOVED: Old bulky Admin Adjustment form from top of Users Tab
 // ============================================================
 
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { getDatabase, ref, get, update, set, onValue, remove, runTransaction, push } from "firebase/database";
 
+// 🔥 NEW FIREBASE CONFIG (rnd2-70080)
 const firebaseConfig = {
-    apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
-    authDomain: "rnd2-70080.firebaseapp.com",
-    databaseURL: "https://rnd2-70080-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "rnd2-70080",
-    storageBucket: "rnd2-70080.firebasestorage.app",
-    messagingSenderId: "468625887938",
-    appId: "1:468625887938:web:5cb4ddbcf31b6fc0a4615b",
-    measurementId: "G-ELVJD5NQKB"
+  apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
+  authDomain: "rnd2-70080.firebaseapp.com",
+  databaseURL: "https://rnd2-70080-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rnd2-70080",
+  storageBucket: "rnd2-70080.firebasestorage.app",
+  messagingSenderId: "468625887938",
+  appId: "1:468625887938:web:5cb4ddbcf31b6fc0a4615b",
+  measurementId: "G-ELVJD5NQKB"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -55,6 +55,9 @@ let previousSnapshot = {
     transactions: new Set(), campaignRewards: new Set(),
     deposits: new Set(), initialized: false
 };
+
+// New Global for Adjust Search
+window.__selectedAdjustUid = '';
 
 // ============================================================
 // XSS HELPERS
@@ -151,7 +154,7 @@ function relativeTime(timestamp) {
 }
 
 // ============================================================
-// REFERRAL HELPERS (minimal — only for Referred By column)
+// REFERRAL HELPERS
 // ============================================================
 function getSponsorInfo(candidate, ownerMap) {
     const sponsorUid = candidate.sponsorUid || candidate.referredByUid || null;
@@ -202,7 +205,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function() 
 });
 
 // ============================================================
-// 🔥 NORMAL WITHDRAWAL — SAFE STATUS UPDATE (with refund)
+// 🔥 NORMAL WITHDRAWAL — SAFE STATUS UPDATE
 // ============================================================
 async function updateWithdrawalStatusAtomic(uid, withdrawalId, newStatus, remark = '') {
     if (!uid || !withdrawalId) {
@@ -480,6 +483,7 @@ onAuthStateChanged(auth, (user) => {
             deposits: new Set(), initialized: false
         };
         isDataLoaded = false;
+        window.__selectedAdjustUid = '';
     }
 });
 
@@ -879,21 +883,6 @@ function renderDashboard() {
     document.getElementById('adminContent').innerHTML = `
         <div class="row g-4">
 
-            <!-- USER SEARCH -->
-            <div class="col-12">
-                <div class="user-search-section">
-                    <div class="section-title">
-                        <i class="bi bi-search"></i> Search User
-                        <span class="text-muted small" style="font-weight:400;font-size:0.75rem;margin-left:auto;">Name, Username, Email ya UID se</span>
-                    </div>
-                    <div class="user-search-input-wrap">
-                        <i class="bi bi-search search-icon"></i>
-                        <input type="text" id="userSearchInput" placeholder="Type user name, username, email or UID..." oninput="handleUserSearch(this.value)">
-                    </div>
-                    <div class="search-results-list" id="userSearchResults"></div>
-                </div>
-            </div>
-
             <!-- HEADER -->
             <div class="col-12">
                 <div class="d-flex flex-wrap justify-content-between align-items-center">
@@ -903,7 +892,7 @@ function renderDashboard() {
                 <hr class="border-secondary">
             </div>
 
-            <!-- 🆕 QUICK NAV SECTION (Rank Reward + Direct Offer) -->
+            <!-- QUICK NAV SECTION -->
             <div class="col-12">
                 <div class="quick-nav-section">
                     <span class="quick-nav-label"><i class="bi bi-lightning-charge-fill"></i> Quick Access:</span>
@@ -1050,64 +1039,14 @@ function renderDashboard() {
     setTimeout(() => {
         const settingsForm = document.getElementById('settingsForm');
         if (settingsForm) settingsForm.addEventListener('submit', async (e) => { e.preventDefault(); await saveSettings(); });
+        
+        // Ensure new admin adjust form is bound
         const adminForm = document.getElementById('adminAdjustForm');
-        if (adminForm) adminForm.addEventListener('submit', async (e) => { e.preventDefault(); await handleAdminAdjustment(); });
-        const searchInput = document.getElementById('userSearchInput');
-        if (searchInput && window.__lastSearchValue) {
-            searchInput.value = window.__lastSearchValue;
-            handleUserSearch(window.__lastSearchValue);
+        if (adminForm) {
+            adminForm.onsubmit = handleAdminAdjustment;
         }
     }, 300);
 }
-
-// ============================================================
-// USER SEARCH
-// ============================================================
-window.__lastSearchValue = '';
-
-window.handleUserSearch = function(query) {
-    window.__lastSearchValue = query;
-    const resultsDiv = document.getElementById('userSearchResults');
-    if (!resultsDiv) return;
-    const q = String(query || '').trim().toLowerCase();
-    if (!q) { resultsDiv.innerHTML = ''; return; }
-
-    const matched = [];
-    for (const uid in allUsers) {
-        const u = allUsers[uid];
-        if (!u || u.role === 'admin') continue;
-        const name = String(u.name || '').toLowerCase();
-        const username = String(u.username || '').toLowerCase();
-        const email = String(u.email || '').toLowerCase();
-        const uidL = String(uid).toLowerCase();
-        const code = String(u.referralCode || '').toLowerCase();
-        if (name.includes(q) || username.includes(q) || email.includes(q) || uidL.includes(q) || code.includes(q)) {
-            matched.push({ uid, u });
-        }
-    }
-    if (matched.length === 0) {
-        resultsDiv.innerHTML = `<div class="no-data" style="padding:20px;"><i class="bi bi-person-x" style="font-size:2rem;"></i><p style="font-size:0.85rem;">No user found for "${escapeHtml(query)}"</p></div>`;
-        return;
-    }
-    resultsDiv.innerHTML = matched.slice(0, 20).map(({ uid, u }) => {
-        const sponsor = getSponsorInfo(u, allUsers);
-        const initial = (u.name || u.username || 'U').charAt(0).toUpperCase();
-        const referredHtml = sponsor
-            ? `<div class="referred-by"><i class="bi bi-arrow-return-right"></i> Referred by <strong>${escapeHtml(sponsor.name)}</strong> (@${escapeHtml(sponsor.username)})</div>`
-            : `<div class="referred-by" style="color:#556688;"><i class="bi bi-dash-circle"></i> No referrer</div>`;
-        return `
-            <div class="search-result-item" onclick="viewUserDetails('${escapeAttr(uid)}')">
-                <div class="avatar-sm">${escapeHtml(initial)}</div>
-                <div class="info">
-                    <div class="name">${escapeHtml(u.name || 'Unknown')} <span style="color:#8899bb;font-weight:400;">@${escapeHtml(u.username || 'N/A')}</span></div>
-                    <div class="meta">${escapeHtml(u.email || 'No email')} · ${escapeHtml(uid.substring(0, 14))}...</div>
-                    ${referredHtml}
-                </div>
-                <div class="arrow"><i class="bi bi-chevron-right"></i></div>
-            </div>
-        `;
-    }).join('');
-};
 
 // ============================================================
 // DASHBOARD TAB
@@ -1347,46 +1286,86 @@ window.filterDeposits = function(value) {
 };
 
 // ============================================================
-// USERS TAB
+// USERS TAB (NEW: Inline Search & Adjust)
 // ============================================================
 function renderUsersTab() {
     const filteredUsers = Object.keys(allUsers).filter(k => allUsers[k].role !== 'admin');
-    if (filteredUsers.length === 0) return `<div class="card-glass"><div class="no-data"><i class="bi bi-inbox"></i><p>No users found.</p></div></div>`;
+    const selectedUid = window.__selectedAdjustUid || '';
+    const selectedUser = selectedUid ? allUsers[selectedUid] : null;
+
     return `
+        <div class="card-glass mb-4" style="background:rgba(96,165,250,0.05);border-color:rgba(96,165,250,0.2);">
+            <div class="card-title" style="color:#60a5fa;border-bottom-color:rgba(96,165,250,0.2);">
+                <i class="bi bi-wallet2"></i> Quick Wallet Adjustment (Credit / Debit)
+            </div>
+            
+            <!-- SEARCH SECTION -->
+            <div class="mb-3 position-relative">
+                <label class="form-label text-muted small">Search User (Name, Username, Email or UID)</label>
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute" style="left:15px;top:12px;color:#556688;"></i>
+                    <input type="text" id="adjustSearchInput" class="form-control form-control-custom" style="padding-left:40px;" 
+                           placeholder="Type to search..." oninput="handleAdjustSearch(this.value)" autocomplete="off">
+                </div>
+                <div id="adjustSearchResults" class="position-absolute w-100 mt-1" style="z-index:1000; max-height:200px; overflow-y:auto; background:#0a0e17; border:1px solid rgba(96,165,250,0.3); border-radius:8px; display:none;"></div>
+            </div>
+
+            <!-- SELECTED USER DISPLAY -->
+            <div id="selectedUserDisplay" class="mb-3 p-3 rounded" style="background:rgba(96,165,250,0.1); border:1px solid rgba(96,165,250,0.2); display: ${selectedUser ? 'block' : 'none'};">
+                ${selectedUser ? `
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="fw-bold" style="color:#fff;font-size:1.1rem;">${escapeHtml(selectedUser.name || 'Unknown')} <span class="text-muted">@${escapeHtml(selectedUser.username || 'N/A')}</span></div>
+                            <div class="small" style="color:#60a5fa;">UID: ${escapeHtml(selectedUid)}</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="small text-muted">Deposit Wallet</div>
+                            <div class="fw-bold" style="color:#2ecc71;">$${(selectedUser.depositWallet || 0).toFixed(2)}</div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- ADJUSTMENT FORM -->
+            <form id="adminAdjustForm" class="row g-2 align-items-end" onsubmit="handleAdminAdjustment(event)">
+                <input type="hidden" id="adminUserSelect" value="${escapeAttr(selectedUid)}">
+                
+                <div class="col-md-3">
+                    <label class="form-label">Select Wallet</label>
+                    <select id="adminWalletSelect" class="form-control form-control-custom">
+                        <option value="depositWallet">Deposit Wallet (USDT)</option>
+                        <option value="referralWallet">Referral Wallet (USDT)</option>
+                        <option value="rndWallet">RND Wallet (Tokens)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Action</label>
+                    <select id="adminAdjustType" class="form-control form-control-custom">
+                        <option value="credit">➕ Credit (Add)</option>
+                        <option value="debit">➖ Debit (Remove)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Amount</label>
+                    <input type="number" id="adminAdjustAmount" class="form-control form-control-custom" placeholder="0.00" step="0.01" min="0.01" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Remark / Reason</label>
+                    <input type="text" id="adminAdjustDesc" class="form-control form-control-custom" placeholder="e.g. Bonus, Correction">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-warning-custom w-100" ${!selectedUid ? 'disabled' : ''} id="adjustSubmitBtn">
+                        <i class="bi bi-shield-check"></i> Apply
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ALL USERS TABLE -->
         <div class="card-glass">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                 <div class="card-title" style="margin-bottom:0;"><i class="bi bi-people text-success me-2"></i>All Users (${filteredUsers.length})</div>
                 <input type="text" class="search-box" placeholder="Search by name..." oninput="filterUsers(this.value)">
-            </div>
-            <div class="card-glass mb-3" style="background:rgba(251,191,36,0.05);border-color:rgba(251,191,36,0.1);">
-                <h6 class="text-muted"><i class="bi bi-shield"></i> Admin Adjustment</h6>
-                <form id="adminAdjustForm" class="row g-2 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label">User</label>
-                        <select id="adminUserSelect" class="form-control form-control-custom">
-                            ${filteredUsers.map(uid => { const u = allUsers[uid]; return `<option value="${escapeAttr(uid)}">${escapeHtml(u.name || 'Unknown')} (@${escapeHtml(u.username || 'N/A')})</option>`; }).join('')}
-                        </select>
-                    </div>
-                    <div class="col-md-2"><label class="form-label">Wallet</label>
-                        <select id="adminWalletSelect" class="form-control form-control-custom">
-                            <option value="depositWallet">Deposit Wallet</option>
-                            <option value="referralWallet">Referral Wallet</option>
-                            <option value="rndWallet">RND Wallet</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2"><label class="form-label">Type</label>
-                        <select id="adminAdjustType" class="form-control form-control-custom">
-                            <option value="credit">➕ Credit</option><option value="debit">➖ Debit</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2"><label class="form-label">Amount (USDT)</label>
-                        <input type="number" id="adminAdjustAmount" class="form-control form-control-custom" placeholder="0.00" step="0.01" min="0.01" required>
-                    </div>
-                    <div class="col-md-3"><label class="form-label">Description</label>
-                        <input type="text" id="adminAdjustDesc" class="form-control form-control-custom" placeholder="Reason">
-                    </div>
-                    <div class="col-12 mt-2"><button type="submit" class="btn btn-warning-custom w-100"><i class="bi bi-shield me-1"></i> Apply Adjustment</button></div>
-                </form>
             </div>
             <div class="table-responsive">
                 <table class="table table-custom" id="usersTable">
@@ -1408,7 +1387,10 @@ function renderUsersTab() {
                                     <td><strong style="color:#a78bfa;">${(u.lockedRND || 0).toFixed(2)}</strong></td>
                                     <td>${u.totalReferrals || 0}</td>
                                     <td>${sponsorHtml}</td>
-                                    <td><button class="btn btn-info btn-sm" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa;" onclick="viewUserDetails('${escapeAttr(key)}')"><i class="bi bi-eye"></i></button></td>
+                                    <td>
+                                        <button class="btn btn-sm me-1" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa;" onclick="selectUserForAdjustment('${escapeAttr(key)}')" title="Select for Adjustment"><i class="bi bi-pencil-square"></i></button>
+                                        <button class="btn btn-sm" style="background:rgba(46,204,113,0.15);border-color:rgba(46,204,113,0.2);color:#2ecc71;" onclick="viewUserDetails('${escapeAttr(key)}')" title="View Details"><i class="bi bi-eye"></i></button>
+                                    </td>
                                 </tr>
                             `;
                         }).join('')}
@@ -1418,11 +1400,111 @@ function renderUsersTab() {
         </div>
     `;
 }
+
 window.filterUsers = function(value) {
     const rows = document.querySelectorAll('#usersTable tbody tr');
     const s = value.toLowerCase();
     rows.forEach(r => { r.style.display = (r.getAttribute('data-user') || '').includes(s) ? '' : 'none'; });
 };
+
+// ============================================================
+// NEW: SEARCH & SELECT HELPERS FOR ADJUSTMENT
+// ============================================================
+window.handleAdjustSearch = function(query) {
+    const resultsDiv = document.getElementById('adjustSearchResults');
+    const q = String(query || '').trim().toLowerCase();
+    
+    if (!q) {
+        resultsDiv.style.display = 'none';
+        return;
+    }
+
+    const matched = [];
+    for (const uid in allUsers) {
+        const u = allUsers[uid];
+        if (!u || u.role === 'admin') continue;
+        const name = String(u.name || '').toLowerCase();
+        const username = String(u.username || '').toLowerCase();
+        const email = String(u.email || '').toLowerCase();
+        const uidL = String(uid).toLowerCase();
+        
+        if (name.includes(q) || username.includes(q) || email.includes(q) || uidL.includes(q)) {
+            matched.push({ uid, u });
+        }
+    }
+
+    if (matched.length === 0) {
+        resultsDiv.innerHTML = `<div class="p-3 text-muted text-center"><i class="bi bi-person-x"></i> No user found</div>`;
+        resultsDiv.style.display = 'block';
+        return;
+    }
+
+    resultsDiv.innerHTML = matched.slice(0, 10).map(({ uid, u }) => `
+        <div class="p-2 border-bottom" style="border-color:rgba(255,255,255,0.05) !important; cursor:pointer; transition:0.2s;" 
+             onmouseover="this.style.background='rgba(96,165,250,0.1)'" 
+             onmouseout="this.style.background='transparent'"
+             onclick="selectUserForAdjustment('${escapeAttr(uid)}')">
+            <div class="fw-bold" style="color:#fff;">${escapeHtml(u.name || 'Unknown')}</div>
+            <div class="small" style="color:#60a5fa;">@${escapeHtml(u.username || 'N/A')} · ${escapeHtml(uid.substring(0, 12))}...</div>
+        </div>
+    `).join('');
+    resultsDiv.style.display = 'block';
+};
+
+window.selectUserForAdjustment = function(uid) {
+    window.__selectedAdjustUid = uid;
+    const resultsDiv = document.getElementById('adjustSearchResults');
+    if (resultsDiv) resultsDiv.style.display = 'none';
+    
+    // Re-render tab to show selected user
+    renderDashboard(); 
+    showToast('✅ User selected for adjustment', 'success');
+};
+
+// Override handleAdminAdjustment to work with new form
+async function handleAdminAdjustment(e) {
+    if(e) e.preventDefault();
+    
+    const uid = document.getElementById('adminUserSelect').value;
+    const walletType = document.getElementById('adminWalletSelect').value;
+    const type = document.getElementById('adminAdjustType').value;
+    const amount = parseFloat(document.getElementById('adminAdjustAmount').value);
+    const description = document.getElementById('adminAdjustDesc').value || `${type === 'credit' ? 'Admin Credit' : 'Admin Debit'}`;
+    
+    if (!uid) { showToast('❌ Please select a user first!', 'error'); return; }
+    if (!amount || amount <= 0) { showToast('❌ Enter a valid amount!', 'error'); return; }
+    
+    if (!confirm(`⚠️ Are you sure you want to ${type.toUpperCase()} $${amount} to ${walletType}?`)) return;
+    
+    const btn = document.getElementById('adjustSubmitBtn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+    
+    try {
+        const result = await processAdminAdjustment(uid, walletType, amount, type, description);
+        if (result.success) {
+            showToast(`✅ Successfully ${type === 'credit' ? 'Credited' : 'Debited'} $${amount}!`, 'success');
+            document.getElementById('adminAdjustAmount').value = '';
+            document.getElementById('adminAdjustDesc').value = '';
+            // Clear selection
+            window.__selectedAdjustUid = ''; 
+            setTimeout(renderDashboard, 500);
+        } else {
+            showToast('❌ Failed: ' + (result.error || 'Error'), 'error');
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+    } catch (error) { 
+        showToast('❌ Error: ' + error.message, 'error'); 
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
+// ============================================================
+// USER DETAILS ALERT
+// ============================================================
 window.viewUserDetails = function(userId) {
     const user = allUsers[userId];
     if (!user) { showToast('❌ User not found!', 'error'); return; }
@@ -1509,7 +1591,7 @@ window.filterPackages = function(value) {
 };
 
 // ============================================================
-// SETTINGS TAB (Direct Offer Stats REMOVED)
+// SETTINGS TAB
 // ============================================================
 function renderSettingsTab() {
     const currentRate = allSettings.rate || 1.00;
@@ -1562,37 +1644,12 @@ function renderSettingsTab() {
 // ============================================================
 window.switchTab = function(tab) {
     currentTab = tab;
+    // Clear selected adjust user when switching away from users tab
+    if (tab !== 'users') {
+        window.__selectedAdjustUid = '';
+    }
     renderDashboard();
 };
-
-// ============================================================
-// ADMIN ADJUSTMENT HANDLER
-// ============================================================
-async function handleAdminAdjustment() {
-    const uid = document.getElementById('adminUserSelect').value;
-    const walletType = document.getElementById('adminWalletSelect').value;
-    const type = document.getElementById('adminAdjustType').value;
-    const amount = parseFloat(document.getElementById('adminAdjustAmount').value);
-    const description = document.getElementById('adminAdjustDesc').value || `${type === 'credit' ? 'Admin Credit' : 'Admin Debit'}`;
-    if (!amount || amount <= 0) { showToast('❌ Enter a valid amount!', 'error'); return; }
-    if (!uid) { showToast('❌ Select a user!', 'error'); return; }
-    if (!confirm(`⚠️ ${type === 'credit' ? 'CREDIT' : 'DEBIT'} $${amount} USDT ${walletType}?`)) return;
-    const btn = document.querySelector('#adminAdjustForm button[type="submit"]');
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
-    try {
-        const result = await processAdminAdjustment(uid, walletType, amount, type, description);
-        if (result.success) {
-            showToast(`✅ ${type === 'credit' ? 'Credited' : 'Debited'} $${amount}!`, 'success');
-            document.getElementById('adminAdjustAmount').value = '';
-            document.getElementById('adminAdjustDesc').value = '';
-            setTimeout(renderDashboard, 500);
-        } else showToast('❌ Failed: ' + (result.error || 'Error'), 'error');
-    } catch (error) { showToast('❌ Error: ' + error.message, 'error'); }
-    btn.disabled = false;
-    btn.innerHTML = orig;
-}
 
 // ============================================================
 // SAVE SETTINGS
