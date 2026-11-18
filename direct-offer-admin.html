@@ -3,25 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Diwali Direct Offer — Admin Panel</title>
-
+<title>Bumper Referral Offer — Admin Panel</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎁</text></svg>">
 <style>
 :root { color-scheme: dark; --bg: #080e1a; --panel: #132237; --line: #263b58; --muted: #93a4bd; }
 * { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
 body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
 .navbar-custom { background: #0b1424; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
-.wrap { max-width: 1600px; margin: auto; padding: 24px 16px; }
+.wrap { max-width: 1700px; margin: auto; padding: 24px 16px; }
 .panel, .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 20px; }
 .stat { height: 100%; text-align: center; }
 .stat-num { font-weight: 800; font-size: clamp(1.2rem, 2vw, 2rem); overflow-wrap: anywhere; }
 .stat-label { color: var(--muted); font-size: .8rem; margin-top: 5px; }
 .section-title { font-size: 1.05rem; font-weight: 800; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 14px; }
 .table-responsive { max-height: 65vh; overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.table-responsive > .table { min-width: 1000px; }
+.table-responsive > .table { min-width: 1200px; }
 .table-responsive > .table td, .table-responsive > .table th { white-space: nowrap; }
 .table-responsive > .table td:first-child { white-space: normal; min-width: 150px; }
 .table { --bs-table-bg: transparent; --bs-table-color: #edf3ff; --bs-table-border-color: var(--line); margin: 0; }
@@ -36,19 +35,24 @@ body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
 .status-approved { background: #173f31; color: #70e6a7; }
 .status-paid { background: #153e52; color: #79d7ff; }
 .status-rejected { background: #54272d; color: #ff9ca6; }
+.status-failed { background: #3a2b2b; color: #ffb3b3; }
+.flag-warn { display: inline-block; margin-top: 4px; background: #5a2a1d; color: #ffb08a; border-radius: 8px; padding: 2px 8px; font-size: .7rem; font-weight: 700; white-space: normal; }
 .form-control, .form-select { background: #0c1728; color: #edf3ff; border-color: #304560; }
 .form-control:focus, .form-select:focus { background: #0c1728; color: white; border-color: #4b91e2; box-shadow: none; }
+.form-control::placeholder { color: #6f829f; }
 .btn-sm { white-space: nowrap; }
 .error-box { white-space: pre-wrap; display: none; }
-.loading-screen { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 1.2rem; color: var(--muted); }
-@media (max-width: 576px) { .wrap { padding: 14px 10px; } .panel, .stat { padding: 13px; } .navbar-custom .container-fluid { align-items: flex-start !important; } .table-responsive > .table { min-width: 1000px; } }
+.auth-screen { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; color: var(--muted); }
+.auth-box { width: 100%; max-width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px; color: #edf3ff; }
+.badge-soft { background: #1c2f49; color: #b9c8df; font-weight: 600; }
+@media (max-width: 576px) { .wrap { padding: 14px 10px; } .panel, .stat { padding: 13px; } }
 </style>
 </head>
-
 <body>
 
-<div id="loadingScreen" class="loading-screen">
-  <div class="text-center">
+<!-- AUTH SCREEN (loading / login / access denied) -->
+<div id="authScreen" class="auth-screen">
+  <div id="authBox" class="auth-box text-center">
     <div class="spinner-border text-success mb-3" role="status"></div>
     <div>Checking authentication...</div>
   </div>
@@ -61,12 +65,19 @@ body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
         <i class="bi bi-arrow-left me-2"></i>Main Admin
       </a>
       <div class="fw-bold text-success">
-        <i class="bi bi-gift me-2"></i>Diwali Direct Offer Admin
+        <i class="bi bi-gift me-2"></i>Bumper Referral Offer Admin
       </div>
-      <div class="d-flex align-items-center gap-2">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span id="adminEmail" class="small-note"></span>
         <span id="liveStatus" class="small-note">Connecting...</span>
+        <button id="repairBtn" class="btn btn-outline-warning btn-sm" title="Purane processed withdrawals ke stuck user locks fix karta hai">
+          <i class="bi bi-wrench me-1"></i>Repair Locks
+        </button>
         <button id="refreshBtn" class="btn btn-outline-info btn-sm">
           <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+        <button id="logoutBtn" class="btn btn-outline-danger btn-sm">
+          <i class="bi bi-box-arrow-right me-1"></i>Logout
         </button>
       </div>
     </div>
@@ -75,7 +86,8 @@ body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
   <main class="wrap">
     <div id="pageError" class="alert alert-warning error-box"></div>
     <div class="small-note mb-3">
-      Campaign: <strong>Diwali Bumper Offer 2026</strong> · 26 Oct – 7 Nov 2026 · Live Firebase data
+      Campaign: <strong>Bumper Referral Offer 2026</strong> · Live Firebase data ·
+      Claims tabhi dikhte hain jab referrer ne offer page kholkar sync kiya ho.
     </div>
 
     <!-- Stats Row -->
@@ -83,7 +95,7 @@ body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
       <div class="col-6 col-xl-3">
         <div class="stat">
           <div id="earningUsers" class="stat-num text-info">—</div>
-          <div class="stat-label">Users With Earnings</div>
+          <div class="stat-label">Total Claimed Users</div>
         </div>
       </div>
       <div class="col-6 col-xl-3">
@@ -95,7 +107,8 @@ body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
       <div class="col-6 col-xl-3">
         <div class="stat">
           <div id="pendingCount" class="stat-num text-warning">0</div>
-          <div class="stat-label">Pending Withdrawal Requests</div>
+          <div class="stat-label">Pending Withdrawals</div>
+          <div id="approvedNote" class="small-note"></div>
         </div>
       </div>
       <div class="col-6 col-xl-3">
@@ -106,61 +119,27 @@ body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
       </div>
     </div>
 
-    <!-- Package Summary -->
+    <!-- User Claims Breakdown -->
     <section class="panel">
-      <div class="section-title"><i class="bi bi-bar-chart-line text-success me-2"></i>Package & Reward Summary</div>
-      <div class="table-responsive">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th>Package Purchased</th>
-              <th>Eligible Purchase Count</th>
-              <th>Reward Per Purchase</th>
-              <th>Total Reward Earned</th>
-            </tr>
-          </thead>
-          <tbody id="tierSummary">
-            <tr><td colspan="4" class="text-center muted py-4">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Referrer Earnings -->
-    <section class="panel">
-      <div class="section-title"><i class="bi bi-people-fill text-success me-2"></i>Direct Referrer Earnings Breakdown</div>
+      <div class="section-title"><i class="bi bi-people-fill text-success me-2"></i>Users With Claims</div>
       <div class="row g-2 mb-3">
         <div class="col-md-6">
           <input id="earningsSearch" class="form-control" placeholder="Search referrer name, username, UID...">
         </div>
-        <div class="col-md-6">
-          <select id="earningsTier" class="form-select">
-            <option value="all">All package tiers</option>
-            <option value="50">$50 package</option>
-            <option value="100">$100 package</option>
-            <option value="200">$200 package</option>
-            <option value="500">$500 package</option>
-            <option value="1000">$1000 package</option>
-          </select>
-        </div>
       </div>
       <div class="table-responsive">
         <table class="table table-hover">
           <thead>
             <tr>
-              <th>Referrer Name / Username</th>
+              <th>Referrer Name</th>
+              <th>Username</th>
               <th>Referrer UID</th>
-              <th>$50 count / reward</th>
-              <th>$100 count / reward</th>
-              <th>$200 count / reward</th>
-              <th>$500 count / reward</th>
-              <th>$1000 count / reward</th>
               <th>Total Packages</th>
-              <th>Total Earned</th>
+              <th>Total Reward Earned</th>
             </tr>
           </thead>
           <tbody id="earningsBody">
-            <tr><td colspan="9" class="text-center muted py-4">Loading...</td></tr>
+            <tr><td colspan="5" class="text-center muted py-4">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -168,7 +147,7 @@ body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
 
     <!-- Withdrawals -->
     <section class="panel">
-      <div class="section-title"><i class="bi bi-wallet2 text-success me-2"></i>Withdrawal Requests & Payment Actions</div>
+      <div class="section-title"><i class="bi bi-wallet2 text-success me-2"></i>Withdrawal Requests</div>
       <div class="row g-2 mb-3">
         <div class="col-md-6">
           <input id="withdrawalSearch" class="form-control" placeholder="Search name, UID, withdrawal ID, wallet...">
@@ -190,7 +169,7 @@ body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
               <th>User</th>
               <th>User UID</th>
               <th>Amount</th>
-              <th>Requested</th>
+              <th>Requested At</th>
               <th>Full USDT Wallet Address</th>
               <th>Status</th>
               <th>Admin Actions</th>
@@ -207,10 +186,10 @@ body { margin: 0; background: var(--bg); color: #edf3ff; min-height: 100vh; }
 
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// 🔥 LIVE FIREBASE CONFIG (RND2)
+// 🔴 LIVE FIREBASE CONFIG (rnd2-70080)
 const firebaseConfig = {
   apiKey: "AIzaSyAz-TLmOhiy-_vHHmIjW8gyIOqTR_PT9o0",
   authDomain: "rnd2-70080.firebaseapp.com",
@@ -225,234 +204,549 @@ const firebaseConfig = {
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
-const CAMPAIGN_ID = "direct_diwali_offer_2026";
-const TIERS = { 50: 10, 100: 25, 200: 60, 500: 120, 1000: 250 };
 
-let allUsers = {};
+const CAMPAIGN_ID = "bumper_referral_offer_2026";
+const P = CAMPAIGN_ID;
+const ADMIN_EMAIL = "admin@rndstaking.com";   // rules me bhi yahi email admin hai
+
 let purchases = {};
 let withdrawals = {};
-let listenersStarted = false;
+let userCache = {};            // uid -> { name, username, email }
+const userFetching = new Set();
+let unsubs = [];
+let gotPurchases = false, gotWithdrawals = false;
+let isBusy = false;
+let earnedByUid = {};          // 🆕 uid -> total claimed reward (purchases se)
+let renderTimer = null;        // 🆕 render debounce
 
 const $ = id => document.getElementById(id);
 const money = n => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+const fmtDate = ms => ms ? new Date(Number(ms)).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "—";
+const statusOf = w => String(w.status || "pending").toLowerCase();
+const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
 
-// 🔥 AUTH CHECK: पहले चेक करो कि यूजर लॉग-इन है या नहीं
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    // यूजर लॉग-इन है, अब डेटा लोड करो
-    $("loadingScreen").style.display = "none";
+// ============================================================
+// AUTH SCREENS
+// ============================================================
+function showAuth(html) {
+  $("mainContent").style.display = "none";
+  $("authScreen").style.display = "flex";
+  $("authBox").innerHTML = html;
+}
+
+function showLogin(message = "") {
+  showAuth(`
+    <h5 class="fw-bold mb-1"><i class="bi bi-shield-lock text-success me-2"></i>Admin Login</h5>
+    <div class="small-note mb-3">Sirf admin account se login karein.</div>
+    ${message ? `<div class="alert alert-danger py-2 small">${esc(message)}</div>` : ""}
+    <form id="loginForm" class="text-start">
+      <input id="loginEmail" type="email" class="form-control mb-2" placeholder="Admin email" autocomplete="username" required>
+      <input id="loginPassword" type="password" class="form-control mb-3" placeholder="Password" autocomplete="current-password" required>
+      <button id="loginBtn" class="btn btn-success w-100" type="submit">Login</button>
+    </form>`);
+
+  $("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = $("loginBtn");
+    btn.disabled = true;
+    btn.textContent = "Logging in...";
+    try {
+      await signInWithEmailAndPassword(auth, $("loginEmail").value.trim(), $("loginPassword").value);
+    } catch (err) {
+      showLogin("Login failed: " + (err.code || err.message));
+    }
+  });
+}
+
+function showDenied(user, role, extra = "") {
+  showAuth(`
+    <h5 class="fw-bold text-danger mb-2"><i class="bi bi-x-octagon me-2"></i>Access Denied</h5>
+    <div class="small mb-3">Ye account <strong>admin nahi</strong> hai, isliye Approve / Reject / Paid kaam nahi karega (PERMISSION_DENIED).</div>
+    <div class="text-start small p-3 mb-3" style="background:#0c1728;border:1px solid var(--line);border-radius:10px;">
+      <div>Email: <span class="mono">${esc(user.email || "—")}</span></div>
+      <div>UID: <span class="mono">${esc(user.uid)}</span></div>
+      <div>Role: <span class="mono">${esc(role || "(none)")}</span></div>
+      ${extra ? `<div class="text-warning mt-2">${esc(extra)}</div>` : ""}
+    </div>
+    <div class="small-note text-start mb-3">
+      Fix: Firebase Console → Realtime Database (rnd2-70080) → <span class="mono">users / ${esc(user.uid)} / role</span> = <span class="mono">admin</span>
+      set karein, ya <span class="mono">${esc(ADMIN_EMAIL)}</span> account se login karein.
+    </div>
+    <button id="deniedLogout" class="btn btn-outline-light w-100">Logout &amp; login with admin</button>`);
+  $("deniedLogout").addEventListener("click", () => signOut(auth));
+}
+
+async function checkAdmin(user) {
+  if ((user.email || "").toLowerCase() === ADMIN_EMAIL) return { ok: true, role: "admin (email)" };
+  const snap = await get(ref(db, `users/${user.uid}/role`));
+  const role = snap.exists() ? String(snap.val()) : "";
+  return { ok: role === "admin", role };
+}
+
+onAuthStateChanged(auth, async (user) => {
+  stopListeners();
+  if (!user) { showLogin(); return; }
+
+  showAuth(`<div class="spinner-border text-success mb-3" role="status"></div><div>Checking admin access...</div>`);
+  try {
+    const { ok, role } = await checkAdmin(user);
+    if (!ok) { showDenied(user, role); return; }
+    $("authScreen").style.display = "none";
     $("mainContent").style.display = "block";
+    $("adminEmail").textContent = user.email || user.uid;
     startListeners();
-  } else {
-    // यूजर लॉग-इन नहीं है
-    $("loadingScreen").innerHTML = `<div class="text-danger">Access Denied. Please login through the main admin panel.</div>`;
+  } catch (err) {
+    showDenied(user, "", "Role check failed: " + err.message);
   }
 });
 
+$("logoutBtn")?.addEventListener("click", () => signOut(auth));
+
+// ============================================================
+// LISTENERS  (sirf campaign ka data; poora `users` node NAHI)
+// ============================================================
 function startListeners() {
-  if (listenersStarted) return;
-  listenersStarted = true;
+  stopListeners();
+  gotPurchases = gotWithdrawals = false;
   $("liveStatus").textContent = "Connecting...";
 
-  onValue(ref(db, "users"), snapshot => {
-    allUsers = snapshot.val() || {};
-    renderAll();
-  }, error => showError("pageError", "Could not read users: " + error.message));
-
-  onValue(ref(db, `${CAMPAIGN_ID}/purchases`), snapshot => {
+  unsubs.push(onValue(ref(db, `${P}/purchases`), snapshot => {
     purchases = snapshot.val() || {};
-    renderAll();
-  }, error => showError("pageError", "Could not read offer purchases: " + error.message));
+    gotPurchases = true;
+    scheduleRender();
+  }, error => showError("Could not read purchases: " + error.message)));
 
-  onValue(ref(db, `${CAMPAIGN_ID}/withdrawals`), snapshot => {
+  unsubs.push(onValue(ref(db, `${P}/withdrawals`), snapshot => {
     withdrawals = snapshot.val() || {};
-    renderAll();
-  }, error => showError("pageError", "Could not read withdrawals: " + error.message));
+    gotWithdrawals = true;
+    scheduleRender();
+  }, error => showError("Could not read withdrawals: " + error.message)));
 }
 
-function showError(id, message) {
-  const el = $(id);
+function stopListeners() {
+  unsubs.forEach(fn => { try { fn(); } catch (e) { /* ignore */ } });
+  unsubs = [];
+}
+
+function showError(message) {
+  const el = $("pageError");
   el.style.display = "block";
   el.textContent = message;
 }
 
-function getUser(uid) { return allUsers[uid] || {}; }
+// 🆕 baar-baar render rokne ke liye (bahut saare updates ek saath aaye to)
+function scheduleRender() {
+  if (renderTimer) return;
+  renderTimer = setTimeout(() => { renderTimer = null; renderAll(); }, 150);
+}
+
+// ============================================================
+// USER NAMES - sirf zarurat wale users (chhote fields)
+// ============================================================
+async function ensureNames(uids) {
+  const need = [...new Set(uids)].filter(u => u && !userCache[u] && !userFetching.has(u));
+  if (!need.length) return;
+  need.forEach(u => userFetching.add(u));
+
+  for (let i = 0; i < need.length; i += 8) {
+    const batch = need.slice(i, i + 8);
+    await Promise.all(batch.map(async uid => {
+      try {
+        const fields = ["name", "username", "email"];
+        const snaps = await Promise.all(fields.map(f => get(ref(db, `users/${uid}/${f}`))));
+        const obj = {};
+        fields.forEach((f, idx) => { obj[f] = snaps[idx].exists() ? snaps[idx].val() : ""; });
+        userCache[uid] = obj;
+      } catch (e) {
+        userCache[uid] = {};
+      } finally {
+        userFetching.delete(uid);
+      }
+    }));
+  }
+  scheduleRender();
+}
+
+function getUser(uid) { return userCache[uid] || {}; }
 
 function displayName(uid, fallback = "") {
   const user = getUser(uid);
-  return user.name || user.fullName || user.username || fallback || "Unknown user";
+  return user.name || user.username || fallback || "Unknown user";
 }
 
-function validTier(amount) {
-  return Object.prototype.hasOwnProperty.call(TIERS, String(Number(amount)));
-}
-
+// ============================================================
+// DATA HELPERS
+// ============================================================
 function purchaseRows() {
   return Object.entries(purchases)
     .map(([id, p]) => ({ id, ...(p || {}) }))
-    .filter(p => p.directReferrerUid && validTier(p.packageAmount) && p.status !== "rejected");
+    .filter(p => p.directReferrerUid && p.status !== "rejected");
 }
 
 function earningsByReferrer() {
   const groups = {};
   for (const p of purchaseRows()) {
     const uid = String(p.directReferrerUid);
-    const tier = Number(p.packageAmount);
-    const reward = Number(p.rewardAmount) || TIERS[tier];
-
-    if (!groups[uid]) {
-      groups[uid] = { uid, counts: {50:0, 100:0, 200:0, 500:0, 1000:0}, rewards: {50:0, 100:0, 200:0, 500:0, 1000:0}, total: 0, packages: 0 };
-    }
-    groups[uid].counts[tier]++;
-    groups[uid].rewards[tier] += reward;
+    const reward = Number(p.rewardAmount) || 0;
+    if (!groups[uid]) groups[uid] = { uid, total: 0, packages: 0, tierBreakdown: {} };
     groups[uid].total += reward;
     groups[uid].packages++;
+    const tk = String(p.tierKey || "—");
+    groups[uid].tierBreakdown[tk] = (groups[uid].tierBreakdown[tk] || 0) + 1;
   }
   return Object.values(groups).sort((a, b) => b.total - a.total);
 }
 
+// 🆕 Ek user ke kul "live" (rejected ko chhodkar) withdrawals
+function committedFor(uid, exceptId = null) {
+  let sum = 0;
+  for (const [id, w] of Object.entries(withdrawals)) {
+    if (!w || w.userId !== uid || id === exceptId) continue;
+    const s = statusOf(w);
+    if (s === "pending" || s === "approved" || s === "paid") sum += Number(w.amount) || 0;
+  }
+  return round2(sum);
+}
+
+// 🆕 Claim check: withdrawal amount claimed rewards se zyada to nahi?
+function claimCheck(w) {
+  const uid = w.userId || "";
+  const earned = round2(earnedByUid[uid] || 0);
+  const committed = committedFor(uid);            // is withdrawal samet (agar live hai)
+  const over = gotPurchases && committed > earned + 0.01;
+  return { earned, committed, over };
+}
+
+// ============================================================
+// RENDER
+// ============================================================
 function renderAll() {
   const rows = purchaseRows();
   const groups = earningsByReferrer();
-  const tierCounts = {50:0, 100:0, 200:0, 500:0, 1000:0};
-  const tierRewards = {50:0, 100:0, 200:0, 500:0, 1000:0};
+  const totalReward = rows.reduce((sum, p) => sum + (Number(p.rewardAmount) || 0), 0);
 
-  rows.forEach(p => {
-    const tier = Number(p.packageAmount);
-    tierCounts[tier]++;
-    tierRewards[tier] += Number(p.rewardAmount) || TIERS[tier];
-  });
-
-  const totalReward = Object.values(tierRewards).reduce((a, b) => a + b, 0);
+  earnedByUid = {};
+  groups.forEach(g => { earnedByUid[g.uid] = g.total; });
 
   $("earningUsers").textContent = groups.length.toLocaleString();
   $("rewardsGenerated").textContent = money(totalReward);
 
-  $("tierSummary").innerHTML = Object.keys(TIERS).map(t => `
-    <tr>
-      <td><strong>${money(t)}</strong></td>
-      <td>${tierCounts[t]}</td>
-      <td>${money(TIERS[t])}</td>
-      <td class="text-success fw-bold">${money(tierRewards[t])}</td>
-    </tr>
-  `).join("");
-
   renderEarnings(groups);
   renderWithdrawals();
-  $("liveStatus").textContent = "Live data connected";
+  if (gotPurchases && gotWithdrawals) $("liveStatus").textContent = "● Live connected";
+
+  const uids = [
+    ...groups.map(g => g.uid),
+    ...Object.values(withdrawals).map(w => w && w.userId)
+  ];
+  ensureNames(uids);
 }
 
 function renderEarnings(groups) {
-  const query = $("earningsSearch").value.trim().toLowerCase();
-  const tier = $("earningsTier").value;
+  const q = $("earningsSearch").value.trim().toLowerCase();
   const filtered = groups.filter(g => {
     const user = getUser(g.uid);
-    const hay = [g.uid, user.name, user.fullName, user.username].join(" ").toLowerCase();
-    return (!query || hay.includes(query)) && (tier === "all" || g.counts[Number(tier)] > 0);
+    const hay = [g.uid, user.name, user.username, user.email].join(" ").toLowerCase();
+    return !q || hay.includes(q);
   });
 
   $("earningsBody").innerHTML = filtered.length ? filtered.map(g => {
     const user = getUser(g.uid);
-    const cell = t => `${g.counts[t]} <span class="muted">/ ${money(g.rewards[t])}</span>`;
+    const tiers = Object.entries(g.tierBreakdown).map(([k, v]) => `<span class="badge badge-soft me-1">$${esc(k)}: ${v}</span>`).join("");
     return `
       <tr>
-        <td><strong>${esc(displayName(g.uid))}</strong><div class="muted">${esc(user.username || "")}</div></td>
+        <td><strong>${esc(displayName(g.uid))}</strong><div class="muted">${esc(user.email || "")}</div></td>
+        <td>${esc(user.username || "—")}</td>
         <td class="mono">${esc(g.uid)}</td>
-        <td>${cell(50)}</td><td>${cell(100)}</td><td>${cell(200)}</td><td>${cell(500)}</td><td>${cell(1000)}</td>
-        <td>${g.packages}</td>
-        <td class="text-success fw-bold">${money(g.total)}</td>
-      </tr>
-    `;
-  }).join("") : `<tr><td colspan="9" class="text-center muted py-4">No matching earning users.</td></tr>`;
+        <td><span class="badge bg-secondary">${g.packages}</span> <div class="mt-1">${tiers}</div></td>
+        <td class="text-success fw-bold fs-6">${money(g.total)}</td>
+      </tr>`;
+  }).join("") : `<tr><td colspan="5" class="text-center muted py-4">No matching users found.</td></tr>`;
 }
+
+const STATUS_ORDER = { pending: 0, approved: 1 };
 
 function renderWithdrawals() {
   const entries = Object.entries(withdrawals)
-    .map(([id, w]) => ({id, ...(w || {})}))
-    .sort((a, b) => (Number(b.requestedAt) || 0) - (Number(a.requestedAt) || 0));
+    .filter(([, w]) => w && typeof w === "object")
+    .map(([id, w]) => ({ id, ...w }))
+    // 🆕 pending sabse upar, phir approved, phir baaki (naye pehle)
+    .sort((a, b) => {
+      const oa = STATUS_ORDER[statusOf(a)] ?? 2;
+      const ob = STATUS_ORDER[statusOf(b)] ?? 2;
+      if (oa !== ob) return oa - ob;
+      return (Number(b.requestedAt) || 0) - (Number(a.requestedAt) || 0);
+    });
 
-  let pending = 0, approved = 0, paid = 0, rejected = 0, pendingAmount = 0;
+  let pending = 0, approved = 0, paid = 0;
   entries.forEach(w => {
-    const amount = Number(w.amount) || 0;
-    const status = String(w.status || "pending").toLowerCase();
-    if (status === "pending") { pending++; pendingAmount += amount; }
-    else if (status === "approved") approved += amount;
-    else if (status === "paid") paid += amount;
-    else if (status === "rejected") rejected++;
+    const status = statusOf(w);
+    if (status === "pending") pending++;
+    else if (status === "approved") approved++;
+    else if (status === "paid") paid += Number(w.amount) || 0;
   });
 
   $("pendingCount").textContent = pending;
+  $("approvedNote").textContent = approved ? `Approved, payment baaki: ${approved}` : "";
   $("paidTotal").textContent = money(paid);
 
-  const query = $("withdrawalSearch").value.trim().toLowerCase();
+  const q = $("withdrawalSearch").value.trim().toLowerCase();
   const filter = $("withdrawalStatusFilter").value;
   const filtered = entries.filter(w => {
     const user = getUser(w.userId || "");
-    const hay = [w.userId, w.username, w.withdrawalId, w.walletAddress, user.name, user.username].join(" ").toLowerCase();
-    return (!query || hay.includes(query)) && (filter === "all" || String(w.status || "pending").toLowerCase() === filter);
+    const hay = [w.userId, w.username, w.withdrawalId, w.id, w.walletAddress, user.name, user.username].join(" ").toLowerCase();
+    return (!q || hay.includes(q)) && (filter === "all" || statusOf(w) === filter);
   });
 
   $("withdrawalsBody").innerHTML = filtered.length ? filtered.map(w => {
     const uid = w.userId || "";
     const user = getUser(uid);
-    const status = String(w.status || "pending").toLowerCase();
+    const status = statusOf(w);
     const wallet = String(w.walletAddress || "");
+    const id = esc(w.id);
+    const live = status === "pending" || status === "approved" || status === "paid";
+    const chk = claimCheck(w);
+    const warn = live && chk.over
+      ? `<div class="flag-warn">⚠ Claimed ${money(chk.earned)} se zyada (total requests ${money(chk.committed)}). Pay karne se pehle verify karein.</div>`
+      : "";
+
     let actions = "";
-    
     if (status === "pending") {
       actions = `
-        <button class="btn btn-success btn-sm me-1" onclick="approveWithdrawal('${w.id}')">Approve</button>
-        <button class="btn btn-danger btn-sm" onclick="rejectWithdrawal('${w.id}')">Reject</button>
-      `;
+        <button class="btn btn-success btn-sm me-1" data-action="approve" data-id="${id}">Approve</button>
+        <button class="btn btn-danger btn-sm" data-action="reject" data-id="${id}">Reject</button>`;
     } else if (status === "approved") {
       actions = `
-        <button class="btn btn-primary btn-sm" onclick="markAsPaid('${w.id}')">Mark as Paid</button>
-      `;
+        <button class="btn btn-primary btn-sm me-1" data-action="paid" data-id="${id}">Mark as Paid</button>
+        <button class="btn btn-outline-danger btn-sm" data-action="reject" data-id="${id}">Reject</button>`;
+    } else if (status === "paid") {
+      const tx = String(w.txHash || "");
+      actions = `<span class="muted">Done</span>${tx ? `<div><a class="mono small-note" target="_blank" rel="noopener noreferrer" href="https://bscscan.com/tx/${encodeURIComponent(tx)}">${esc(tx.slice(0, 18))}...</a></div>` : ""}`;
     } else {
-      actions = `<span class="muted">Done</span>`;
+      actions = `<span class="muted">Done</span>${w.rejectReason ? `<div class="small-note" style="white-space:normal;max-width:220px;">${esc(w.rejectReason)}</div>` : ""}`;
     }
-
     return `
       <tr>
-        <td><strong>${esc(displayName(uid, w.username))}</strong><div class="muted">${esc(w.username || user.username || "")}</div></td>
+        <td><strong>${esc(displayName(uid, w.username))}</strong><div class="muted">${esc(w.email || user.email || "")}</div></td>
         <td class="mono">${esc(uid)}</td>
-        <td class="text-warning fw-bold">${money(w.amount)} USDT</td>
-        <td>${new Date(w.requestedAt).toLocaleString()}</td>
+        <td>
+          <div class="text-warning fw-bold">${money(w.amount)} USDT</div>
+          <div class="small-note">Claimed: ${money(chk.earned)}</div>
+          ${warn}
+        </td>
+        <td>${esc(fmtDate(w.requestedAt))}</td>
         <td>
           <div class="wallet mono">${esc(wallet || "No wallet address")}</div>
-          <div><button class="btn btn-outline-info btn-sm mt-1" onclick="copyAddress('${wallet}')"><i class="bi bi-clipboard me-1"></i>Copy</button></div>
+          <div class="mt-1 d-flex gap-1 flex-wrap">
+            <button class="btn btn-outline-info btn-sm" data-action="copy" data-wallet="${esc(wallet)}"><i class="bi bi-clipboard me-1"></i>Copy</button>
+            <a class="btn btn-outline-light btn-sm" target="_blank" rel="noopener noreferrer" href="https://bscscan.com/address/${encodeURIComponent(wallet)}"><i class="bi bi-box-arrow-up-right me-1"></i>BscScan</a>
+          </div>
         </td>
-        <td><span class="status status-${status}">${status}</span></td>
+        <td><span class="status status-${esc(status)}">${esc(status)}</span></td>
         <td>${actions}</td>
-      </tr>
-    `;
+      </tr>`;
   }).join("") : `<tr><td colspan="7" class="text-center muted py-4">No withdrawal requests match this filter.</td></tr>`;
 }
 
-window.copyAddress = function(wallet) {
-  if(!wallet) return alert("No address to copy");
-  navigator.clipboard.writeText(wallet);
-  alert("✅ Full wallet address copied!");
+// ============================================================
+// ADMIN ACTIONS
+// ============================================================
+const ALLOWED_TRANSITIONS = {
+  pending: ["approved", "rejected"],
+  approved: ["paid", "rejected"]
+};
+
+async function pathExists(path) {
+  const snap = await get(ref(db, path));
+  return snap.exists();
 }
 
-window.approveWithdrawal = async function(id) {
-  if(!confirm("Are you sure you want to APPROVE this withdrawal?")) return;
-  await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${id}`), { status: 'approved' });
-  alert('✅ Approved!');
+async function updateWithdrawalStatus(withdrawalId, newStatus) {
+  const w = withdrawals[withdrawalId];
+  if (!w) return alert("Withdrawal not found!");
+
+  // ---- 1) Pehle admin se input lo (prompts) ----
+  let txHash = null;
+  let rejectReason = null;
+
+  if (newStatus === "paid") {
+    txHash = (prompt("USDT Transaction Hash (TxHash) daalein:") || "").trim();
+    if (!txHash) return alert("Cancelled. TxHash required hai.");
+    if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) return alert("TxHash galat lag raha hai (0x + 64 hex characters hona chahiye).");
+    // 🆕 Ek hi TxHash do alag withdrawals me use hone se roko
+    const dup = Object.entries(withdrawals).some(([id, x]) =>
+      id !== withdrawalId && x && String(x.txHash || "").toLowerCase() === txHash.toLowerCase());
+    if (dup) return alert("❌ Ye TxHash pehle se kisi aur withdrawal me use ho chuka hai.");
+  }
+
+  if (newStatus === "rejected") {
+    const reason = prompt("Reject reason (user ko dikhega, optional):");
+    if (reason === null) return;     // Cancel
+    rejectReason = reason.trim() || null;
+  }
+
+  // ---- 2) 🆕 Prompts ke BAAD server se latest status confirm karo (race se bachne ke liye) ----
+  const curSnap = await get(ref(db, `${P}/withdrawals/${withdrawalId}/status`));
+  const cur = String(curSnap.val() || "pending").toLowerCase();
+  if (!(ALLOWED_TRANSITIONS[cur] || []).includes(newStatus)) {
+    return alert(`Is withdrawal ka status already "${cur}" hai. "${newStatus}" nahi kar sakte.`);
+  }
+
+  const uid = w.userId;
+  const txId = w.transactionId;
+  const now = Date.now();
+  const updates = {};
+  const setBoth = (key, val) => { updates[`${P}/withdrawals/${withdrawalId}/${key}`] = val; };
+
+  setBoth("status", newStatus);
+  setBoth("updatedAt", now);
+  if (newStatus === "paid") { setBoth("paidAt", now); setBoth("txHash", txHash); }
+  if (newStatus === "rejected") { setBoth("rejectedAt", now); setBoth("rejectReason", rejectReason); }
+
+  if (uid) {
+    // User ki lock entry (warna user dobara withdrawal nahi kar paayega)
+    const lockSnap = await get(ref(db, `${P}/rewards/${uid}`));
+    const lock = lockSnap.val();
+    if (lock && (!lock.withdrawalId || lock.withdrawalId === withdrawalId)) {
+      updates[`${P}/rewards/${uid}/status`] = newStatus;
+      updates[`${P}/rewards/${uid}/updatedAt`] = now;
+    }
+
+    // User ki apni withdrawal copy (sirf agar maujood ho) — user page isi se status dikhata hai
+    const uwBase = `${P}/user_withdrawals/${uid}/${withdrawalId}`;
+    if (await pathExists(`${uwBase}/status`)) {
+      updates[`${uwBase}/status`] = newStatus;
+      updates[`${uwBase}/updatedAt`] = now;
+      if (txHash) { updates[`${uwBase}/paidAt`] = now; updates[`${uwBase}/txHash`] = txHash; }
+      if (newStatus === "rejected") { updates[`${uwBase}/rejectReason`] = rejectReason; }
+    }
+
+    // Transaction history entries (sirf agar maujood ho)
+    if (txId) {
+      const userTxBase = `users/${uid}/offer_transactions/${txId}`;
+      if (await pathExists(`${userTxBase}/status`)) {
+        updates[`${userTxBase}/status`] = newStatus;
+        if (txHash) updates[`${userTxBase}/txHash`] = txHash;
+      }
+      const campTxBase = `${P}/transactions/${txId}`;
+      if (await pathExists(`${campTxBase}/status`)) {
+        updates[`${campTxBase}/status`] = newStatus;
+        if (txHash) updates[`${campTxBase}/txHash`] = txHash;
+      }
+    }
+  }
+
+  try {
+    await update(ref(db), updates);
+    alert(`✅ Status updated to ${newStatus.toUpperCase()} successfully!`);
+  } catch (e) {
+    console.error(e);
+    if (String(e.code || e.message).toUpperCase().includes("PERMISSION")) {
+      alert("❌ PERMISSION_DENIED\n\nYe account Firebase rules ke hisaab se admin nahi hai.\nusers/{uid}/role = admin set karein ya admin@rndstaking.com se login karein.");
+    } else {
+      alert("❌ Error updating status: " + e.message);
+    }
+  }
 }
 
-window.rejectWithdrawal = async function(id) {
-  if(!confirm("Are you sure you want to REJECT this withdrawal?")) return;
-  await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${id}`), { status: 'rejected' });
-  alert('❌ Rejected!');
+async function runAction(fn) {
+  if (isBusy) return;
+  isBusy = true;
+  document.querySelectorAll("#withdrawalsBody button").forEach(b => { b.disabled = true; });
+  try {
+    await fn();
+  } catch (e) {
+    console.error(e);
+    alert("❌ Unexpected error: " + (e.message || e));
+  } finally {
+    isBusy = false;
+    renderWithdrawals();
+  }
 }
 
-window.markAsPaid = async function(id) {
-  if(!confirm("Have you sent the USDT? Mark as PAID?")) return;
-  await update(ref(db, `${CAMPAIGN_ID}/withdrawals/${id}`), { status: 'paid', paidAt: Date.now() });
-  alert('💰 Marked as Paid!');
+function copyAddress(wallet) {
+  if (!wallet) return alert("No address to copy");
+  navigator.clipboard.writeText(wallet).then(
+    () => alert("✅ Full wallet address copied!"),
+    () => alert("Copy failed. Manually copy karein.")
+  );
 }
+
+// Purane (pehle ke admin code se processed) withdrawals ke stuck locks fix karo
+async function repairLocks() {
+  if (!confirm("Paid/Rejected withdrawals ke stuck 'pending/approved' locks fix karein?")) return;
+  const now = Date.now();
+  const updates = {};
+  let count = 0;
+
+  try {
+    const list = Object.entries(withdrawals).filter(([, w]) => w && w.userId && ["paid", "rejected"].includes(statusOf(w)));
+    for (const [id, w] of list) {
+      const snap = await get(ref(db, `${P}/rewards/${w.userId}`));
+      const lock = snap.val();
+      if (!lock) continue;
+      const st = String(lock.status || "").toLowerCase();
+      if ((st === "pending" || st === "approved") && lock.withdrawalId === id) {
+        updates[`${P}/rewards/${w.userId}/status`] = statusOf(w);
+        updates[`${P}/rewards/${w.userId}/updatedAt`] = now;
+        count++;
+      }
+    }
+
+    if (!count) return alert("✅ Koi stuck lock nahi mila.");
+    await update(ref(db), updates);
+    alert(`✅ ${count} lock(s) fix ho gaye.`);
+  } catch (e) {
+    alert("❌ " + e.message);
+  }
+}
+
+// ============================================================
+// EVENTS
+// ============================================================
+function warnText(id) {
+  const w = withdrawals[id];
+  if (!w) return "";
+  const c = claimCheck(w);
+  return c.over
+    ? `\n\n⚠ WARNING: Is user ke total withdrawal requests (${money(c.committed)}) claimed rewards (${money(c.earned)}) se zyada hain. Pehle verify kar lein.`
+    : "";
+}
+
+$("withdrawalsBody")?.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn || btn.disabled) return;
+  const { action, id, wallet } = btn.dataset;
+
+  if (action === "copy") return copyAddress(wallet);
+
+  if (action === "approve") {
+    if (!confirm("Are you sure you want to APPROVE this withdrawal?" + warnText(id))) return;
+    return runAction(() => updateWithdrawalStatus(id, "approved"));
+  }
+  if (action === "reject") {
+    if (!confirm("Are you sure you want to REJECT this withdrawal?")) return;
+    return runAction(() => updateWithdrawalStatus(id, "rejected"));
+  }
+  if (action === "paid") {
+    if (!confirm("Have you sent the USDT? Mark as PAID?" + warnText(id))) return;
+    return runAction(() => updateWithdrawalStatus(id, "paid"));
+  }
+});
+
+$("earningsSearch")?.addEventListener("input", () => renderEarnings(earningsByReferrer()));
+$("withdrawalSearch")?.addEventListener("input", renderWithdrawals);
+$("withdrawalStatusFilter")?.addEventListener("change", renderWithdrawals);
+$("repairBtn")?.addEventListener("click", repairLocks);
+$("refreshBtn")?.addEventListener("click", () => {
+  userCache = {};
+  renderAll();
+  $("liveStatus").textContent = "● Refreshed";
+  setTimeout(() => { $("liveStatus").textContent = "● Live connected"; }, 1500);
+});
+
+window.addEventListener("beforeunload", stopListeners);
 </script>
 </body>
 </html>
